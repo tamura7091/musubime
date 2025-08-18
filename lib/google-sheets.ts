@@ -250,7 +250,11 @@ class GoogleSheetsService {
         title: row['id_campaign'] || row['キャンペーン名'] || row['title'] || 'Untitled Campaign',
         influencerId: row['influencer_id'] || row['id_campaign'] || `user_${index}`,
         influencerName: row['インフルエンサー名'] || row['influencer_name'] || row['name'] || 'Unknown Influencer',
-        status: row['status_campaigns'] || row['status_dashboard'] || row['status'] || 'pending',
+        status: (() => {
+          const statusValue = row['status_dashboard'] || row['status_campaigns'] || row['status'] || 'pending';
+          console.log(`📊 Campaign ${row['id_campaign']}: status_dashboard="${row['status_dashboard']}", mapped to="${statusValue}"`);
+          return statusValue;
+        })(),
         platform: row['platform'] || 'yt',
         contractedPrice: this.parsePrice(row['spend_jpy'] || row['contracted_price'] || row['報酬'] || '0'),
         createdAt: row['created_at'] || new Date().toISOString(),
@@ -290,24 +294,40 @@ class GoogleSheetsService {
   // Map status values from Google Sheets to our enum
   private mapStatus(status: string): string {
     const statusMap: { [key: string]: string } = {
+      // Legacy status mappings
       'contract prep': 'contract_pending',
-      'meeting_scheduled': 'meeting_scheduled',
       'contract_pending': 'contract_pending',
       'plan_submission': 'plan_creating',
       'plan_review': 'plan_reviewing',
       'content_creation': 'draft_creating',
-      'draft_submitted': 'draft_submitted',
       'draft_review': 'draft_reviewing',
       'ready_to_publish': 'scheduling',
       'live': 'scheduled',
       'PAYOUT_DONE': 'completed',
       'payout_done': 'completed',
+      'FORM_PENDING': 'contract_pending',
+      
+      // New status_dashboard mappings (direct mapping)
+      'meeting_scheduling': 'meeting_scheduling',
+      'meeting_scheduled': 'meeting_scheduled',
+      'plan_creating': 'plan_creating',
+      'plan_submitted': 'plan_submitted',
+      'plan_reviewing': 'plan_reviewing',
+      'plan_revising': 'plan_revising',
+      'draft_creating': 'draft_creating',
+      'draft_submitted': 'draft_submitted',
+      'draft_reviewing': 'draft_reviewing',
+      'draft_revising': 'draft_revising',
+      'scheduling': 'scheduling',
+      'scheduled': 'scheduled',
+      'payment_processing': 'payment_processing',
       'completed': 'completed',
       'cancelled': 'cancelled',
-      'FORM_PENDING': 'contract_pending',
     };
     
-    return statusMap[status.toLowerCase()] || 'contract_pending';
+    const mappedStatus = statusMap[status.toLowerCase()] || 'meeting_scheduling';
+    console.log(`🔄 Status mapping: "${status}" -> "${mappedStatus}"`);
+    return mappedStatus;
   }
 
   // Parse requirements string into array
