@@ -23,12 +23,7 @@ const campaignSteps: StepInfo[] = [
     id: 'meeting_scheduled',
     title: '打ち合わせ',
     description: '30分のオンラインミーティングでキャンペーンの詳細を確認します。',
-    dateField: 'meeting'
-  },
-  {
-    id: 'contract_pending',
-    title: '契約書サイン',
-    description: '契約書をご確認いただき、電子署名をお願いします。'
+    dateField: 'meetingDate'
   },
   {
     id: 'plan_submission',
@@ -36,7 +31,7 @@ const campaignSteps: StepInfo[] = [
     description: 'テンプレートを使用して動画の構成案を作成・提出してください。',
     hasLink: true,
     linkPlaceholder: '構成案のリンクを貼り付けてください',
-    dateField: 'planSubmission'
+    dateField: 'planSubmissionDate'
   },
   {
     id: 'plan_review',
@@ -54,7 +49,7 @@ const campaignSteps: StepInfo[] = [
     description: 'YouTubeに限定公開でアップロードし、リンクを共有してください。',
     hasLink: true,
     linkPlaceholder: '初稿動画のリンクを貼り付けてください',
-    dateField: 'draftSubmission'
+    dateField: 'draftSubmissionDate'
   },
   {
     id: 'draft_review',
@@ -72,7 +67,7 @@ const campaignSteps: StepInfo[] = [
     description: '投稿済みPR動画のリンクを共有してください。',
     hasLink: true,
     linkPlaceholder: '投稿済みPR動画のリンクを貼り付けてください',
-    dateField: 'publishDate'
+    dateField: 'liveDate'
   },
   {
     id: 'payment_processing',
@@ -103,8 +98,21 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
   };
 
   const getStepStatus = (stepIndex: number) => {
-    if (stepIndex < currentStepIndex) return 'completed';
-    if (stepIndex === currentStepIndex) return 'current';
+    // If campaign is completed, show all steps as completed
+    if (campaign.status === 'completed') return 'completed';
+    
+    // Map revision statuses to their corresponding review statuses for step calculation
+    let statusForStep = campaign.status;
+    if (campaign.status === 'plan_revision') {
+      statusForStep = 'plan_review';
+    } else if (campaign.status === 'draft_revision') {
+      statusForStep = 'draft_review';
+    }
+    
+    const stepIndexForStatus = campaignSteps.findIndex(step => step.id === statusForStep);
+    
+    if (stepIndex < stepIndexForStatus) return 'completed';
+    if (stepIndex === stepIndexForStatus) return 'current';
     return 'pending';
   };
 
@@ -119,42 +127,25 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
 
   return (
     <div className="space-y-6">
-      {/* Action Required - Show at top when needed */}
-      {currentStep?.hasLink && (
-        <div className="card border-orange-500/30 bg-orange-500/5">
-          <h3 className="text-base sm:text-lg font-semibold text-dark-text mb-3 flex items-center space-x-2">
-            <LinkIcon size={18} className="text-orange-400 flex-shrink-0" />
-            <span className="mobile-text">「{currentStep.title}」のリンクが必要です</span>
-          </h3>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-dark-text mb-2">
-                {currentStep.linkPlaceholder}
-              </label>
-              <input
-                type="url"
-                value={linkInputs[currentStep.id] || ''}
-                onChange={(e) => setLinkInputs(prev => ({
-                  ...prev,
-                  [currentStep.id]: e.target.value
-                }))}
-                className="input w-full"
-                placeholder="https://..."
-              />
-            </div>
-            <button
-              onClick={() => handleLinkSubmit(currentStep.id)}
-              className="btn-primary"
-              disabled={!linkInputs[currentStep.id]}
-            >
-              提出する
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Current Step Description - Above Flow */}
-      {currentStep && (
+      {campaign.status === 'completed' ? (
+        <div className="card bg-green-500/10 border-green-500/20">
+          <div className="flex items-start space-x-3">
+            <div className="w-6 h-6 sm:w-8 sm:h-8 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+              <Check size={14} className="text-green-500 sm:w-4 sm:h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-semibold text-dark-text mb-1 mobile-text">
+                完了 - お疲れ様でした！
+              </h4>
+              <p className="text-xs sm:text-sm text-dark-text-secondary mb-3">
+                このキャンペーンは正常に完了しました。ご協力ありがとうございました。
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : currentStep && (
         <div className="card bg-dark-accent/10 border-dark-accent/20">
           <div className="flex items-start space-x-3">
             <div className="w-6 h-6 sm:w-8 sm:h-8 bg-dark-accent/20 rounded-full flex items-center justify-center flex-shrink-0">
@@ -171,7 +162,7 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
               {currentStep.dateField && campaign.schedules[currentStep.dateField] && (
                 <div className="flex items-center space-x-2 text-xs sm:text-sm text-dark-text-secondary mb-3">
                   <Calendar size={14} className="flex-shrink-0" />
-                  <span>期限: {formatDate(campaign.schedules[currentStep.dateField])}</span>
+                  <span>期限: {campaign.schedules[currentStep.dateField]}</span>
                 </div>
               )}
             </div>
@@ -193,7 +184,17 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
             <div 
               className="absolute top-2 left-4 h-0.5 bg-dark-accent transition-all duration-500"
               style={{ 
-                width: `calc(${(currentStepIndex / (campaignSteps.length - 1)) * 100}% - 8px)` 
+                width: `calc(${campaign.status === 'completed' ? 100 : (() => {
+                  // Map revision statuses to their corresponding review statuses for progress calculation
+                  let statusForProgress = campaign.status;
+                  if (campaign.status === 'plan_revision') {
+                    statusForProgress = 'plan_review';
+                  } else if (campaign.status === 'draft_revision') {
+                    statusForProgress = 'draft_review';
+                  }
+                  const stepIndexForProgress = campaignSteps.findIndex(step => step.id === statusForProgress);
+                  return (stepIndexForProgress / (campaignSteps.length - 1)) * 100;
+                })()}% - 8px)` 
               }}
             ></div>
 
@@ -247,7 +248,7 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
                           <div className="text-xs text-dark-accent font-medium">Now</div>
                           {step.dateField && campaign.schedules[step.dateField] && (
                             <div className="text-xs text-dark-text-secondary mt-1 hidden md:block">
-                              {formatDate(campaign.schedules[step.dateField])}
+                              {campaign.schedules[step.dateField]}
                             </div>
                           )}
                         </div>
@@ -290,7 +291,7 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
             {selectedStep.dateField && campaign.schedules[selectedStep.dateField] && (
               <div className="flex items-center space-x-2 text-xs text-dark-text-secondary">
                 <Calendar size={12} />
-                <span>期限: {formatDate(campaign.schedules[selectedStep.dateField])}</span>
+                <span>期限: {campaign.schedules[selectedStep.dateField]}</span>
               </div>
             )}
 

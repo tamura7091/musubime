@@ -292,7 +292,7 @@ export default function AdminDashboard() {
             {/* Latest Updates */}
             <div className="card mb-6">
               <h3 className="text-lg font-semibold text-dark-text mb-4">
-                最新の更新
+                アップデート
               </h3>
               <div className="space-y-4">
                 {recentUpdates.map(update => (

@@ -38,10 +38,10 @@ export const mockCampaigns: Campaign[] = [
     contractedPrice: 50000,
     currency: 'JPY',
     schedules: {
-      meeting: new Date('2024-01-10'),
-      planSubmission: new Date('2024-01-15'),
-      draftSubmission: new Date('2024-01-25'),
-      publishDate: new Date('2024-02-01')
+      meetingDate: '2024-01-10',
+      planSubmissionDate: '2024-01-15',
+      draftSubmissionDate: '2024-01-25',
+      liveDate: '2024-02-01'
     },
     requirements: [
       'アプリの画面録画を含める',
@@ -75,10 +75,10 @@ export const mockCampaigns: Campaign[] = [
     contractedPrice: 80000,
     currency: 'JPY',
     schedules: {
-      meeting: new Date('2024-01-05'),
-      planSubmission: new Date('2024-01-12'),
-      draftSubmission: new Date('2024-01-30'),
-      publishDate: new Date('2024-02-05')
+      meetingDate: '2024-01-05',
+      planSubmissionDate: '2024-01-12',
+      draftSubmissionDate: '2024-01-30',
+      liveDate: '2024-02-05'
     },
     requirements: [
       '詳細なアプリデモを含める',
@@ -112,10 +112,10 @@ export const mockCampaigns: Campaign[] = [
     contractedPrice: 35000,
     currency: 'JPY',
     schedules: {
-      meeting: new Date('2023-11-20'),
-      planSubmission: new Date('2023-12-01'),
-      draftSubmission: new Date('2023-12-15'),
-      publishDate: new Date('2023-12-20')
+      meetingDate: '2023-11-20',
+      planSubmissionDate: '2023-12-01',
+      draftSubmissionDate: '2023-12-15',
+      liveDate: '2023-12-20'
     },
     requirements: [
       'ショート動画形式で制作',
@@ -130,8 +130,45 @@ export const mockCampaigns: Campaign[] = [
       }
     ],
     notes: '完了済み - 非常に良いパフォーマンスでした',
+    meetingCompleted: true,
     createdAt: new Date('2023-11-15'),
     updatedAt: new Date('2023-12-20')
+  },
+  {
+    id: '4',
+    influencerId: 'actre_vlog_yt',
+    influencerName: '田中さら',
+    influencerAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+    title: 'スピーク英会話アプリPR - TikTok',
+    platform: 'tiktok',
+    status: 'meeting_scheduled',
+    contractedPrice: 45000,
+    currency: 'JPY',
+    schedules: {
+      meetingDate: '2024-02-15',
+      planSubmissionDate: '2024-02-20',
+      draftSubmissionDate: '2024-03-01',
+      liveDate: '2024-03-10'
+    },
+    requirements: [
+      'TikTokトレンドに合わせた動画制作',
+      'AIとの英会話シーンを撮影',
+      'フィードバック機能を紹介',
+      'プロフィールにリンク掲載',
+      'ハッシュタグ #speak #英会話 を記載'
+    ],
+    referenceLinks: [
+      {
+        title: 'TikTok制作ガイドライン',
+        url: 'https://www.notion.so/1b3792ec2f10800f9f94e476a87c06f1'
+      }
+    ],
+    notes: 'TikTok初回プロモーション - フォロワー層に合わせた内容で制作',
+              meetingLink: 'https://calendly.com/speak-naoki/30min-1',
+          meetingCompleted: false,
+          meetingStatus: 'not_scheduled',
+    createdAt: new Date('2024-01-25'),
+    updatedAt: new Date('2024-01-25')
   }
 ];
 
@@ -168,11 +205,12 @@ export const mockUpdates: Update[] = [
 export const getStatusLabel = (status: CampaignStatus): string => {
   const statusLabels: Record<CampaignStatus, string> = {
     meeting_scheduled: '打ち合わせ予定',
-    contract_pending: '契約書待ち',
     plan_submission: '構成案提出待ち',
+    plan_revision: '構成案修正待ち',
     plan_review: '構成案確認中',
     content_creation: 'コンテンツ制作中',
     draft_submitted: '初稿提出済み',
+    draft_revision: '初稿修正待ち',
     draft_review: '初稿確認中',
     ready_to_publish: '投稿準備完了',
     live: '投稿済み',
@@ -186,11 +224,12 @@ export const getStatusLabel = (status: CampaignStatus): string => {
 export const getStatusColor = (status: CampaignStatus): string => {
   const statusColors: Record<CampaignStatus, string> = {
     meeting_scheduled: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    contract_pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
     plan_submission: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+    plan_revision: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
     plan_review: 'bg-orange-600/20 text-orange-300 border-orange-600/30',
     content_creation: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
     draft_submitted: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
+    draft_revision: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
     draft_review: 'bg-indigo-600/20 text-indigo-300 border-indigo-600/30',
     ready_to_publish: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
     live: 'bg-green-600/20 text-green-300 border-green-600/30',
@@ -204,8 +243,8 @@ export const getStatusColor = (status: CampaignStatus): string => {
 export const getNextStep = (status: CampaignStatus): string => {
   const nextSteps: Record<CampaignStatus, string> = {
     meeting_scheduled: '打ち合わせにご参加ください',
-    contract_pending: '契約書をご確認・サインしてください',
     plan_submission: '構成案をご提出ください',
+    plan_revision: '修正版構成案をご提出ください',
     plan_review: '構成案の確認をお待ちください',
     content_creation: 'コンテンツの制作を開始してください',
     draft_submitted: '初稿の確認をお待ちください',

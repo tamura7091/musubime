@@ -11,11 +11,12 @@ export type Platform =
 
 export type CampaignStatus = 
   | 'meeting_scheduled'     // 打ち合わせ予定
-  | 'contract_pending'      // 契約書待ち
   | 'plan_submission'       // 構成案提出待ち
+  | 'plan_revision'         // 構成案修正待ち
   | 'plan_review'          // 構成案確認中
   | 'content_creation'     // コンテンツ制作中
   | 'draft_submitted'      // 初稿提出済み
+  | 'draft_revision'       // 初稿修正待ち
   | 'draft_review'         // 初稿確認中
   | 'ready_to_publish'     // 投稿準備完了
   | 'live'                 // 投稿済み
@@ -54,6 +55,9 @@ export interface Campaign {
     url: string;
   }>;
   notes?: string;
+  meetingLink?: string;
+  meetingCompleted?: boolean;
+  meetingStatus?: 'not_scheduled' | 'scheduled' | 'completed';
   createdAt: Date;
   updatedAt: Date;
 }
