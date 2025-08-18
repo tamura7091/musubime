@@ -99,7 +99,7 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
               </span>
             </div>
             <div className="text-sm">
-              <p className="font-medium text-dark-text mb-1">Next:</p>
+              <p className="font-medium text-dark-text mb-1">次のステップ：</p>
               <p className="text-dark-text-secondary">
                 {getNextStep(campaign.status)}
               </p>

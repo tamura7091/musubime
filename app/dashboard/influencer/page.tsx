@@ -5,7 +5,7 @@ import { mockCampaigns } from '@/lib/mock-data';
 import CampaignCard from '@/components/CampaignCard';
 import StatusSection from '@/components/StatusSection';
 import { TrendingUp, Clock, CheckCircle, Calendar, ExternalLink, Settings, Bug, AlertCircle } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CampaignStatus, getStepFromStatus } from '@/types';
 
 export default function InfluencerDashboard() {
@@ -15,12 +15,74 @@ export default function InfluencerDashboard() {
   const [paymentCheckboxes, setPaymentCheckboxes] = useState<{[key: string]: {invoice: boolean, form: boolean}}>({});
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [urlInputs, setUrlInputs] = useState<{[key: string]: string}>({});
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Manual refresh function
+  const refreshData = async () => {
+    if (user?.id) {
+      setIsLoading(true);
+      try {
+        console.log('🔄 Manual refresh: Fetching campaigns for user:', user.id);
+        const response = await fetch(`/api/campaigns?userId=${encodeURIComponent(user.id)}&t=${Date.now()}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const userCampaigns = await response.json();
+        console.log('✅ Manual refresh: Fetched campaigns:', userCampaigns.length);
+        console.log('📊 Manual refresh: Campaign details:', userCampaigns.map((c: any) => ({ id: c.id, status: c.status, influencerId: c.influencerId })));
+        setCampaigns(userCampaigns);
+      } catch (error) {
+        console.error('❌ Manual refresh: Failed to fetch campaigns:', error);
+        setCampaigns(mockCampaigns);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  // Fetch campaigns from API
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      if (user?.id) {
+        try {
+          console.log('🔍 Fetching campaigns for user:', user.id);
+          // Add cache-busting parameter to ensure fresh data on reload
+          const response = await fetch(`/api/campaigns?userId=${encodeURIComponent(user.id)}&t=${Date.now()}`);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const userCampaigns = await response.json();
+          console.log('✅ Fetched campaigns:', userCampaigns.length);
+          console.log('📊 Campaign details:', userCampaigns.map((c: any) => ({ id: c.id, status: c.status, influencerId: c.influencerId })));
+          setCampaigns(userCampaigns);
+        } catch (error) {
+          console.error('❌ Failed to fetch campaigns:', error);
+          setCampaigns(mockCampaigns);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchCampaigns();
+  }, [user?.id]);
   
   if (!user || user.role !== 'influencer') {
     return <div>アクセスが拒否されました</div>;
   }
 
-  const userCampaigns = campaigns.filter(campaign => campaign.influencerId === user.id);
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">キャンペーンデータを読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const userCampaigns = campaigns; // Already filtered by user in data service
   const activeCampaigns = userCampaigns.filter(campaign => 
     !['completed', 'cancelled'].includes(campaign.status)
   );
@@ -29,7 +91,6 @@ export default function InfluencerDashboard() {
   );
 
   const totalEarnings = userCampaigns
-    .filter(campaign => campaign.status === 'completed')
     .reduce((sum, campaign) => sum + (campaign.contractedPrice || 0), 0);
 
   // Get action needed for a campaign based on current step
@@ -219,12 +280,44 @@ export default function InfluencerDashboard() {
     return action !== null && action.action !== 'waiting' && action.action !== 'completed';
   }).length;
 
-  // Calculate progress percentage based on steps
+  // Calculate progress percentage based on completed steps
   const calculateProgress = (campaign: any) => {
     const stepOrder = ['meeting', 'plan_creation', 'draft_creation', 'scheduling', 'payment'];
     const currentStep = getStepFromStatus(campaign.status as CampaignStatus);
     const currentIndex = stepOrder.indexOf(currentStep);
-    return Math.round((currentIndex / (stepOrder.length - 1)) * 100);
+    
+    // If campaign is completed, return 100%
+    if (campaign.status === 'completed') {
+      return 100;
+    }
+    
+    // Count completed steps based on actual completion status
+    let completedSteps = 0;
+    
+    // Check if meeting step is completed
+    if (currentStep !== 'meeting' || ['plan_creating', 'plan_submitted', 'plan_reviewing', 'plan_revising', 'draft_creating', 'draft_submitted', 'draft_reviewing', 'draft_revising', 'scheduling', 'scheduled', 'payment_processing', 'completed'].includes(campaign.status)) {
+      completedSteps++;
+    }
+    
+    // Check if plan_creation step is completed
+    if (currentStep !== 'plan_creation' || ['draft_creating', 'draft_submitted', 'draft_reviewing', 'draft_revising', 'scheduling', 'scheduled', 'payment_processing', 'completed'].includes(campaign.status)) {
+      completedSteps++;
+    }
+    
+    // Check if draft_creation step is completed
+    if (currentStep !== 'draft_creation' || ['scheduling', 'scheduled', 'payment_processing', 'completed'].includes(campaign.status)) {
+      completedSteps++;
+    }
+    
+    // Check if scheduling step is completed
+    if (currentStep !== 'scheduling' || ['payment_processing', 'completed'].includes(campaign.status)) {
+      completedSteps++;
+    }
+    
+    const totalSteps = stepOrder.length;
+    
+    // Return percentage of completed steps
+    return Math.round((completedSteps / totalSteps) * 100);
   };
 
   // Show 100% progress if no active campaigns (no promo ongoing)
@@ -461,6 +554,16 @@ export default function InfluencerDashboard() {
               <Bug size={16} />
               <span>デバッグ</span>
             </button>
+            <button
+              onClick={refreshData}
+              disabled={isLoading}
+              className="flex items-center space-x-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>{isLoading ? '更新中...' : '更新'}</span>
+            </button>
           </div>
           <p className="text-dark-text-secondary mobile-text">
             プロモーションの進捗状況と次のステップをご確認ください
@@ -563,7 +666,7 @@ export default function InfluencerDashboard() {
         {primaryCampaign && (
           <div className="mb-6 sm:mb-8">
             <h2 className="text-xl sm:text-2xl font-semibold text-dark-text mb-4 sm:mb-6">
-              対応が必要なステップ
+              次のステップ
             </h2>
             <div className="card">
               {(() => {
@@ -859,7 +962,7 @@ export default function InfluencerDashboard() {
                       </span>
                     </div>
                     <div className="text-xs sm:text-sm">
-                      <p className="font-medium text-dark-text mb-1">Next:</p>
+                      <p className="font-medium text-dark-text mb-1">次のステップ：</p>
                       <p className="text-dark-text-secondary">
                         {campaign.status === 'meeting_scheduling' && '打ち合わせの予約をお待ちください'}
                         {campaign.status === 'meeting_scheduled' && '打ち合わせにご参加ください'}

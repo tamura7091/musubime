@@ -121,6 +121,55 @@ export interface Campaign {
   meetingStatus?: 'not_scheduled' | 'scheduling' | 'scheduled' | 'completed';
   createdAt: Date;
   updatedAt: Date;
+  campaignData?: {
+    id_promo?: string;
+    contact_email?: string;
+    url_channel?: string;
+    url_content?: string;
+    group?: string;
+    followers?: string;
+    spend_usd?: string;
+    imp_est?: string;
+    imp_actual?: string;
+    url_plan?: string;
+    url_draft?: string;
+    url_utm?: string;
+    payout_form_link?: string;
+    spend_jpy_taxed?: string;
+    is_live?: string;
+    genre?: string;
+    tier?: string;
+    platform_tier?: string;
+    roi_positive?: string;
+    handle?: string;
+    dri?: string;
+    repurposable?: string;
+    group_platform?: string;
+    channel_image?: string;
+    utm_campaign?: string;
+    month_date_live?: string;
+    yyyy_mm_ww?: string;
+    payout_done?: string;
+    group_booking?: string;
+    mode_id_campaign?: string;
+    gift_sent?: string;
+    contract_form_submitted?: string;
+    plan_submitted?: string;
+    draft_submitted?: string;
+    live_video_submitted?: string;
+    payout_form_submitted?: string;
+    utm_poc?: string;
+    utm_platform?: string;
+    utm_web_domain?: string;
+    utm_time_period?: string;
+    utm_url_bitly?: string;
+    url_main_form?: string;
+    url_payout_form?: string;
+    output?: string;
+    is_row_added?: string;
+    count_id_influencer?: string;
+    noted_influencers?: string;
+  };
 }
 
 export interface Update {

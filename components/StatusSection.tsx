@@ -172,10 +172,26 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
               style={{ 
                 width: `calc(${campaign.status === 'completed' ? 100 : (() => {
                   const currentStep = getStepFromStatus(campaign.status as CampaignStatus);
-                  const stepIndexForProgress = campaignSteps.findIndex(step => step.id === currentStep);
-                  // Extend progress bar to touch the current step circle
-                  return stepIndexForProgress >= 0 ? (stepIndexForProgress / (campaignSteps.length - 1)) * 100 : 0;
-                })()}% - 16px)` 
+                  const currentStepIndex = campaignSteps.findIndex(step => step.id === currentStep);
+                  const totalSteps = campaignSteps.length;
+                  
+                  // Calculate progress to touch the current step
+                  // For step 0, we want 0%, for step 4, we want 100%
+                  const progress = currentStepIndex >= 0 ? (currentStepIndex / (totalSteps - 1)) * 100 : 0;
+                  
+                  // Ensure minimum progress for current step
+                  const minProgress = currentStepIndex >= 0 ? (currentStepIndex / (totalSteps - 1)) * 100 : 0;
+                  
+                  console.log('🔍 Progress calculation:', {
+                    status: campaign.status,
+                    currentStep,
+                    currentStepIndex,
+                    totalSteps,
+                    progress
+                  });
+                  
+                  return progress;
+                })()}%)` 
               }}
             ></div>
 

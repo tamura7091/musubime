@@ -56,9 +56,9 @@ class DataService {
           status: campaign.status as any,
           platform: campaign.platform as any,
           contractedPrice: campaign.contractedPrice,
-          currency: 'JPY',
+          currency: campaign.currency || 'JPY',
           createdAt: new Date(campaign.createdAt),
-          updatedAt: new Date(campaign.createdAt),
+          updatedAt: new Date(campaign.updatedAt || campaign.createdAt),
           schedules: {
             meetingDate: campaign.schedules.meetingDate,
             planSubmissionDate: campaign.schedules.planSubmissionDate,
@@ -71,6 +71,7 @@ class DataService {
             url: link
           })),
           notes: campaign.notes,
+          campaignData: (campaign as any).campaignData,
         }));
       } catch (error) {
         console.error('❌ Failed to fetch campaigns from Google Sheets, falling back to mock data:', error);
@@ -83,8 +84,46 @@ class DataService {
   }
 
   async getUserCampaigns(userId: string): Promise<Campaign[]> {
-    const allCampaigns = await this.getCampaigns();
-    return allCampaigns.filter(campaign => campaign.influencerId === userId);
+    if (this.useGoogleSheets) {
+      try {
+        console.log('🎯 Fetching campaigns for user from Google Sheets:', userId);
+        const googleCampaigns = await googleSheetsService.getCampaigns(userId);
+        console.log('✅ User campaigns fetched from Google Sheets:', googleCampaigns.length);
+        
+        return googleCampaigns.map(campaign => ({
+          id: campaign.id,
+          title: campaign.title,
+          influencerId: campaign.influencerId,
+          influencerName: (campaign as any).influencerName || campaign.title,
+          influencerAvatar: undefined, // Not available in basic sheet
+          status: campaign.status as any,
+          platform: campaign.platform as any,
+          contractedPrice: campaign.contractedPrice,
+          currency: campaign.currency || 'JPY',
+          createdAt: new Date(campaign.createdAt),
+          updatedAt: new Date(campaign.updatedAt || campaign.createdAt),
+          schedules: {
+            meetingDate: campaign.schedules.meetingDate,
+            planSubmissionDate: campaign.schedules.planSubmissionDate,
+            draftSubmissionDate: campaign.schedules.draftSubmissionDate,
+            liveDate: campaign.schedules.liveDate,
+          },
+          requirements: campaign.requirements,
+          referenceLinks: campaign.referenceLinks.map(link => ({
+            title: 'Reference',
+            url: link
+          })),
+          notes: campaign.notes,
+          campaignData: (campaign as any).campaignData,
+        }));
+      } catch (error) {
+        console.error('❌ Failed to fetch user campaigns from Google Sheets, falling back to mock data:', error);
+        return mockCampaigns.filter(campaign => campaign.influencerId === userId);
+      }
+    }
+    
+    console.log('📋 Using mock campaigns data for user:', userId);
+    return mockCampaigns.filter(campaign => campaign.influencerId === userId);
   }
 
   async getUpdates(): Promise<Update[]> {
