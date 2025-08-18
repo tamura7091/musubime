@@ -1,4 +1,4 @@
-import { User, Campaign, Update, CampaignStatus, Platform } from '@/types';
+import { User, Campaign, Update, CampaignStatus, Platform, getStepFromStatus, getStepLabel, CampaignStep } from '@/types';
 
 export const mockUsers: User[] = [
   {
@@ -7,7 +7,7 @@ export const mockUsers: User[] = [
     name: '田中さら',
     role: 'influencer',
     avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
-    statusDashboard: 'plan_submission'
+    statusDashboard: 'plan_creating'
   },
   {
     id: 'eigatube_yt',
@@ -15,7 +15,7 @@ export const mockUsers: User[] = [
     name: '山田けん',
     role: 'influencer',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-    statusDashboard: 'plan_review'
+    statusDashboard: 'plan_reviewing'
   },
   {
     id: 'admin',
@@ -34,7 +34,7 @@ export const mockCampaigns: Campaign[] = [
     influencerAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
     title: 'スピーク英会話アプリPR - YouTubeショート',
     platform: 'youtube_short',
-    status: 'plan_submission',
+    status: 'plan_creating',
     contractedPrice: 50000,
     currency: 'JPY',
     schedules: {
@@ -71,7 +71,7 @@ export const mockCampaigns: Campaign[] = [
     influencerAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
     title: 'スピーク英会話アプリPR - YouTube長編',
     platform: 'youtube_long',
-    status: 'plan_review',
+    status: 'plan_reviewing',
     contractedPrice: 80000,
     currency: 'JPY',
     schedules: {
@@ -204,35 +204,39 @@ export const mockUpdates: Update[] = [
 
 export const getStatusLabel = (status: CampaignStatus): string => {
   const statusLabels: Record<CampaignStatus, string> = {
-    meeting_scheduled: '打ち合わせ予定',
-    plan_submission: '構成案提出待ち',
-    plan_revision: '構成案修正待ち',
-    plan_review: '構成案確認中',
-    content_creation: 'コンテンツ制作中',
+    meeting_scheduling: '打ち合わせ予約中',
+    meeting_scheduled: '打ち合わせ予約済み',
+    plan_creating: '構成案作成中',
+    plan_submitted: '構成案提出済み',
+    plan_reviewing: '構成案確認中',
+    plan_revising: '構成案修正中',
+    draft_creating: '初稿作成中',
     draft_submitted: '初稿提出済み',
-    draft_revision: '初稿修正待ち',
-    draft_review: '初稿確認中',
-    ready_to_publish: '投稿準備完了',
-    live: '投稿済み',
+    draft_reviewing: '初稿確認中',
+    draft_revising: '初稿修正中',
+    scheduling: '投稿準備中',
+    scheduled: '投稿済み',
     payment_processing: '送金手続き中',
-    completed: '完了',
-    cancelled: 'キャンセル'
+    completed: 'PR完了',
+    cancelled: 'PRキャンセル'
   };
   return statusLabels[status];
 };
 
 export const getStatusColor = (status: CampaignStatus): string => {
   const statusColors: Record<CampaignStatus, string> = {
-    meeting_scheduled: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    plan_submission: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    plan_revision: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    plan_review: 'bg-orange-600/20 text-orange-300 border-orange-600/30',
-    content_creation: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+    meeting_scheduling: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+    meeting_scheduled: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
+    plan_creating: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+    plan_submitted: 'bg-orange-600/20 text-orange-300 border-orange-600/30',
+    plan_reviewing: 'bg-orange-600/20 text-orange-300 border-orange-600/30',
+    plan_revising: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+    draft_creating: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
     draft_submitted: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
-    draft_revision: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
-    draft_review: 'bg-indigo-600/20 text-indigo-300 border-indigo-600/30',
-    ready_to_publish: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-    live: 'bg-green-600/20 text-green-300 border-green-600/30',
+    draft_reviewing: 'bg-indigo-600/20 text-indigo-300 border-indigo-600/30',
+    draft_revising: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
+    scheduling: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+    scheduled: 'bg-green-600/20 text-green-300 border-green-600/30',
     payment_processing: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
     completed: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
     cancelled: 'bg-red-500/20 text-red-400 border-red-500/30'
@@ -242,15 +246,18 @@ export const getStatusColor = (status: CampaignStatus): string => {
 
 export const getNextStep = (status: CampaignStatus): string => {
   const nextSteps: Record<CampaignStatus, string> = {
+    meeting_scheduling: '打ち合わせの予約をお待ちください',
     meeting_scheduled: '打ち合わせにご参加ください',
-    plan_submission: '構成案をご提出ください',
-    plan_revision: '修正版構成案をご提出ください',
-    plan_review: '構成案の確認をお待ちください',
-    content_creation: 'コンテンツの制作を開始してください',
+    plan_creating: '構成案の作成を開始してください',
+    plan_submitted: '構成案の確認をお待ちください',
+    plan_reviewing: '構成案の確認をお待ちください',
+    plan_revising: '修正版構成案をご提出ください',
+    draft_creating: '初稿の作成を開始してください',
     draft_submitted: '初稿の確認をお待ちください',
-    draft_review: '修正があれば対応してください',
-    ready_to_publish: 'コンテンツを投稿してください',
-    live: '送金手続きをお待ちください',
+    draft_reviewing: '修正があれば対応してください',
+    draft_revising: '修正版初稿をご提出ください',
+    scheduling: 'コンテンツを投稿してください',
+    scheduled: '送金手続きをお待ちください',
     payment_processing: 'お支払い処理中です',
     completed: 'プロモーション完了',
     cancelled: 'キャンペーンキャンセル済み'
@@ -282,4 +289,18 @@ export const getPlatformIcon = (platform: Platform): string => {
     blog: '✍️'
   };
   return platformIcons[platform];
+};
+
+
+
+export const getStepColor = (step: CampaignStep): string => {
+  switch (step) {
+    case 'meeting': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+    case 'plan_creation': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
+    case 'draft_creation': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+    case 'scheduling': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+    case 'payment': return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
+    case 'cancelled': return 'bg-red-500/20 text-red-400 border-red-500/30';
+    default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+  }
 };

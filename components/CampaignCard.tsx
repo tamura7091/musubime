@@ -1,4 +1,4 @@
-import { Campaign } from '@/types';
+import { Campaign, getStepFromStatus, getStepLabel } from '@/types';
 import StatusBadge from './StatusBadge';
 import { getNextStep, getPlatformLabel, getPlatformIcon } from '@/lib/mock-data';
 import { Calendar, DollarSign, ExternalLink, ChevronRight, ChevronDown, User } from 'lucide-react';
@@ -78,8 +78,13 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
           )}
         </div>
         
-        {/* Status Badge */}
-        <StatusBadge status={campaign.status} />
+        {/* Step Badge */}
+        <div className="flex items-center space-x-2">
+          <div className="text-xs text-dark-text-secondary">
+            {getStepLabel(getStepFromStatus(campaign.status as any))}
+          </div>
+          <StatusBadge status={campaign.status} />
+        </div>
       </div>
 
       {/* Expandable Content */}

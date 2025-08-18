@@ -6,7 +6,7 @@ import CampaignCard from '@/components/CampaignCard';
 import StatusSection from '@/components/StatusSection';
 import { TrendingUp, Clock, CheckCircle, Calendar, ExternalLink, Settings, Bug, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
-import { CampaignStatus } from '@/types';
+import { CampaignStatus, getStepFromStatus } from '@/types';
 
 export default function InfluencerDashboard() {
   const { user } = useAuth();
@@ -32,27 +32,198 @@ export default function InfluencerDashboard() {
     .filter(campaign => campaign.status === 'completed')
     .reduce((sum, campaign) => sum + (campaign.contractedPrice || 0), 0);
 
-  const pendingActions = activeCampaigns.filter(campaign => 
-    ['plan_submission', 'content_creation', 'ready_to_publish'].includes(campaign.status)
-  ).length;
-
-  // Calculate progress percentage
-  const calculateProgress = (campaign: any) => {
-    const stepOrder = [
-      'meeting_scheduled', 'plan_submission', 'plan_review',
-      'content_creation', 'draft_submitted', 'draft_review', 'ready_to_publish',
-      'live', 'payment_processing', 'completed'
-    ];
+  // Get action needed for a campaign based on current step
+  const getActionNeeded = (campaign: any) => {
+    const currentStep = getStepFromStatus(campaign.status as CampaignStatus);
     
-    // Map revision statuses to their corresponding review statuses for progress calculation
-    let statusForProgress = campaign.status;
-    if (campaign.status === 'plan_revision') {
-      statusForProgress = 'plan_review';
-    } else if (campaign.status === 'draft_revision') {
-      statusForProgress = 'draft_review';
+    switch (currentStep) {
+      case 'meeting':
+        // Dynamic title based on meeting status
+        let meetingTitle = '打ち合わせの予約';
+        if (campaign.meetingStatus === 'scheduled') {
+          meetingTitle = '打ち合わせへの参加';
+        } else if (campaign.meetingStatus === 'completed') {
+          // Show plan creation action instead
+          return {
+            title: '構成案の作成',
+            description: 'プロモーションの構成案を作成してください',
+            icon: AlertCircle,
+            color: 'blue',
+            action: 'plan',
+            inputType: 'url'
+          };
+        }
+        
+        // Dynamic description based on meeting status
+        let meetingDescription = '<a href="https://calendly.com/speak-naoki/30min-1" target="_blank" style="color: #60a5fa; text-decoration: underline;">こちらから</a>打ち合わせを予約し、以下のステータスを変更してください';
+        if (campaign.meetingStatus === 'scheduled') {
+          meetingDescription = '<a href="https://calendly.com/speak-naoki/30min-1" target="_blank" style="color: #60a5fa; text-decoration: underline;">こちらから</a>打ち合わせに参加し、以下のステータスを変更してください';
+        }
+        
+        return {
+          title: meetingTitle,
+          description: meetingDescription,
+          icon: Calendar,
+          color: 'blue',
+          action: 'meeting',
+          inputType: 'meeting'
+        };
+
+      case 'plan_creation':
+        // Show different actions based on current status within the step
+        if (campaign.status === 'plan_creating') {
+          return {
+            title: '構成案の作成',
+            description: 'プロモーションの構成案を作成してください',
+            icon: AlertCircle,
+            color: 'blue',
+            action: 'plan',
+            inputType: 'url'
+          };
+        } else if (campaign.status === 'plan_submitted') {
+          return {
+            title: '構成案の確認待ち',
+            description: '提出した構成案の確認をお待ちください',
+            icon: Clock,
+            color: 'orange',
+            action: 'waiting',
+            inputType: 'none'
+          };
+        } else if (campaign.status === 'plan_reviewing') {
+          return {
+            title: '構成案の確認中',
+            description: '構成案の確認中です。修正が必要な場合はお知らせします。',
+            icon: Clock,
+            color: 'orange',
+            action: 'waiting',
+            inputType: 'none'
+          };
+        } else if (campaign.status === 'plan_revising') {
+          return {
+            title: '構成案の修正',
+            description: 'フィードバックに基づいて構成案を修正し、再提出してください',
+            icon: AlertCircle,
+            color: 'blue',
+            action: 'plan_revising',
+            inputType: 'url'
+          };
+        }
+        break;
+
+      case 'draft_creation':
+        // Show different actions based on current status within the step
+        if (campaign.status === 'draft_creating') {
+          return {
+            title: '初稿の作成',
+            description: '構成案に基づいてコンテンツを制作し、完成した動画のURLを共有してください',
+            icon: AlertCircle,
+            color: 'blue',
+            action: 'content',
+            inputType: 'url'
+          };
+        } else if (campaign.status === 'draft_submitted') {
+          return {
+            title: '初稿の確認待ち',
+            description: '提出した初稿の確認をお待ちください',
+            icon: Clock,
+            color: 'purple',
+            action: 'waiting',
+            inputType: 'none'
+          };
+        } else if (campaign.status === 'draft_reviewing') {
+          return {
+            title: '初稿の確認中',
+            description: '初稿の確認中です。修正が必要な場合はお知らせします。',
+            icon: Clock,
+            color: 'purple',
+            action: 'waiting',
+            inputType: 'none'
+          };
+        } else if (campaign.status === 'draft_revising') {
+          return {
+            title: '初稿の修正',
+            description: 'フィードバックに基づいて初稿を修正し、再提出してください',
+            icon: AlertCircle,
+            color: 'blue',
+            action: 'draft_revising',
+            inputType: 'url'
+          };
+        }
+        break;
+
+      case 'scheduling':
+        if (campaign.status === 'scheduling') {
+          return {
+            title: 'コンテンツのスケジュール',
+            description: '承認されたコンテンツをスケジュールしてください',
+            icon: AlertCircle,
+            color: 'blue',
+            action: 'publish',
+            inputType: 'url'
+          };
+        } else if (campaign.status === 'scheduled') {
+          return {
+            title: '投稿完了',
+            description: 'コンテンツの投稿が完了しました。送金手続きをお待ちください。',
+            icon: CheckCircle,
+            color: 'green',
+            action: 'completed',
+            inputType: 'none'
+          };
+        }
+        break;
+
+      case 'payment':
+        if (campaign.status === 'payment_processing') {
+          return {
+            title: 'お支払いフォームの提出',
+            description: 'こちらのリンクからお支払いフォームをご提出ください',
+            icon: AlertCircle,
+            color: 'blue',
+            action: 'payment',
+            inputType: 'none'
+          };
+        } else if (campaign.status === 'completed') {
+          return {
+            title: 'アクション不要：PR完了',
+            description: 'プロモーションが完了しました。お疲れ様でした！',
+            icon: CheckCircle,
+            color: 'green',
+            action: 'completed',
+            inputType: 'none'
+          };
+        }
+        break;
+
+      case 'cancelled':
+        return {
+          title: 'キャンペーンキャンセル',
+          description: 'このキャンペーンはキャンセルされました。',
+          icon: AlertCircle,
+          color: 'red',
+          action: 'cancelled',
+          inputType: 'none'
+        };
+
+      default:
+        return null;
     }
     
-    const currentIndex = stepOrder.indexOf(statusForProgress);
+    // Default return if no action is found
+    return null;
+  };
+
+  // Calculate pending actions based on whether getActionNeeded returns an action
+  const pendingActions = activeCampaigns.filter(campaign => {
+    const action = getActionNeeded(campaign);
+    return action !== null && action.action !== 'waiting' && action.action !== 'completed';
+  }).length;
+
+  // Calculate progress percentage based on steps
+  const calculateProgress = (campaign: any) => {
+    const stepOrder = ['meeting', 'plan_creation', 'draft_creation', 'scheduling', 'payment'];
+    const currentStep = getStepFromStatus(campaign.status as CampaignStatus);
+    const currentIndex = stepOrder.indexOf(currentStep);
     return Math.round((currentIndex / (stepOrder.length - 1)) * 100);
   };
 
@@ -88,6 +259,13 @@ export default function InfluencerDashboard() {
             : campaign
         )
       );
+      
+      // If meeting is completed, advance to next step
+      if (status === 'completed') {
+        setTimeout(() => {
+          advanceToNextStep(campaignId, 'meeting_scheduled');
+        }, 100);
+      }
     }
   };
 
@@ -124,6 +302,45 @@ export default function InfluencerDashboard() {
     });
   };
 
+  // Function to advance to next step when current step is completed
+  const advanceToNextStep = (campaignId: string, currentStatus: string) => {
+    const currentStep = getStepFromStatus(currentStatus as CampaignStatus);
+    const stepOrder = ['meeting', 'plan_creation', 'draft_creation', 'scheduling', 'payment'];
+    const currentStepIndex = stepOrder.indexOf(currentStep);
+    
+    if (currentStepIndex < stepOrder.length - 1) {
+      const nextStep = stepOrder[currentStepIndex + 1];
+      
+      // Map next step to appropriate status
+      let nextStatus: CampaignStatus;
+      switch (nextStep) {
+        case 'plan_creation':
+          nextStatus = 'plan_creating';
+          break;
+        case 'draft_creation':
+          nextStatus = 'draft_creating';
+          break;
+        case 'scheduling':
+          nextStatus = 'scheduling';
+          break;
+        case 'payment':
+          nextStatus = 'payment_processing';
+          break;
+        default:
+          return; // No next step
+      }
+      
+      // Update campaign status to next step
+      setCampaigns(prevCampaigns => 
+        prevCampaigns.map(campaign => 
+          campaign.id === campaignId 
+            ? { ...campaign, status: nextStatus }
+            : campaign
+        )
+      );
+    }
+  };
+
   const handleUrlSubmission = (campaignId: string, currentStatus: string) => {
     const url = urlInputs[campaignId] || '';
     
@@ -132,35 +349,34 @@ export default function InfluencerDashboard() {
       return;
     }
 
-    // Define status transitions
-    const statusTransitions: {[key: string]: {nextStatus: string, confirmMessage: string}} = {
-      'plan_submission': {
-        nextStatus: 'plan_review',
+    // Define step-based status transitions
+    const stepTransitions: {[key: string]: {nextStatus: string, confirmMessage: string}} = {
+      // Plan creation step transitions
+      'plan_creating': {
+        nextStatus: 'plan_submitted',
         confirmMessage: '構成案を提出しますか？'
       },
-      'plan_revision': {
-        nextStatus: 'plan_review',
+      'plan_revising': {
+        nextStatus: 'plan_reviewing',
         confirmMessage: '修正版構成案を提出しますか？'
       },
-      'content_creation': {
+      // Draft creation step transitions
+      'draft_creating': {
         nextStatus: 'draft_submitted',
         confirmMessage: '初稿を提出しますか？'
       },
-      'draft_revision': {
-        nextStatus: 'draft_review',
+      'draft_revising': {
+        nextStatus: 'draft_reviewing',
         confirmMessage: '修正版初稿を提出しますか？'
       },
-      'draft_review': {
-        nextStatus: 'ready_to_publish',
-        confirmMessage: '修正版を提出しますか？'
-      },
-      'ready_to_publish': {
-        nextStatus: 'live',
+      // Scheduling step transitions
+      'scheduling': {
+        nextStatus: 'scheduled',
         confirmMessage: 'コンテンツをスケジュールしますか？'
       }
     };
 
-    const transition = statusTransitions[currentStatus];
+    const transition = stepTransitions[currentStatus];
     if (!transition) return;
 
     if (window.confirm(transition.confirmMessage)) {
@@ -174,6 +390,26 @@ export default function InfluencerDashboard() {
       
       // Clear the URL input
       setUrlInputs(prev => ({ ...prev, [campaignId]: '' }));
+      
+      // Check if this completes the current step and advance to next step if needed
+      setTimeout(() => {
+        const updatedCampaign = campaigns.find(c => c.id === campaignId);
+        if (updatedCampaign) {
+          const currentStep = getStepFromStatus(transition.nextStatus as CampaignStatus);
+          
+          // Check if this status completes the current step
+          const stepCompletionStatuses: Record<string, string[]> = {
+            'plan_creation': ['plan_submitted', 'plan_reviewing'],
+            'draft_creation': ['draft_submitted', 'draft_reviewing'],
+            'scheduling': ['scheduled']
+          };
+          
+          if (stepCompletionStatuses[currentStep] && stepCompletionStatuses[currentStep].includes(transition.nextStatus)) {
+            // Step is completed, advance to next step
+            advanceToNextStep(campaignId, transition.nextStatus);
+          }
+        }
+      }, 100);
     }
   };
 
@@ -190,141 +426,24 @@ export default function InfluencerDashboard() {
 
   // Get status options for debug dropdown
   const getStatusOptions = (): { value: CampaignStatus; label: string }[] => [
-    { value: 'meeting_scheduled', label: '打ち合わせ予定' },
-    { value: 'plan_submission', label: '構成案提出待ち' },
-    { value: 'plan_revision', label: '構成案修正待ち' },
-    { value: 'plan_review', label: '構成案確認中' },
-    { value: 'content_creation', label: 'コンテンツ制作中' },
+    { value: 'meeting_scheduling', label: '打ち合わせ予約中' },
+    { value: 'meeting_scheduled', label: '打ち合わせ予約済み' },
+    { value: 'plan_creating', label: '構成案作成中' },
+    { value: 'plan_submitted', label: '構成案提出済み' },
+    { value: 'plan_reviewing', label: '構成案確認中' },
+    { value: 'plan_revising', label: '構成案修正中' },
+    { value: 'draft_creating', label: '初稿作成中' },
     { value: 'draft_submitted', label: '初稿提出済み' },
-    { value: 'draft_revision', label: '初稿修正待ち' },
-    { value: 'draft_review', label: '初稿確認中' },
-    { value: 'ready_to_publish', label: '投稿準備完了' },
-    { value: 'live', label: '投稿済み' },
+    { value: 'draft_reviewing', label: '初稿確認中' },
+    { value: 'draft_revising', label: '初稿修正中' },
+    { value: 'scheduling', label: '投稿準備中' },
+    { value: 'scheduled', label: '投稿済み' },
     { value: 'payment_processing', label: '送金手続き中' },
-    { value: 'completed', label: '完了' },
-    { value: 'cancelled', label: 'キャンセル' }
+    { value: 'completed', label: 'PR完了' },
+    { value: 'cancelled', label: 'PRキャンセル' }
   ];
 
-  // Get action needed for a campaign
-  const getActionNeeded = (campaign: any) => {
-    switch (campaign.status) {
-      case 'meeting_scheduled':
-        // Dynamic title based on meeting status
-        let meetingTitle = '打ち合わせの予約';
-        if (campaign.meetingStatus === 'scheduled') {
-          meetingTitle = '打ち合わせへの参加';
-        } else if (campaign.meetingStatus === 'completed') {
-          // Show plan submission action instead
-          return {
-            title: '構成案の提出',
-            description: 'プロモーションの構成案をご提出ください',
-            icon: AlertCircle,
-            color: 'blue',
-            action: 'plan',
-            inputType: 'url'
-          };
-        }
-        
-        // Dynamic description based on meeting status
-        let meetingDescription = '打ち合わせリンクから打ち合わせを予約し、以下のステータスを変更してください';
-        if (campaign.meetingStatus === 'scheduled') {
-          meetingDescription = '打ち合わせリンクから打ち合わせに参加し、以下のステータスを変更してください';
-        }
-        
-        return {
-          title: meetingTitle,
-          description: meetingDescription,
-          icon: Calendar,
-          color: 'blue',
-          action: 'meeting',
-          inputType: 'meeting'
-        };
 
-              case 'plan_submission':
-          return {
-            title: '構成案の提出',
-            description: 'プロモーションの構成案をご提出ください',
-            icon: AlertCircle,
-            color: 'blue',
-            action: 'plan',
-            inputType: 'url'
-          };
-        case 'plan_revision':
-          return {
-            title: '構成案の修正',
-            description: 'フィードバックに基づいて構成案を修正し、再提出してください',
-            icon: AlertCircle,
-            color: 'blue',
-            action: 'plan_revision',
-            inputType: 'url'
-          };
-      case 'content_creation':
-        return {
-          title: '初稿の提出',
-          description: '構成案に基づいてコンテンツを制作し、完成した動画のURLを共有してください',
-          icon: AlertCircle,
-          color: 'blue',
-          action: 'content',
-          inputType: 'url'
-        };
-              case 'draft_revision':
-          return {
-            title: '初稿の修正',
-            description: 'フィードバックに基づいて初稿を修正し、再提出してください',
-            icon: AlertCircle,
-            color: 'blue',
-            action: 'draft_revision',
-            inputType: 'url'
-          };
-        case 'draft_review':
-          return {
-            title: '修正依頼',
-            description: 'フィードバックに基づいて修正を行ってください',
-            icon: AlertCircle,
-            color: 'blue',
-            action: 'revision',
-            inputType: 'url'
-          };
-      case 'ready_to_publish':
-        return {
-          title: 'コンテンツのスケジュール',
-          description: '承認されたコンテンツをスケジュールしてください',
-          icon: AlertCircle,
-          color: 'blue',
-          action: 'publish',
-          inputType: 'url'
-        };
-      case 'live':
-        return {
-          title: 'お支払いフォームの提出',
-          description: '投稿完了後、お支払いフォームをご提出ください',
-          icon: AlertCircle,
-          color: 'blue',
-          action: 'payment',
-          inputType: 'payment'
-        };
-      case 'payment_processing':
-        return {
-          title: 'アクション不要：送金手続き中',
-          description: '通常2-3週間で着金します。恐れ入りますが着金が確認できない場合はpartnerships_jp@usespeak.comまでご連絡ください。',
-          icon: CheckCircle,
-          color: 'gray',
-          action: 'waiting',
-          inputType: 'none'
-        };
-      case 'completed':
-        return {
-          title: 'アクション不要：完了',
-          description: 'このキャンペーンは完了しました。お疲れ様でした！',
-          icon: CheckCircle,
-          color: 'gray',
-          action: 'completed',
-          inputType: 'none'
-        };
-      default:
-        return null;
-    }
-  };
 
   return (
     <div className="min-h-screen bg-dark-bg">
@@ -471,7 +590,7 @@ export default function InfluencerDashboard() {
                   }
                   
                   // Special case for plan_review status
-                  if (primaryCampaign.status === 'plan_review') {
+                  if (primaryCampaign.status === 'plan_reviewing') {
                     return (
                       <div className="flex items-start space-x-4">
                         <div className="p-3 rounded-lg flex-shrink-0 bg-gray-500/20 text-gray-400 border-gray-500/30">
@@ -515,27 +634,14 @@ export default function InfluencerDashboard() {
                       <h3 className="text-lg font-semibold text-dark-text mb-2">
                         {action.title}
                       </h3>
-                      <p className="text-dark-text-secondary mb-4">
-                        {action.description}
-                      </p>
+                      <p 
+                        className="text-dark-text-secondary mb-4"
+                        dangerouslySetInnerHTML={{ __html: action.description }}
+                      />
                       
                       {/* Input Section based on inputType */}
                       {action.inputType === 'meeting' && (
                         <div className="space-y-4">
-                          {primaryCampaign.meetingLink && (
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <a
-                                  href={primaryCampaign.meetingLink}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-400 hover:text-blue-300 underline"
-                                >
-                                  打ち合わせリンク
-                                </a>
-                              </div>
-                            </div>
-                          )}
                           <div className="flex items-center space-x-3">
                             <span className="text-sm text-dark-text-secondary">ステータス:</span>
                             <select
@@ -708,27 +814,35 @@ export default function InfluencerDashboard() {
                     </div>
                   
                     <div className={`status-badge flex-shrink-0 ${
-                      campaign.status === 'meeting_scheduled' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                      campaign.status === 'meeting_scheduling' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                      campaign.status === 'meeting_scheduled' ? 'bg-blue-600/20 text-blue-300 border-blue-600/30' :
                       campaign.status === 'contract_pending' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                      campaign.status === 'plan_submission' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
-                      campaign.status === 'plan_review' ? 'bg-orange-600/20 text-orange-300 border-orange-600/30' :
-                      campaign.status === 'content_creation' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' :
+                      campaign.status === 'plan_creating' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                      campaign.status === 'plan_submitted' ? 'bg-orange-600/20 text-orange-300 border-orange-600/30' :
+                      campaign.status === 'plan_reviewing' ? 'bg-orange-600/20 text-orange-300 border-orange-600/30' :
+                      campaign.status === 'plan_revising' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                      campaign.status === 'draft_creating' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' :
                       campaign.status === 'draft_submitted' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' :
-                      campaign.status === 'draft_review' ? 'bg-indigo-600/20 text-indigo-300 border-indigo-600/30' :
-                      campaign.status === 'ready_to_publish' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
-                      campaign.status === 'live' ? 'bg-green-600/20 text-green-300 border-green-600/30' :
+                      campaign.status === 'draft_reviewing' ? 'bg-indigo-600/20 text-indigo-300 border-indigo-600/30' :
+                      campaign.status === 'draft_revising' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' :
+                      campaign.status === 'scheduling' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                      campaign.status === 'scheduled' ? 'bg-green-600/20 text-green-300 border-green-600/30' :
                       campaign.status === 'payment_processing' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' :
                       'bg-gray-500/20 text-gray-400 border-gray-500/30'
                     }`}>
+                    {campaign.status === 'meeting_scheduling' && '打ち合わせ予約中'}
                     {campaign.status === 'meeting_scheduled' && '打ち合わせ予定'}
                     {campaign.status === 'contract_pending' && '契約書待ち'}
-                    {campaign.status === 'plan_submission' && '構成案提出待ち'}
-                    {campaign.status === 'plan_review' && '構成案確認中'}
-                    {campaign.status === 'content_creation' && 'コンテンツ制作中'}
+                    {campaign.status === 'plan_creating' && '構成案作成中'}
+                    {campaign.status === 'plan_submitted' && '構成案提出済み'}
+                    {campaign.status === 'plan_reviewing' && '構成案確認中'}
+                    {campaign.status === 'plan_revising' && '構成案修正中'}
+                    {campaign.status === 'draft_creating' && '初稿作成中'}
                     {campaign.status === 'draft_submitted' && '初稿提出済み'}
-                    {campaign.status === 'draft_review' && '初稿確認中'}
-                    {campaign.status === 'ready_to_publish' && '投稿準備完了'}
-                    {campaign.status === 'live' && '投稿済み'}
+                    {campaign.status === 'draft_reviewing' && '初稿確認中'}
+                    {campaign.status === 'draft_revising' && '初稿修正中'}
+                    {campaign.status === 'scheduling' && '投稿準備中'}
+                    {campaign.status === 'scheduled' && '投稿済み'}
                     {campaign.status === 'payment_processing' && '送金手続き中'}
                     {campaign.status === 'completed' && '完了'}
                     {campaign.status === 'cancelled' && 'キャンセル'}
@@ -747,15 +861,19 @@ export default function InfluencerDashboard() {
                     <div className="text-xs sm:text-sm">
                       <p className="font-medium text-dark-text mb-1">Next:</p>
                       <p className="text-dark-text-secondary">
+                        {campaign.status === 'meeting_scheduling' && '打ち合わせの予約をお待ちください'}
                         {campaign.status === 'meeting_scheduled' && '打ち合わせにご参加ください'}
                         {campaign.status === 'contract_pending' && '契約書をご確認・サインしてください'}
-                        {campaign.status === 'plan_submission' && '構成案をご提出ください'}
-                        {campaign.status === 'plan_review' && '構成案の確認をお待ちください'}
-                        {campaign.status === 'content_creation' && 'コンテンツの制作を開始してください'}
+                        {campaign.status === 'plan_creating' && '構成案の作成を開始してください'}
+                        {campaign.status === 'plan_submitted' && '構成案の確認をお待ちください'}
+                        {campaign.status === 'plan_reviewing' && '構成案の確認をお待ちください'}
+                        {campaign.status === 'plan_revising' && '修正版構成案をご提出ください'}
+                        {campaign.status === 'draft_creating' && '初稿の作成を開始してください'}
                         {campaign.status === 'draft_submitted' && '初稿の確認をお待ちください'}
-                        {campaign.status === 'draft_review' && '修正があれば対応してください'}
-                        {campaign.status === 'ready_to_publish' && 'コンテンツを投稿してください'}
-                        {campaign.status === 'live' && '送金手続きをお待ちください'}
+                        {campaign.status === 'draft_reviewing' && '修正があれば対応してください'}
+                        {campaign.status === 'draft_revising' && '修正版初稿をご提出ください'}
+                        {campaign.status === 'scheduling' && 'コンテンツを投稿してください'}
+                        {campaign.status === 'scheduled' && '送金手続きをお待ちください'}
                         {campaign.status === 'payment_processing' && 'お支払い処理中です'}
                         {campaign.status === 'completed' && 'プロモーション完了'}
                       </p>

@@ -1,16 +1,16 @@
 'use client';
 
-import { Campaign, CampaignStatus } from '@/types';
+import React, { useState } from 'react';
+import { Campaign, getStepFromStatus, getStepOrder, getStepLabel, CampaignStep, CampaignStatus } from '../types';
 import Tooltip from './Tooltip';
 import { Check, Clock, Link as LinkIcon, Calendar, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
 
 interface StatusSectionProps {
   campaign: Campaign;
 }
 
 type StepInfo = {
-  id: string;
+  id: CampaignStep;
   title: string;
   description: string;
   hasLink?: boolean;
@@ -20,57 +20,37 @@ type StepInfo = {
 
 const campaignSteps: StepInfo[] = [
   {
-    id: 'meeting_scheduled',
+    id: 'meeting',
     title: '打ち合わせ',
     description: '30分のオンラインミーティングでキャンペーンの詳細を確認します。',
     dateField: 'meetingDate'
   },
   {
-    id: 'plan_submission',
-    title: '構成案提出',
-    description: 'テンプレートを使用して動画の構成案を作成・提出してください。',
+    id: 'plan_creation',
+    title: '構成案作成',
+    description: 'テンプレートを使用して動画の構成案を作成・提出し、承認を得ます。',
     hasLink: true,
     linkPlaceholder: '構成案のリンクを貼り付けてください',
     dateField: 'planSubmissionDate'
   },
   {
-    id: 'plan_review',
-    title: '構成案確認',
-    description: '提出いただいた構成案を確認し、必要に応じて修正案をお送りします。'
-  },
-  {
-    id: 'content_creation',
-    title: 'コンテンツ制作',
-    description: '承認された構成案に基づいてコンテンツを制作してください。'
-  },
-  {
-    id: 'draft_submitted',
-    title: '初稿提出',
-    description: 'YouTubeに限定公開でアップロードし、リンクを共有してください。',
+    id: 'draft_creation',
+    title: '初稿作成',
+    description: '承認された構成案に基づいてコンテンツを制作し、初稿を提出します。',
     hasLink: true,
     linkPlaceholder: '初稿動画のリンクを貼り付けてください',
     dateField: 'draftSubmissionDate'
   },
   {
-    id: 'draft_review',
-    title: '初稿確認',
-    description: '初稿を確認し、必要に応じて修正をお願いします。'
-  },
-  {
-    id: 'ready_to_publish',
-    title: 'アップロード',
-    description: '最終確認後、指定された日時にコンテンツを投稿してください。'
-  },
-  {
-    id: 'live',
-    title: '投稿済みPR動画',
-    description: '投稿済みPR動画のリンクを共有してください。',
+    id: 'scheduling',
+    title: 'スケジュール',
+    description: '最終確認後、指定された日時にコンテンツを投稿します。',
     hasLink: true,
     linkPlaceholder: '投稿済みPR動画のリンクを貼り付けてください',
     dateField: 'liveDate'
   },
   {
-    id: 'payment_processing',
+    id: 'payment',
     title: 'お支払い',
     description: 'お支払い処理を開始します。請求書の提出をお待ちしています。'
   }
@@ -82,7 +62,8 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
   const [linkInputs, setLinkInputs] = useState<Record<string, string>>({});
 
   const getCurrentStepIndex = () => {
-    return campaignSteps.findIndex(step => step.id === campaign.status);
+    const currentStep = getStepFromStatus(campaign.status as CampaignStatus);
+    return campaignSteps.findIndex(step => step.id === currentStep);
   };
 
   const currentStepIndex = getCurrentStepIndex();
@@ -101,18 +82,23 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
     // If campaign is completed, show all steps as completed
     if (campaign.status === 'completed') return 'completed';
     
-    // Map revision statuses to their corresponding review statuses for step calculation
-    let statusForStep = campaign.status;
-    if (campaign.status === 'plan_revision') {
-      statusForStep = 'plan_review';
-    } else if (campaign.status === 'draft_revision') {
-      statusForStep = 'draft_review';
-    }
+    const currentStep = getStepFromStatus(campaign.status as CampaignStatus);
+    const currentStepIndex = campaignSteps.findIndex(step => step.id === currentStep);
     
-    const stepIndexForStatus = campaignSteps.findIndex(step => step.id === statusForStep);
+    if (stepIndex < currentStepIndex) return 'completed';
+    if (stepIndex === currentStepIndex) return 'current';
+    return 'pending';
+  };
+
+  // Get step completion status
+  const getStepCompletionStatus = (step: CampaignStep) => {
+    const currentStep = getStepFromStatus(campaign.status as CampaignStatus);
+    const stepOrder = ['meeting', 'plan_creation', 'draft_creation', 'scheduling', 'payment'];
+    const currentStepIndex = stepOrder.indexOf(currentStep);
+    const stepIndex = stepOrder.indexOf(step);
     
-    if (stepIndex < stepIndexForStatus) return 'completed';
-    if (stepIndex === stepIndexForStatus) return 'current';
+    if (stepIndex < currentStepIndex) return 'completed';
+    if (stepIndex === currentStepIndex) return 'in_progress';
     return 'pending';
   };
 
@@ -185,21 +171,16 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
               className="absolute top-2 left-4 h-0.5 bg-dark-accent transition-all duration-500"
               style={{ 
                 width: `calc(${campaign.status === 'completed' ? 100 : (() => {
-                  // Map revision statuses to their corresponding review statuses for progress calculation
-                  let statusForProgress = campaign.status;
-                  if (campaign.status === 'plan_revision') {
-                    statusForProgress = 'plan_review';
-                  } else if (campaign.status === 'draft_revision') {
-                    statusForProgress = 'draft_review';
-                  }
-                  const stepIndexForProgress = campaignSteps.findIndex(step => step.id === statusForProgress);
-                  return (stepIndexForProgress / (campaignSteps.length - 1)) * 100;
-                })()}% - 8px)` 
+                  const currentStep = getStepFromStatus(campaign.status as CampaignStatus);
+                  const stepIndexForProgress = campaignSteps.findIndex(step => step.id === currentStep);
+                  // Extend progress bar to touch the current step circle
+                  return stepIndexForProgress >= 0 ? (stepIndexForProgress / (campaignSteps.length - 1)) * 100 : 0;
+                })()}% - 16px)` 
               }}
             ></div>
 
             {/* Steps */}
-            <div className="relative grid grid-cols-5 md:grid-cols-10 gap-2 md:gap-4 px-2">
+            <div className="relative grid grid-cols-5 gap-0 px-4">
               {campaignSteps.map((step, index) => {
                 const status = getStepStatus(index);
                 
@@ -233,8 +214,8 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
                     </button>
 
                     {/* Step Label */}
-                    <div className="mt-2 text-center max-w-16 md:max-w-20">
-                      <h3 className={`font-medium text-xs leading-tight ${
+                    <div className="mt-2 text-center w-full">
+                      <h3 className={`font-medium text-xs leading-tight break-words ${
                         status === 'completed' 
                           ? 'text-dark-text'
                           : 'text-dark-text-secondary'
@@ -253,7 +234,7 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
                           )}
                         </div>
                       )}
-
+                      
                       {/* Next step indicator */}
                       {index === currentStepIndex + 1 && (
                         <div className="mt-1">

@@ -162,7 +162,7 @@ export default function AdminDashboard() {
   
   console.log('💰 Total value calculated:', totalValue);
   const pendingApprovals = allCampaigns.filter(campaign => 
-    ['draft_submitted', 'plan_submission'].includes(campaign.status)
+    ['draft_submitted', 'plan_creating'].includes(campaign.status)
   ).length;
 
   const uniqueInfluencers = Array.from(

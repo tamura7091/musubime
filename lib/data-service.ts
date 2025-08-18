@@ -57,13 +57,13 @@ class DataService {
           platform: campaign.platform as any,
           contractedPrice: campaign.contractedPrice,
           currency: 'JPY',
-          createdAt: campaign.createdAt,
-          updatedAt: campaign.createdAt,
+          createdAt: new Date(campaign.createdAt),
+          updatedAt: new Date(campaign.createdAt),
           schedules: {
-            meeting: campaign.schedules.meetingDate,
-            planSubmission: campaign.schedules.planSubmissionDate,
-            draftSubmission: campaign.schedules.draftSubmissionDate,
-            publishDate: campaign.schedules.liveDate,
+            meetingDate: campaign.schedules.meetingDate,
+            planSubmissionDate: campaign.schedules.planSubmissionDate,
+            draftSubmissionDate: campaign.schedules.draftSubmissionDate,
+            liveDate: campaign.schedules.liveDate,
           },
           requirements: campaign.requirements,
           referenceLinks: campaign.referenceLinks.map(link => ({
@@ -98,21 +98,25 @@ class DataService {
         // Generate updates based on recent campaign status changes
         campaigns.forEach(campaign => {
           // This is a simplified example - in a real system, you'd track actual status changes
-          if (campaign.status === 'live') {
+          if (campaign.status === 'scheduled') {
             updates.push({
               id: `update_${campaign.id}_live`,
               message: `${campaign.title}が投稿されました！`,
-              timestamp: new Date().toISOString(),
-              type: 'campaign_live',
+              timestamp: new Date(),
+              type: 'status_change',
               campaignId: campaign.id,
+              influencerId: campaign.influencerId,
+              influencerName: campaign.influencerName,
             });
           } else if (campaign.status === 'completed') {
             updates.push({
               id: `update_${campaign.id}_completed`,
               message: `${campaign.title}のお支払いが完了しました。`,
-              timestamp: new Date().toISOString(),
-              type: 'payment_completed',
+              timestamp: new Date(),
+              type: 'status_change',
               campaignId: campaign.id,
+              influencerId: campaign.influencerId,
+              influencerName: campaign.influencerName,
             });
           }
         });
