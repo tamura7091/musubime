@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-dark-border;
+  }
+  
+  body {
+    @apply bg-dark-bg text-dark-text font-sans;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-dark-surface border border-dark-border rounded-xl p-4 sm:p-6;
+  }
+  
+  .btn-primary {
+    @apply bg-dark-accent hover:bg-dark-accent-hover text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm;
+  }
+  
+  .btn-secondary {
+    @apply bg-dark-surface hover:bg-dark-border text-dark-text border border-dark-border px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm;
+  }
+  
+  .input {
+    @apply bg-dark-surface border border-dark-border rounded-lg px-3 py-2 text-dark-text placeholder-dark-text-secondary focus:outline-none focus:ring-2 focus:ring-dark-accent focus:border-transparent text-sm;
+  }
+  
+  .status-badge {
+    @apply px-2 py-1 rounded-full text-xs font-medium border;
+  }
+  
+  /* Mobile-first responsive utilities */
+  .mobile-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4;
+  }
+  
+  .mobile-flex {
+    @apply flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4;
+  }
+  
+  .mobile-text {
+    @apply text-sm sm:text-base;
+  }
+  
+  .mobile-padding {
+    @apply px-4 sm:px-6 lg:px-8 py-6 sm:py-8;
+  }
+}
