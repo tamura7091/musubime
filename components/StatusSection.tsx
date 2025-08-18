@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Campaign, getStepFromStatus, getStepOrder, getStepLabel, CampaignStep, CampaignStatus } from '../types';
 import Tooltip from './Tooltip';
-import { Check, Clock, Link as LinkIcon, Calendar, ChevronRight } from 'lucide-react';
+import { Check, Clock, Link as LinkIcon, Calendar, ChevronRight, AlertCircle } from 'lucide-react';
 
 interface StatusSectionProps {
   campaign: Campaign;
@@ -43,7 +43,7 @@ const campaignSteps: StepInfo[] = [
   },
   {
     id: 'scheduling',
-    title: 'スケジュール',
+    title: 'PR投稿',
     description: '最終確認後、指定された日時にコンテンツを投稿します。',
     hasLink: true,
     linkPlaceholder: '投稿済みPR動画のリンクを貼り付けてください',
@@ -69,13 +69,28 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
   const currentStepIndex = getCurrentStepIndex();
   const currentStep = campaignSteps[currentStepIndex];
 
-  const formatDate = (date: Date | undefined) => {
+  const formatDate = (date: Date | string | undefined | null) => {
     if (!date) return null;
     return new Intl.DateTimeFormat('ja-JP', {
       month: 'numeric',
       day: 'numeric',
       year: 'numeric'
     }).format(new Date(date));
+  };
+
+  // Check if action is overdue (more than 1 day past due)
+  const isActionOverdue = () => {
+    if (!campaign.schedules?.liveDate) return false;
+    
+    const liveDate = new Date(campaign.schedules.liveDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    liveDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = liveDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays < -1; // More than 1 day overdue
   };
 
   const getStepStatus = (stepIndex: number) => {
@@ -88,6 +103,11 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
     if (stepIndex < currentStepIndex) return 'completed';
     if (stepIndex === currentStepIndex) return 'current';
     return 'pending';
+  };
+
+  // Check if current step is delayed
+  const isCurrentStepDelayed = () => {
+    return isActionOverdue() && getStepStatus(getCurrentStepIndex()) === 'current';
   };
 
   // Get step completion status
@@ -175,12 +195,19 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
                   const currentStepIndex = campaignSteps.findIndex(step => step.id === currentStep);
                   const totalSteps = campaignSteps.length;
                   
-                  // Calculate progress to touch the current step
-                  // For step 0, we want 0%, for step 4, we want 100%
-                  const progress = currentStepIndex >= 0 ? (currentStepIndex / (totalSteps - 1)) * 100 : 0;
+                  // Super simple: count completed steps and divide by 5
+                  let completedSteps = 0;
+                  for (let i = 0; i < currentStepIndex; i++) {
+                    completedSteps++;
+                  }
+                  const progress = (completedSteps / 5) * 100;
                   
-                  // Ensure minimum progress for current step
-                  const minProgress = currentStepIndex >= 0 ? (currentStepIndex / (totalSteps - 1)) * 100 : 0;
+                  console.log('🔍 Progress debug:', {
+                    currentStepIndex,
+                    completedSteps,
+                    progress,
+                    status: campaign.status
+                  });
                   
                   console.log('🔍 Progress calculation:', {
                     status: campaign.status,
@@ -217,14 +244,20 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
                         status === 'completed' 
                           ? 'bg-dark-accent border-dark-accent shadow-lg shadow-dark-accent/25' 
                           : status === 'current'
-                          ? 'bg-dark-surface border-dark-accent shadow-lg shadow-dark-accent/25 animate-pulse'
+                          ? isCurrentStepDelayed()
+                            ? 'bg-red-500 border-red-500 shadow-lg shadow-red-500/25 animate-pulse'
+                            : 'bg-dark-surface border-dark-accent shadow-lg shadow-dark-accent/25 animate-pulse'
                           : 'bg-dark-surface border-dark-border hover:border-dark-accent/50'
                       }`}
                     >
                       {status === 'completed' ? (
                         <Check size={10} className="text-white" />
                       ) : status === 'current' ? (
-                        <Clock size={10} className="text-dark-accent" />
+                        isCurrentStepDelayed() ? (
+                          <AlertCircle size={10} className="text-white" />
+                        ) : (
+                          <Clock size={10} className="text-dark-accent" />
+                        )
                       ) : null
                       }
                     </button>
@@ -239,15 +272,17 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
                         {step.title}
                       </h3>
                       
+                      {/* Date display for completed and current steps */}
+                      {step.dateField && campaign.schedules[step.dateField] && (
+                        <div className="text-xs text-dark-text-secondary mt-1 hidden md:block">
+                          {formatDate(campaign.schedules[step.dateField])}
+                        </div>
+                      )}
+                      
                       {/* Current step indicator */}
                       {status === 'current' && (
                         <div className="mt-1">
                           <div className="text-xs text-dark-accent font-medium">Now</div>
-                          {step.dateField && campaign.schedules[step.dateField] && (
-                            <div className="text-xs text-dark-text-secondary mt-1 hidden md:block">
-                              {campaign.schedules[step.dateField]}
-                            </div>
-                          )}
                         </div>
                       )}
                       

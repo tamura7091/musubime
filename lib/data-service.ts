@@ -1,6 +1,6 @@
 import { Campaign, User, Update } from '@/types';
 import { googleSheetsService } from './google-sheets';
-import { mockCampaigns, mockUsers, mockUpdates } from './mock-data';
+import { mockCampaigns, mockUsers } from './mock-data';
 
 class DataService {
   private useGoogleSheets: boolean;
@@ -126,48 +126,121 @@ class DataService {
     return mockCampaigns.filter(campaign => campaign.influencerId === userId);
   }
 
-  async getUpdates(): Promise<Update[]> {
-    // Updates are not typically stored in the Google Sheets for this use case
-    // They would be generated based on campaign status changes
+    async getUpdates(): Promise<Update[]> {
+    // Simple: Find rows with date_status_updated and use their status_dashboard
     if (this.useGoogleSheets) {
       try {
         const campaigns = await this.getCampaigns();
         const updates: Update[] = [];
         
-        // Generate updates based on recent campaign status changes
-        campaigns.forEach(campaign => {
-          // This is a simplified example - in a real system, you'd track actual status changes
-          if (campaign.status === 'scheduled') {
-            updates.push({
-              id: `update_${campaign.id}_live`,
-              message: `${campaign.title}が投稿されました！`,
-              timestamp: new Date(),
-              type: 'status_change',
-              campaignId: campaign.id,
-              influencerId: campaign.influencerId,
-              influencerName: campaign.influencerName,
-            });
-          } else if (campaign.status === 'completed') {
-            updates.push({
-              id: `update_${campaign.id}_completed`,
-              message: `${campaign.title}のお支払いが完了しました。`,
-              timestamp: new Date(),
-              type: 'status_change',
-              campaignId: campaign.id,
-              influencerId: campaign.influencerId,
-              influencerName: campaign.influencerName,
-            });
-          }
+        // Find campaigns that have date_status_updated
+        const campaignsWithUpdates = campaigns.filter(campaign => {
+          return campaign.updatedAt && campaign.updatedAt.toString() !== '';
         });
         
-        return updates.slice(0, 10); // Return latest 10 updates
+        console.log(`📊 Found ${campaignsWithUpdates.length} campaigns with date_status_updated`);
+        
+        // Generate updates based on status_dashboard
+        campaignsWithUpdates.forEach(campaign => {
+          const statusUpdateDate = new Date(campaign.updatedAt);
+          let updateMessage = '';
+          let updateType: 'submission' | 'status_change' | 'approval' = 'status_change';
+          
+          // Generate update message based on status_dashboard
+          switch (campaign.status) {
+            case 'plan_submitted':
+              updateMessage = `${campaign.influencerName}さんから構成案が提出されました`;
+              updateType = 'submission';
+              break;
+            case 'plan_reviewing':
+              updateMessage = `${campaign.influencerName}さんの構成案を確認中です`;
+              updateType = 'approval';
+              break;
+            case 'plan_revising':
+              updateMessage = `${campaign.influencerName}さんの構成案を修正中です`;
+              updateType = 'approval';
+              break;
+            case 'draft_submitted':
+              updateMessage = `${campaign.influencerName}さんから初稿が提出されました`;
+              updateType = 'submission';
+              break;
+            case 'draft_reviewing':
+              updateMessage = `${campaign.influencerName}さんの初稿を確認中です`;
+              updateType = 'approval';
+              break;
+            case 'draft_revising':
+              updateMessage = `${campaign.influencerName}さんの初稿を修正中です`;
+              updateType = 'approval';
+              break;
+            case 'scheduling':
+              updateMessage = `${campaign.influencerName}さんのコンテンツ投稿準備中です`;
+              updateType = 'status_change';
+              break;
+            case 'scheduled':
+              updateMessage = `${campaign.influencerName}さんのコンテンツが投稿されました！`;
+              updateType = 'status_change';
+              break;
+            case 'completed':
+              updateMessage = `${campaign.influencerName}さんのプロモーションが完了しました`;
+              updateType = 'status_change';
+              break;
+            case 'cancelled':
+              updateMessage = `${campaign.influencerName}さんのプロモーションがキャンセルされました`;
+              updateType = 'status_change';
+              break;
+            default:
+              updateMessage = `${campaign.influencerName}さんのステータスが「${campaign.status}」に更新されました`;
+              updateType = 'status_change';
+          }
+          
+          updates.push({
+            id: `update_${campaign.id}_${campaign.status}`,
+            message: updateMessage,
+            timestamp: statusUpdateDate,
+            type: updateType,
+            campaignId: campaign.id,
+            influencerId: campaign.influencerId,
+            influencerName: campaign.influencerName,
+          });
+        });
+        
+        // Sort by timestamp (newest first) and return latest 10 updates
+        const sortedUpdates = updates
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+          .slice(0, 10);
+        
+        console.log(`✅ Generated ${sortedUpdates.length} updates`);
+        return sortedUpdates;
       } catch (error) {
-        console.error('Failed to generate updates from Google Sheets, falling back to mock data:', error);
-        return mockUpdates;
+        console.error('Failed to generate updates from Google Sheets:', error);
+        return [];
       }
     }
     
-    return mockUpdates;
+    return [];
+  }
+
+  async createUpdate(updateData: {
+    campaignId: string;
+    influencerId: string;
+    influencerName: string;
+    type: 'submission' | 'status_change' | 'approval';
+    message: string;
+  }): Promise<Update> {
+    const update: Update = {
+      id: `update_${updateData.campaignId}_${Date.now()}`,
+      campaignId: updateData.campaignId,
+      influencerId: updateData.influencerId,
+      influencerName: updateData.influencerName,
+      type: updateData.type,
+      message: updateData.message,
+      timestamp: new Date()
+    };
+
+    // In a real implementation, you would store this in a database
+    // For now, we'll just return the update object
+    console.log('📝 Created update:', update);
+    return update;
   }
 
   // Method to refresh data (useful for development/testing)

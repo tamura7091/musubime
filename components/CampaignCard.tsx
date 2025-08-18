@@ -1,7 +1,7 @@
 import { Campaign, getStepFromStatus, getStepLabel } from '@/types';
 import StatusBadge from './StatusBadge';
 import { getNextStep, getPlatformLabel, getPlatformIcon } from '@/lib/mock-data';
-import { Calendar, DollarSign, ExternalLink, ChevronRight, ChevronDown, User } from 'lucide-react';
+import { Calendar, ExternalLink, ChevronRight, ChevronDown, User } from 'lucide-react';
 import { useState } from 'react';
 
 interface CampaignCardProps {
@@ -93,7 +93,6 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
           {/* Price and Next Step */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-center space-x-2 text-sm">
-              <DollarSign size={16} className="text-dark-text-secondary" />
               <span className="text-dark-text font-medium">
                 {formatCurrency(campaign.contractedPrice, campaign.currency)}
               </span>

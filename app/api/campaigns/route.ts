@@ -6,17 +6,20 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId parameter is required' },
-        { status: 400 }
-      );
+    console.log('🎯 API: Fetching campaigns', userId ? `for user: ${userId}` : 'for all users (admin)');
+    
+    let campaigns;
+    if (userId) {
+      // For influencer users - fetch user-specific campaigns
+      campaigns = await dataService.getUserCampaigns(userId);
+      console.log('✅ API: Fetched user campaigns:', campaigns.length);
+      console.log('📊 API: Campaign statuses:', campaigns.map(c => ({ id: c.id, status: c.status, influencerId: c.influencerId })));
+    } else {
+      // For admin users - fetch all campaigns
+      campaigns = await dataService.getCampaigns();
+      console.log('✅ API: Fetched all campaigns:', campaigns.length);
+      console.log('📊 API: Campaign statuses:', campaigns.map(c => ({ id: c.id, status: c.status, influencerId: c.influencerId })));
     }
-
-    console.log('🎯 API: Fetching campaigns for user:', userId);
-    const campaigns = await dataService.getUserCampaigns(userId);
-    console.log('✅ API: Fetched campaigns:', campaigns.length);
-    console.log('📊 API: Campaign statuses:', campaigns.map(c => ({ id: c.id, status: c.status, influencerId: c.influencerId })));
     
     return NextResponse.json(campaigns);
   } catch (error) {

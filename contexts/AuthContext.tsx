@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('✅ Admin login detected');
         const adminUser: User = {
           id: 'admin',
-          name: 'Admin User',
+          name: 'スピークチーム',
           email: 'admin@usespeak.com',
           role: 'admin'
         };

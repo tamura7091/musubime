@@ -15,6 +15,7 @@ export default function InfluencerDashboard() {
   const [paymentCheckboxes, setPaymentCheckboxes] = useState<{[key: string]: {invoice: boolean, form: boolean}}>({});
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [urlInputs, setUrlInputs] = useState<{[key: string]: string}>({});
+  const [schedulingCheckboxes, setSchedulingCheckboxes] = useState<{[key: string]: {summary: boolean, comment: boolean}}>({});
   const [isLoading, setIsLoading] = useState(true);
 
   // Manual refresh function
@@ -320,15 +321,42 @@ export default function InfluencerDashboard() {
     return Math.round((completedSteps / totalSteps) * 100);
   };
 
-  // Show 100% progress if no active campaigns (no promo ongoing)
-  const overallProgress = activeCampaigns.length === 0 
-    ? 100 
-    : userCampaigns.length > 0 
-      ? Math.round(userCampaigns.reduce((sum, campaign) => sum + calculateProgress(campaign), 0) / userCampaigns.length)
-      : 0;
+  // Calculate days left until live date
+  const getDaysUntilLive = (campaign: any) => {
+    if (!campaign.schedules?.liveDate) return null;
+    
+    const liveDate = new Date(campaign.schedules.liveDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day
+    liveDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = liveDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays;
+  };
 
   // Get the most active campaign for status display
   const primaryCampaign = activeCampaigns[0] || userCampaigns[0];
+
+  // Get days left for the primary campaign
+  const daysUntilLive = primaryCampaign ? getDaysUntilLive(primaryCampaign) : null;
+
+  // Check if action is overdue (more than 1 day past due)
+  const isActionOverdue = (campaign: any) => {
+    if (!campaign.schedules?.liveDate) return false;
+    
+    const daysLeft = getDaysUntilLive(campaign);
+    return daysLeft !== null && daysLeft < -1; // More than 1 day overdue
+  };
+
+  // Get overdue error message
+  const getOverdueErrorMessage = (campaign: any) => {
+    if (!isActionOverdue(campaign)) return null;
+    
+    const daysOverdue = Math.abs(getDaysUntilLive(campaign) || 0);
+    return `⚠️ 期限を${daysOverdue}日超過しています。早急に対応してください。`;
+  };
 
   // Handle meeting completion checkbox
   const handleMeetingCompleted = (campaignId: string) => {
@@ -341,62 +369,150 @@ export default function InfluencerDashboard() {
     );
   };
 
-  const handleMeetingStatusChange = (campaignId: string, status: 'not_scheduled' | 'scheduled' | 'completed') => {
+  const handleMeetingStatusChange = async (campaignId: string, status: 'not_scheduled' | 'scheduled' | 'completed') => {
     const confirmMessage = `ステータスを「${status === 'not_scheduled' ? '予約未完了' : status === 'scheduled' ? '予約済み' : '打ち合わせ完了'}」に変更しますか？`;
     
     if (window.confirm(confirmMessage)) {
-      setCampaigns(prevCampaigns => 
-        prevCampaigns.map(campaign => 
-          campaign.id === campaignId 
-            ? { ...campaign, meetingStatus: status }
-            : campaign
-        )
-      );
-      
-      // If meeting is completed, advance to next step
-      if (status === 'completed') {
-        setTimeout(() => {
-          advanceToNextStep(campaignId, 'meeting_scheduled');
-        }, 100);
-      }
-    }
-  };
-
-  const handlePaymentCheckbox = (campaignId: string, type: 'invoice' | 'form', checked: boolean) => {
-    // Prevent multiple popups
-    if (isProcessingPayment) return;
-    
-    setPaymentCheckboxes(prev => {
-      const current = prev[campaignId] || { invoice: false, form: false };
-      const updated = { ...current, [type]: checked };
-      
-      // If both checkboxes are checked, change status to payment_processing
-      if (updated.invoice && updated.form && !isProcessingPayment) {
-        setIsProcessingPayment(true);
+      try {
+        let newStatus: string;
         
-        if (window.confirm('両方の項目が完了しました。ステータスを「送金手続き中」に変更しますか？')) {
+        if (status === 'completed') {
+          newStatus = 'plan_creating'; // Advance to plan creation step
+        } else if (status === 'scheduled') {
+          newStatus = 'meeting_scheduled';
+        } else {
+          newStatus = 'meeting_scheduling';
+        }
+
+        // Update Google Sheets via API
+        const response = await fetch('/api/campaigns/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            campaignId,
+            influencerId: user?.id,
+            newStatus
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.success) {
+          console.log('✅ Meeting status updated successfully in Google Sheets');
+          
+          // Update local state
           setCampaigns(prevCampaigns => 
             prevCampaigns.map(campaign => 
               campaign.id === campaignId 
-                ? { ...campaign, status: 'payment_processing' }
+                ? { ...campaign, meetingStatus: status, status: newStatus as CampaignStatus }
                 : campaign
             )
           );
         } else {
-          // If user cancels, uncheck the checkbox
-          setIsProcessingPayment(false);
-          return { ...prev, [campaignId]: { ...current, [type]: false } };
+          console.error('❌ Failed to update meeting status:', result.error);
+          
+          // Show specific error message for authentication issues
+          if (result.error?.includes('Service Account') || result.error?.includes('write access not configured')) {
+            alert('Google Sheetsの書き込み権限が設定されていません。管理者にお問い合わせください。');
+          } else {
+            alert('更新に失敗しました。もう一度お試しください。');
+          }
         }
-        
-        setIsProcessingPayment(false);
+      } catch (error) {
+        console.error('❌ Error updating meeting status:', error);
+        alert('更新に失敗しました。もう一度お試しください。');
       }
+    }
+  };
+
+  const handleSchedulingCheckbox = (campaignId: string, type: 'summary' | 'comment', checked: boolean) => {
+    setSchedulingCheckboxes(prev => ({
+      ...prev,
+      [campaignId]: {
+        ...prev[campaignId],
+        [type]: checked
+      }
+    }));
+  };
+
+  const handlePaymentSubmission = async (campaignId: string) => {
+    const campaignCheckboxes = paymentCheckboxes[campaignId] || { invoice: false, form: false };
+    
+    if (!campaignCheckboxes.invoice || !campaignCheckboxes.form) {
+      alert('チェックボックスを全てチェックしてください');
+      return;
+    }
+
+    // Proceed with payment processing
+    setIsProcessingPayment(true);
+    
+    try {
+      // Update Google Sheets via API
+      const response = await fetch('/api/campaigns/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          campaignId,
+          influencerId: user?.id,
+          newStatus: 'payment_processing'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
       
-      return { ...prev, [campaignId]: updated };
-    });
+      if (result.success) {
+        console.log('✅ Payment status updated successfully in Google Sheets');
+        
+        // Update local state
+        setCampaigns(prevCampaigns => 
+          prevCampaigns.map(campaign => 
+            campaign.id === campaignId 
+              ? { ...campaign, status: 'payment_processing' }
+              : campaign
+          )
+        );
+      } else {
+        console.error('❌ Failed to update payment status:', result.error);
+        
+        // Show specific error message for authentication issues
+        if (result.error?.includes('Service Account') || result.error?.includes('write access not configured')) {
+          alert('Google Sheetsの書き込み権限が設定されていません。管理者にお問い合わせください。');
+        } else {
+          alert('更新に失敗しました。もう一度お試しください。');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error updating payment status:', error);
+      alert('更新に失敗しました。もう一度お試しください。');
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  const handlePaymentCheckbox = (campaignId: string, type: 'invoice' | 'form', checked: boolean) => {
+    setPaymentCheckboxes(prev => ({
+      ...prev,
+      [campaignId]: {
+        ...prev[campaignId],
+        [type]: checked
+      }
+    }));
   };
 
   // Function to advance to next step when current step is completed
-  const advanceToNextStep = (campaignId: string, currentStatus: string) => {
+  const advanceToNextStep = async (campaignId: string, currentStatus: string) => {
     const currentStep = getStepFromStatus(currentStatus as CampaignStatus);
     const stepOrder = ['meeting', 'plan_creation', 'draft_creation', 'scheduling', 'payment'];
     const currentStepIndex = stepOrder.indexOf(currentStep);
@@ -423,18 +539,47 @@ export default function InfluencerDashboard() {
           return; // No next step
       }
       
-      // Update campaign status to next step
-      setCampaigns(prevCampaigns => 
-        prevCampaigns.map(campaign => 
-          campaign.id === campaignId 
-            ? { ...campaign, status: nextStatus }
-            : campaign
-        )
-      );
+      try {
+        // Update Google Sheets via API
+        const response = await fetch('/api/campaigns/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            campaignId,
+            influencerId: user?.id,
+            newStatus: nextStatus
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.success) {
+          console.log('✅ Campaign advanced to next step successfully in Google Sheets');
+          
+          // Update local state
+          setCampaigns(prevCampaigns => 
+            prevCampaigns.map(campaign => 
+              campaign.id === campaignId 
+                ? { ...campaign, status: nextStatus }
+                : campaign
+            )
+          );
+        } else {
+          console.error('❌ Failed to advance campaign:', result.error);
+        }
+      } catch (error) {
+        console.error('❌ Error advancing campaign:', error);
+      }
     }
   };
 
-  const handleUrlSubmission = (campaignId: string, currentStatus: string) => {
+  const handleUrlSubmission = async (campaignId: string, currentStatus: string) => {
     const url = urlInputs[campaignId] || '';
     
     if (!url.trim()) {
@@ -442,30 +587,45 @@ export default function InfluencerDashboard() {
       return;
     }
 
+    // For content scheduling, check if required checkboxes are ticked
+    if (currentStatus === 'scheduling') {
+      const campaignCheckboxes = schedulingCheckboxes[campaignId] || { summary: false, comment: false };
+      
+      if (!campaignCheckboxes.summary || !campaignCheckboxes.comment) {
+        alert('チェックボックスを全てチェックしてください');
+        return;
+      }
+    }
+
     // Define step-based status transitions
-    const stepTransitions: {[key: string]: {nextStatus: string, confirmMessage: string}} = {
+    const stepTransitions: {[key: string]: {nextStatus: string, confirmMessage: string, urlType: 'plan' | 'draft' | 'content'}} = {
       // Plan creation step transitions
       'plan_creating': {
         nextStatus: 'plan_submitted',
-        confirmMessage: '構成案を提出しますか？'
+        confirmMessage: '構成案を提出しますか？',
+        urlType: 'plan'
       },
       'plan_revising': {
         nextStatus: 'plan_reviewing',
-        confirmMessage: '修正版構成案を提出しますか？'
+        confirmMessage: '修正版構成案を提出しますか？',
+        urlType: 'plan'
       },
       // Draft creation step transitions
       'draft_creating': {
         nextStatus: 'draft_submitted',
-        confirmMessage: '初稿を提出しますか？'
+        confirmMessage: '初稿を提出しますか？',
+        urlType: 'draft'
       },
       'draft_revising': {
         nextStatus: 'draft_reviewing',
-        confirmMessage: '修正版初稿を提出しますか？'
+        confirmMessage: '修正版初稿を提出しますか？',
+        urlType: 'draft'
       },
       // Scheduling step transitions
       'scheduling': {
         nextStatus: 'scheduled',
-        confirmMessage: 'コンテンツをスケジュールしますか？'
+        confirmMessage: 'コンテンツをスケジュールしましたか？',
+        urlType: 'content'
       }
     };
 
@@ -473,48 +633,126 @@ export default function InfluencerDashboard() {
     if (!transition) return;
 
     if (window.confirm(transition.confirmMessage)) {
-      setCampaigns(prevCampaigns => 
-        prevCampaigns.map(campaign => 
-          campaign.id === campaignId 
-            ? { ...campaign, status: transition.nextStatus as CampaignStatus }
-            : campaign
-        )
-      );
-      
-      // Clear the URL input
-      setUrlInputs(prev => ({ ...prev, [campaignId]: '' }));
-      
-      // Check if this completes the current step and advance to next step if needed
-      setTimeout(() => {
-        const updatedCampaign = campaigns.find(c => c.id === campaignId);
-        if (updatedCampaign) {
-          const currentStep = getStepFromStatus(transition.nextStatus as CampaignStatus);
+      try {
+        // Update Google Sheets via API
+        const response = await fetch('/api/campaigns/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            campaignId,
+            influencerId: user?.id,
+            newStatus: transition.nextStatus,
+            submittedUrl: url,
+            urlType: transition.urlType
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.success) {
+          console.log('✅ Campaign updated successfully in Google Sheets');
           
-          // Check if this status completes the current step
-          const stepCompletionStatuses: Record<string, string[]> = {
-            'plan_creation': ['plan_submitted', 'plan_reviewing'],
-            'draft_creation': ['draft_submitted', 'draft_reviewing'],
-            'scheduling': ['scheduled']
-          };
+          // Update local state
+          setCampaigns(prevCampaigns => 
+            prevCampaigns.map(campaign => 
+              campaign.id === campaignId 
+                ? { ...campaign, status: transition.nextStatus as CampaignStatus }
+                : campaign
+            )
+          );
           
-          if (stepCompletionStatuses[currentStep] && stepCompletionStatuses[currentStep].includes(transition.nextStatus)) {
-            // Step is completed, advance to next step
-            advanceToNextStep(campaignId, transition.nextStatus);
+          // Clear the URL input
+          setUrlInputs(prev => ({ ...prev, [campaignId]: '' }));
+          
+          // Check if this completes the current step and advance to next step if needed
+          setTimeout(() => {
+            const updatedCampaign = campaigns.find(c => c.id === campaignId);
+            if (updatedCampaign) {
+              const currentStep = getStepFromStatus(transition.nextStatus as CampaignStatus);
+              
+              // Check if this status completes the current step
+              const stepCompletionStatuses: Record<string, string[]> = {
+                'plan_creation': ['plan_submitted', 'plan_reviewing'],
+                'draft_creation': ['draft_submitted', 'draft_reviewing'],
+                'scheduling': ['scheduled']
+              };
+              
+              if (stepCompletionStatuses[currentStep] && stepCompletionStatuses[currentStep].includes(transition.nextStatus)) {
+                // Step is completed, advance to next step
+                advanceToNextStep(campaignId, transition.nextStatus);
+              }
+            }
+          }, 100);
+        } else {
+          console.error('❌ Failed to update campaign:', result.error);
+          
+          // Show specific error message for authentication issues
+          if (result.error?.includes('Service Account') || result.error?.includes('write access not configured')) {
+            alert('Google Sheetsの書き込み権限が設定されていません。管理者にお問い合わせください。');
+          } else {
+            alert('更新に失敗しました。もう一度お試しください。');
           }
         }
-      }, 100);
+      } catch (error) {
+        console.error('❌ Error updating campaign:', error);
+        alert('更新に失敗しました。もう一度お試しください。');
+      }
     }
   };
 
   // Handle status change for debug
-  const handleStatusChange = (campaignId: string, newStatus: CampaignStatus) => {
-    setCampaigns(prevCampaigns => 
-      prevCampaigns.map(campaign => 
-        campaign.id === campaignId 
-          ? { ...campaign, status: newStatus }
-          : campaign
-      )
-    );
+  const handleStatusChange = async (campaignId: string, newStatus: CampaignStatus) => {
+    try {
+      // Update Google Sheets via API
+      const response = await fetch('/api/campaigns/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          campaignId,
+          influencerId: user?.id,
+          newStatus
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('✅ Debug status change updated successfully in Google Sheets');
+        
+        // Update local state
+        setCampaigns(prevCampaigns => 
+          prevCampaigns.map(campaign => 
+            campaign.id === campaignId 
+              ? { ...campaign, status: newStatus }
+              : campaign
+          )
+        );
+              } else {
+          console.error('❌ Failed to update debug status:', result.error);
+          
+          // Show specific error message for authentication issues
+          if (result.error?.includes('Service Account') || result.error?.includes('write access not configured')) {
+            alert('Google Sheetsの書き込み権限が設定されていません。管理者にお問い合わせください。');
+          } else {
+            alert('更新に失敗しました。もう一度お試しください。');
+          }
+        }
+    } catch (error) {
+      console.error('❌ Error updating debug status:', error);
+      alert('更新に失敗しました。もう一度お試しください。');
+    }
   };
 
   // Get status options for debug dropdown
@@ -546,32 +784,36 @@ export default function InfluencerDashboard() {
             <h1 className="text-2xl sm:text-3xl font-bold text-dark-text">
               お疲れ様です、{user.name}さん
             </h1>
-            {/* Debug Toggle Button */}
-            <button
-              onClick={() => setShowDebugCard(!showDebugCard)}
-              className="flex items-center space-x-2 bg-dark-accent/20 hover:bg-dark-accent/30 text-dark-accent px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-            >
-              <Bug size={16} />
-              <span>デバッグ</span>
-            </button>
-            <button
-              onClick={refreshData}
-              disabled={isLoading}
-              className="flex items-center space-x-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span>{isLoading ? '更新中...' : '更新'}</span>
-            </button>
+            {/* Debug Toggle Button - Only for demo accounts */}
+            {(user.id === 'actre_vlog_yt' || user.id === 'eigatube_yt') && (
+              <>
+                <button
+                  onClick={() => setShowDebugCard(!showDebugCard)}
+                  className="flex items-center space-x-2 bg-dark-accent/20 hover:bg-dark-accent/30 text-dark-accent px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  <Bug size={16} />
+                  <span>デバッグ</span>
+                </button>
+                <button
+                  onClick={refreshData}
+                  disabled={isLoading}
+                  className="flex items-center space-x-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>{isLoading ? '更新中...' : '更新'}</span>
+                </button>
+              </>
+            )}
           </div>
           <p className="text-dark-text-secondary mobile-text">
             プロモーションの進捗状況と次のステップをご確認ください
           </p>
         </div>
 
-        {/* Debug Card */}
-        {showDebugCard && (
+        {/* Debug Card - Only for demo accounts */}
+        {showDebugCard && (user.id === 'actre_vlog_yt' || user.id === 'eigatube_yt') && (
           <div className="mb-6 sm:mb-8">
             <div className="card border-2 border-orange-500/30 bg-orange-500/5">
               <div className="flex items-center space-x-2 mb-4">
@@ -622,13 +864,15 @@ export default function InfluencerDashboard() {
           <div className="card">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-dark-accent/20 rounded-lg flex-shrink-0">
-                <TrendingUp className="text-dark-accent" size={20} />
+                <svg className="w-6 h-6 text-dark-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
               </div>
               <div className="min-w-0">
                 <p className="text-xl sm:text-2xl font-bold text-dark-text">
-                  ¥{totalEarnings.toLocaleString()}
+                  ¥{activeCampaigns.length > 0 ? (activeCampaigns[0].contractedPrice || 0).toLocaleString() : '0'}
                 </p>
-                <p className="text-dark-text-secondary text-xs sm:text-sm">総報酬額</p>
+                <p className="text-dark-text-secondary text-xs sm:text-sm">進行中PRの報酬額</p>
               </div>
             </div>
           </div>
@@ -654,9 +898,13 @@ export default function InfluencerDashboard() {
               </div>
               <div className="min-w-0">
                 <p className="text-xl sm:text-2xl font-bold text-dark-text">
-                  {overallProgress}%
+                  {daysUntilLive !== null ? (
+                    daysUntilLive > 0 ? `${daysUntilLive}日` : 
+                    daysUntilLive === 0 ? '今日' : 
+                    `${Math.abs(daysUntilLive)}日遅れ`
+                  ) : '未設定'}
                 </p>
-                <p className="text-dark-text-secondary text-xs sm:text-sm">進行状況</p>
+                <p className="text-dark-text-secondary text-xs sm:text-sm">PRまでの日数</p>
               </div>
             </div>
           </div>
@@ -668,6 +916,13 @@ export default function InfluencerDashboard() {
             <h2 className="text-xl sm:text-2xl font-semibold text-dark-text mb-4 sm:mb-6">
               次のステップ
             </h2>
+            {getOverdueErrorMessage(primaryCampaign) && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <p className="text-red-400 text-sm font-medium">
+                  {getOverdueErrorMessage(primaryCampaign)}
+                </p>
+              </div>
+            )}
             <div className="card">
               {(() => {
                 const action = getActionNeeded(primaryCampaign);
@@ -776,16 +1031,20 @@ export default function InfluencerDashboard() {
                         <div className="space-y-4">
                           {action.title === 'コンテンツのスケジュール' && (
                             <div className="space-y-3">
-                              <label className="flex items-center space-x-3 text-sm text-dark-text-secondary cursor-pointer">
+                              <label className="flex items-center space-x-3 text-sm text-dark-text cursor-pointer">
                                 <input
                                   type="checkbox"
+                                  checked={schedulingCheckboxes[primaryCampaign.id]?.summary || false}
+                                  onChange={(e) => handleSchedulingCheckbox(primaryCampaign.id, 'summary', e.target.checked)}
                                   className="w-5 h-5 text-blue-500 bg-dark-bg border-dark-border rounded focus:ring-blue-500 focus:ring-2"
                                 />
                                 <span>指定の内容を概要欄に追加済み</span>
                               </label>
-                              <label className="flex items-center space-x-3 text-sm text-dark-text-secondary cursor-pointer">
+                              <label className="flex items-center space-x-3 text-sm text-dark-text cursor-pointer">
                                 <input
                                   type="checkbox"
+                                  checked={schedulingCheckboxes[primaryCampaign.id]?.comment || false}
+                                  onChange={(e) => handleSchedulingCheckbox(primaryCampaign.id, 'comment', e.target.checked)}
                                   className="w-5 h-5 text-blue-500 bg-dark-bg border-dark-border rounded focus:ring-blue-500 focus:ring-2"
                                 />
                                 <span>指定の内容を固定コメントに追加済み</span>
@@ -813,44 +1072,33 @@ export default function InfluencerDashboard() {
                       {action.inputType === 'payment' && (
                         <div className="space-y-4">
                           <div className="space-y-3">
-                            <label className="flex items-center space-x-3 text-sm text-dark-text-secondary cursor-pointer">
+                            <label className="flex items-center space-x-3 text-sm text-dark-text cursor-pointer">
                               <input
                                 type="checkbox"
                                 checked={paymentCheckboxes[primaryCampaign.id]?.invoice || false}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    if (window.confirm('請求書の作成が完了しましたか？')) {
-                                      handlePaymentCheckbox(primaryCampaign.id, 'invoice', true);
-                                    } else {
-                                      e.target.checked = false;
-                                    }
-                                  } else {
-                                    handlePaymentCheckbox(primaryCampaign.id, 'invoice', false);
-                                  }
-                                }}
+                                onChange={(e) => handlePaymentCheckbox(primaryCampaign.id, 'invoice', e.target.checked)}
                                 className="w-5 h-5 text-blue-500 bg-dark-bg border-dark-border rounded focus:ring-blue-500 focus:ring-2"
                               />
                               <span>こちらのテンプレートで請求書を作成</span>
                             </label>
-                            <label className="flex items-center space-x-3 text-sm text-dark-text-secondary cursor-pointer">
+                            <label className="flex items-center space-x-3 text-sm text-dark-text cursor-pointer">
                               <input
                                 type="checkbox"
                                 checked={paymentCheckboxes[primaryCampaign.id]?.form || false}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    if (window.confirm('お支払いフォームの提出が完了しましたか？')) {
-                                      handlePaymentCheckbox(primaryCampaign.id, 'form', true);
-                                    } else {
-                                      e.target.checked = false;
-                                    }
-                                  } else {
-                                    handlePaymentCheckbox(primaryCampaign.id, 'form', false);
-                                  }
-                                }}
+                                onChange={(e) => handlePaymentCheckbox(primaryCampaign.id, 'form', e.target.checked)}
                                 className="w-5 h-5 text-blue-500 bg-dark-bg border-dark-border rounded focus:ring-blue-500 focus:ring-2"
                               />
                               <span>こちらのフォームを提出</span>
                             </label>
+                          </div>
+                          <div className="flex justify-end">
+                            <button
+                              onClick={() => handlePaymentSubmission(primaryCampaign.id)}
+                              disabled={isProcessingPayment}
+                              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                            >
+                              {isProcessingPayment ? '処理中...' : '送金手続き開始'}
+                            </button>
                           </div>
                         </div>
                       )}
@@ -880,7 +1128,7 @@ export default function InfluencerDashboard() {
 
         {/* Active Campaigns */}
         <div className="mb-6 sm:mb-8">
-          <h2 className="text-lg sm:text-xl font-semibold text-dark-text mb-4">
+          <h2 className="text-xl sm:text-2xl font-semibold text-dark-text mb-4 sm:mb-6">
             プロモーション詳細
           </h2>
           {activeCampaigns.length > 0 ? (
@@ -1033,7 +1281,7 @@ export default function InfluencerDashboard() {
         {/* Completed Campaigns */}
         {completedCampaigns.length > 0 && (
           <div>
-            <h2 className="text-lg sm:text-xl font-semibold text-dark-text mb-4">
+            <h2 className="text-xl sm:text-2xl font-semibold text-dark-text mb-4 sm:mb-6">
               完了済みプロモーション
             </h2>
           <div className="space-y-4">

@@ -36,6 +36,12 @@ class GoogleSheetsService {
     console.log('🔑 Private Key starts with:', privateKey?.substring(0, 50) + '...');
     console.log('🔑 Has API Key:', this.hasApiKey);
     console.log('🔑 API Key starts with:', process.env.GOOGLE_SHEETS_API_KEY?.substring(0, 20) + '...');
+    console.log('🔍 Environment variables check:', {
+      GOOGLE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ? 'Set' : 'Not set',
+      GOOGLE_PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY ? 'Set' : 'Not set',
+      GOOGLE_SHEETS_API_KEY: process.env.GOOGLE_SHEETS_API_KEY ? 'Set' : 'Not set',
+      GOOGLE_SHEETS_SPREADSHEET_ID: process.env.GOOGLE_SHEETS_SPREADSHEET_ID ? 'Set' : 'Not set'
+    });
 
     let auth: any = undefined;
     if (this.hasServiceAccount) {
@@ -45,7 +51,7 @@ class GoogleSheetsService {
           client_email: clientEmail,
           private_key: privateKey,
         },
-        scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
       });
     } else if (this.hasApiKey) {
       console.log('🔑 Setting up API Key authentication');
@@ -465,24 +471,15 @@ class GoogleSheetsService {
     }
     
     return validData.map((row, index) => {
-      // Debug date values from Google Sheets
-      console.log('📅 Campaign dates from Google Sheets:', {
-        id: row['id_campaign'],
-        date_plan: row['date_plan'],
-        date_draft: row['date_draft'],
-        date_live: row['date_live'],
-        influencerName: row['インフルエンサー名'] || row['influencer_name'] || row['name']
-      });
-      
-      // More visible debugging
-      if (row['date_plan'] || row['date_draft'] || row['date_live']) {
-        console.log('🔍 FOUND DATES!', {
-          id: row['id_campaign'],
-          plan: row['date_plan'],
-          draft: row['date_draft'],
-          live: row['date_live']
-        });
-      }
+              // Debug date_status_updated values from Google Sheets
+        if (row['date_status_updated']) {
+          console.log('📅 date_status_updated found:', {
+            id: row['id_campaign'],
+            date_status_updated: row['date_status_updated'],
+            status_dashboard: row['status_dashboard'],
+            influencerName: row['インフルエンサー名'] || row['influencer_name'] || row['name']
+          });
+        }
       
       return {
         // Basic campaign info
@@ -707,6 +704,211 @@ class GoogleSheetsService {
     } catch (error) {
       console.log('📅 Date parsing error:', { input: dateString, error });
       return null;
+    }
+  }
+
+  // Convert column index to Google Sheets column letter (A, B, C, ..., Z, AA, AB, ...)
+  private columnIndexToLetter(columnIndex: number): string {
+    let result = '';
+    while (columnIndex >= 0) {
+      result = String.fromCharCode(65 + (columnIndex % 26)) + result;
+      columnIndex = Math.floor(columnIndex / 26) - 1;
+    }
+    return result;
+  }
+
+  // Update campaign status in Google Sheets
+  async updateCampaignStatus(
+    campaignId: string,
+    influencerId: string,
+    newStatus: string,
+    submittedUrl?: string,
+    urlType?: 'plan' | 'draft' | 'content'
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('🔄 GoogleSheetsService.updateCampaignStatus() called');
+      console.log('📊 Update details:', { campaignId, influencerId, newStatus, submittedUrl, urlType });
+      
+      // Check if we have write permissions (Service Account required)
+      if (!this.hasServiceAccount) {
+        console.log('⚠️ No Service Account configured - cannot write to Google Sheets');
+        console.log('🔍 Service Account check:', {
+          hasServiceAccount: this.hasServiceAccount,
+          clientEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ? 'Set' : 'Not set',
+          privateKey: process.env.GOOGLE_PRIVATE_KEY ? 'Set' : 'Not set'
+        });
+        return { 
+          success: false, 
+          error: 'Google Sheets write access requires Service Account credentials. Please configure GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY environment variables.' 
+        };
+      }
+      
+      console.log('✅ Service Account credentials detected, proceeding with update...');
+      
+      this.assertConfigured();
+
+      // First, find the row with the matching campaign ID
+      const request: any = {
+        spreadsheetId: this.spreadsheetId,
+        range: 'campaigns!A:BT', // Fetch full range to find the row
+      };
+      
+      if (this.hasApiKey && !this.hasServiceAccount) {
+        request.key = process.env.GOOGLE_SHEETS_API_KEY;
+      }
+
+      const response = await this.sheets.spreadsheets.values.get(request);
+      const rows = response.data.values;
+      
+      if (!rows || rows.length === 0) {
+        return { success: false, error: 'No data found in sheet' };
+      }
+
+      const headers = rows[0] as string[];
+      
+      // Find the row index for the campaign
+      let campaignRowIndex = -1;
+      const idCampaignIndex = headers.findIndex(header => header === 'id_campaign');
+      
+      if (idCampaignIndex === -1) {
+        return { success: false, error: 'id_campaign column not found' };
+      }
+
+      // Skip first 4 rows (rows 2-5) and start from row 5 (index 4)
+      for (let i = 4; i < rows.length; i++) {
+        if (rows[i][idCampaignIndex] === campaignId) {
+          campaignRowIndex = i;
+          break;
+        }
+      }
+
+      if (campaignRowIndex === -1) {
+        return { success: false, error: `Campaign with ID ${campaignId} not found` };
+      }
+
+      console.log(`📋 Found campaign at row ${campaignRowIndex + 1}`);
+
+      // Prepare the update data
+      const updates: { range: string; values: any[][] }[] = [];
+      const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+
+      // Update status_dashboard
+      const statusDashboardIndex = headers.findIndex(header => header === 'status_dashboard');
+      if (statusDashboardIndex !== -1) {
+        const statusRange = `campaigns!${this.columnIndexToLetter(statusDashboardIndex)}${campaignRowIndex + 1}`;
+        updates.push({
+          range: statusRange,
+          values: [[newStatus]]
+        });
+        console.log(`📊 Updating status_dashboard at ${statusRange} to "${newStatus}"`);
+      }
+
+      // Update date_status_updated
+      const dateStatusUpdatedIndex = headers.findIndex(header => header === 'date_status_updated');
+      if (dateStatusUpdatedIndex !== -1) {
+        const dateRange = `campaigns!${this.columnIndexToLetter(dateStatusUpdatedIndex)}${campaignRowIndex + 1}`;
+        updates.push({
+          range: dateRange,
+          values: [[currentDate]]
+        });
+        console.log(`📅 Updating date_status_updated at ${dateRange} to "${currentDate}"`);
+      }
+
+      // Update URL fields based on type
+      if (submittedUrl && urlType) {
+        let urlColumnIndex = -1;
+        
+        switch (urlType) {
+          case 'plan':
+            urlColumnIndex = headers.findIndex(header => header === 'url_plan');
+            break;
+          case 'draft':
+            urlColumnIndex = headers.findIndex(header => header === 'url_draft');
+            break;
+          case 'content':
+            urlColumnIndex = headers.findIndex(header => header === 'url_content');
+            break;
+        }
+
+        if (urlColumnIndex !== -1) {
+          const urlRange = `campaigns!${this.columnIndexToLetter(urlColumnIndex)}${campaignRowIndex + 1}`;
+          updates.push({
+            range: urlRange,
+            values: [[submittedUrl]]
+          });
+          console.log(`🔗 Updating ${urlType} URL at ${urlRange} to "${submittedUrl}"`);
+        }
+      }
+
+      // Update date fields based on status
+      if (newStatus === 'plan_submitted' || newStatus === 'plan_reviewing') {
+        const datePlanIndex = headers.findIndex(header => header === 'date_plan');
+        if (datePlanIndex !== -1) {
+          const dateRange = `campaigns!${this.columnIndexToLetter(datePlanIndex)}${campaignRowIndex + 1}`;
+          updates.push({
+            range: dateRange,
+            values: [[currentDate]]
+          });
+          console.log(`📅 Updating date_plan at ${dateRange} to "${currentDate}"`);
+        }
+      }
+
+      if (newStatus === 'draft_submitted' || newStatus === 'draft_reviewing') {
+        const dateDraftIndex = headers.findIndex(header => header === 'date_draft');
+        if (dateDraftIndex !== -1) {
+          const dateRange = `campaigns!${this.columnIndexToLetter(dateDraftIndex)}${campaignRowIndex + 1}`;
+          updates.push({
+            range: dateRange,
+            values: [[currentDate]]
+          });
+          console.log(`📅 Updating date_draft at ${dateRange} to "${currentDate}"`);
+        }
+      }
+
+      if (newStatus === 'scheduled') {
+        const dateLiveIndex = headers.findIndex(header => header === 'date_live');
+        if (dateLiveIndex !== -1) {
+          const dateRange = `campaigns!${this.columnIndexToLetter(dateLiveIndex)}${campaignRowIndex + 1}`;
+          updates.push({
+            range: dateRange,
+            values: [[currentDate]]
+          });
+          console.log(`📅 Updating date_live at ${dateRange} to "${currentDate}"`);
+        }
+      }
+
+      // Execute the updates
+      if (updates.length > 0) {
+        const batchUpdateRequest = {
+          spreadsheetId: this.spreadsheetId,
+          requestBody: {
+            valueInputOption: 'RAW',
+            data: updates
+          }
+        };
+
+        console.log('📡 Executing batch update with', updates.length, 'updates');
+        console.log('📊 Batch update request:', JSON.stringify(batchUpdateRequest, null, 2));
+        
+        try {
+          await this.sheets.spreadsheets.values.batchUpdate(batchUpdateRequest);
+          console.log('✅ Batch update completed successfully');
+        } catch (updateError: any) {
+          console.error('❌ Batch update failed:', updateError?.message || updateError);
+          console.error('❌ Error details:', {
+            code: updateError?.code,
+            status: updateError?.status,
+            message: updateError?.message,
+            errors: updateError?.errors
+          });
+          throw updateError;
+        }
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('❌ Error updating campaign status:', error?.message || error);
+      return { success: false, error: error?.message || 'Unknown error' };
     }
   }
 

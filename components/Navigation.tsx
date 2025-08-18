@@ -44,7 +44,7 @@ export default function Navigation() {
               <div className="text-sm">
                 <p className="text-dark-text font-medium">{user.name}</p>
                 <p className="text-dark-text-secondary">
-                  {user.role === 'admin' ? '管理者' : 'インフルエンサー'}
+                  {user.role === 'admin' ? '管理者' : user.id}
                 </p>
               </div>
             </div>

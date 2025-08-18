@@ -1,10 +1,9 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { mockUpdates } from '@/lib/mock-data';
 import { Users, TrendingUp, Clock, AlertCircle, Search, Filter, User, Tag, ChevronUp, ChevronDown } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
-import { Campaign } from '@/types';
+import { Campaign, Update } from '@/types';
 
 export default function AdminDashboard() {
   console.log('🎯 AdminDashboard component rendering');
@@ -15,32 +14,45 @@ export default function AdminDashboard() {
   const [sortField, setSortField] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [allCampaigns, setAllCampaigns] = useState<Campaign[]>([]);
+  const [updates, setUpdates] = useState<Update[]>([]);
   const [loading, setLoading] = useState(true);
   
   console.log('👤 Current user:', user);
 
-  // Fetch campaigns from API - must be before early returns
+  // Fetch campaigns and updates from API - must be before early returns
   useEffect(() => {
-    const fetchCampaigns = async () => {
+    const fetchData = async () => {
       try {
-        console.log('📊 Fetching campaigns from API...');
+        console.log('📊 Fetching campaigns and updates from API...');
         setLoading(true);
-        const response = await fetch('/api/campaigns');
-        if (response.ok) {
-          const campaigns = await response.json();
+        
+        // Fetch campaigns
+        const campaignsResponse = await fetch('/api/campaigns');
+        if (campaignsResponse.ok) {
+          const campaigns = await campaignsResponse.json();
           console.log('✅ Campaigns loaded:', campaigns.length);
           setAllCampaigns(campaigns);
         } else {
-          console.error('❌ Failed to fetch campaigns:', response.status);
+          console.error('❌ Failed to fetch campaigns:', campaignsResponse.status);
+        }
+        
+        // Fetch updates
+        const updatesResponse = await fetch('/api/updates');
+        if (updatesResponse.ok) {
+          const updates = await updatesResponse.json();
+          console.log('✅ Updates loaded:', updates.length);
+          setUpdates(updates);
+        } else {
+          console.error('❌ Failed to fetch updates:', updatesResponse.status);
         }
       } catch (error) {
-        console.error('❌ Error fetching campaigns:', error);
+        console.error('❌ Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCampaigns();
+    fetchData();
   }, []);
   
   // Handle column sorting
@@ -179,11 +191,12 @@ export default function AdminDashboard() {
   });
 
 
-  const recentUpdates = mockUpdates.slice(0, 5);
+  const recentUpdates = updates.slice(0, 5);
 
-  const formatTimeAgo = (date: Date) => {
+  const formatTimeAgo = (date: Date | string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
     const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    const diffInHours = Math.floor((now.getTime() - dateObj.getTime()) / (1000 * 60 * 60));
     
     if (diffInHours < 1) return 'たった今';
     if (diffInHours < 24) return `${diffInHours}時間前`;
@@ -193,11 +206,17 @@ export default function AdminDashboard() {
   };
 
   const formatDate = (date: Date | undefined) => {
-    if (!date) return '未定';
+    if (!date || isNaN(date.getTime())) return '未定';
     return new Intl.DateTimeFormat('ja-JP', {
       month: 'numeric',
       day: 'numeric'
-    }).format(new Date(date));
+    }).format(date);
+  };
+
+  const parseAndFormatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '未定';
+    const date = new Date(dateString);
+    return formatDate(date);
   };
 
   // Get unique statuses and platforms for filters (filter out empty values)
@@ -253,7 +272,7 @@ export default function AdminDashboard() {
                 <p className="text-2xl font-bold text-dark-text">
                   {uniqueInfluencers.length}
                 </p>
-                <p className="text-dark-text-secondary text-sm">インフルエンサー</p>
+                <p className="text-dark-text-secondary text-sm">id_influencer</p>
               </div>
             </div>
           </div>
@@ -295,7 +314,7 @@ export default function AdminDashboard() {
                 アップデート
               </h3>
               <div className="space-y-4">
-                {recentUpdates.map(update => (
+                {recentUpdates.map((update: Update) => (
                   <div key={update.id} className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-dark-accent rounded-full mt-2 flex-shrink-0"></div>
                     <div className="flex-1 min-w-0">
@@ -532,23 +551,21 @@ export default function AdminDashboard() {
                               <td className="py-3 px-4 h-16">
                                 <div className="flex items-center h-full">
                                   <span className="text-sm text-dark-text-secondary truncate">
-                                    {campaign.schedules?.planSubmissionDate ? 
-                                      formatDate(new Date(campaign.schedules.planSubmissionDate)) : 
-                                      '未定'}
+                                    {parseAndFormatDate(campaign.schedules?.planSubmissionDate)}
                                   </span>
                                 </div>
                               </td>
                               <td className="py-3 px-4 h-16">
                                 <div className="flex items-center h-full">
                                   <span className="text-sm text-dark-text-secondary truncate">
-                                    {campaign.schedules?.draftSubmissionDate ? formatDate(new Date(campaign.schedules.draftSubmissionDate)) : '未定'}
+                                    {parseAndFormatDate(campaign.schedules?.draftSubmissionDate)}
                                   </span>
                                 </div>
                               </td>
                               <td className="py-3 px-4 h-16">
                                 <div className="flex items-center h-full">
                                   <span className="text-sm text-dark-text-secondary truncate">
-                                    {campaign.schedules?.liveDate ? formatDate(new Date(campaign.schedules.liveDate)) : '未定'}
+                                    {parseAndFormatDate(campaign.schedules?.liveDate)}
                                   </span>
                                 </div>
                               </td>
