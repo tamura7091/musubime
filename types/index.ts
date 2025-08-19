@@ -10,6 +10,7 @@ export type Platform =
   | 'blog';
 
 export type CampaignStatus = 
+  | 'not_started'           // 未開始
   | 'meeting_scheduling'    // 打ち合わせ予約中
   | 'meeting_scheduled'     // 打ち合わせ予約済み
   | 'plan_creating'         // 構成案作成中
@@ -27,6 +28,7 @@ export type CampaignStatus =
   | 'cancelled';            // PRキャンセル
 
 export type CampaignStep = 
+  | 'not_started'           // 未開始
   | 'meeting'               // 打ち合わせ
   | 'plan_creation'         // 構成案作成
   | 'draft_creation'        // 初稿作成
@@ -37,6 +39,8 @@ export type CampaignStep =
 // Map status to step
 export const getStepFromStatus = (status: CampaignStatus): CampaignStep => {
   switch (status) {
+    case 'not_started':
+      return 'not_started';
     case 'meeting_scheduling':
     case 'meeting_scheduled':
       return 'meeting';
@@ -59,12 +63,13 @@ export const getStepFromStatus = (status: CampaignStatus): CampaignStep => {
     case 'cancelled':
       return 'cancelled';
     default:
-      return 'meeting';
+      return 'not_started';
   }
 };
 
 // Get step order for progress calculation
 export const getStepOrder = (): CampaignStep[] => [
+  'not_started',
   'meeting',
   'plan_creation', 
   'draft_creation',
@@ -75,6 +80,7 @@ export const getStepOrder = (): CampaignStep[] => [
 // Get step label
 export const getStepLabel = (step: CampaignStep): string => {
   switch (step) {
+    case 'not_started': return '未開始';
     case 'meeting': return '打ち合わせ';
     case 'plan_creation': return '構成案作成';
     case 'draft_creation': return '初稿作成';

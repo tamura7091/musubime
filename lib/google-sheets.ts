@@ -278,8 +278,8 @@ class GoogleSheetsService {
         email: row['email'] || row['Email'] || '',
         platform: this.mapPlatform(row['platform'] || row['プラットフォーム'] || 'yt'),
         channelUrl: row['channel_url'] || row['チャンネルURL'] || row['Channel URL'] || '',
-        status: row['status'] || row['ステータス'] || 'pending',
-        statusDashboard: row['status_dashboard'] || row['status'] || row['ステータス'] || 'pending',
+        status: row['status'] || row['ステータス'] || 'not_started',
+        statusDashboard: row['status_dashboard'] || row['status'] || row['ステータス'] || 'not_started',
         contractedPrice: row['contracted_price'] || row['報酬'] || '0',
         password: possiblePasswords[0] || '', // For authentication
       };
@@ -621,6 +621,7 @@ class GoogleSheetsService {
       'FORM_PENDING': 'contract_pending',
       
       // New status_dashboard mappings (direct mapping)
+      'not_started': 'not_started',
       'meeting_scheduling': 'meeting_scheduling',
       'meeting_scheduled': 'meeting_scheduled',
       'plan_creating': 'plan_creating',
@@ -638,7 +639,7 @@ class GoogleSheetsService {
       'cancelled': 'cancelled',
     };
     
-    const mappedStatus = statusMap[status.toLowerCase()] || 'meeting_scheduling';
+    const mappedStatus = statusMap[status.toLowerCase()] || 'not_started';
     console.log(`🔄 Status mapping: "${status}" -> "${mappedStatus}"`);
     return mappedStatus;
   }

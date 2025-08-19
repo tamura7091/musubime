@@ -169,6 +169,42 @@ export const mockCampaigns: Campaign[] = [
           meetingStatus: 'not_scheduled',
     createdAt: new Date('2024-01-25'),
     updatedAt: new Date('2024-01-25')
+  },
+  {
+    id: '5',
+    influencerId: 'new_influencer_yt',
+    influencerName: '佐藤美咲',
+    influencerAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+    title: 'スピーク英会話アプリPR - YouTube長編',
+    platform: 'youtube_long',
+    status: 'not_started',
+    contractedPrice: 60000,
+    currency: 'JPY',
+    schedules: {
+      meetingDate: undefined,
+      planSubmissionDate: undefined,
+      draftSubmissionDate: undefined,
+      liveDate: undefined
+    },
+    requirements: [
+      '詳細なアプリデモを含める',
+      'AIとの自由会話を実演',
+      'メイドフォーユー機能を紹介',
+      'OpenAI投資の話題を含める',
+      '動画開始20%以内にPR挿入'
+    ],
+    referenceLinks: [
+      {
+        title: 'YouTube長編ガイドライン',
+        url: 'https://www.notion.so/YouTube-4-0-5b88f1ad34ed45f3aaeca324af039665'
+      }
+    ],
+    notes: '新規インフルエンサー - 契約準備中',
+    meetingLink: undefined,
+    meetingCompleted: false,
+    meetingStatus: 'not_scheduled',
+    createdAt: new Date('2024-02-01'),
+    updatedAt: new Date('2024-02-01')
   }
 ];
 
@@ -204,6 +240,7 @@ export const mockUpdates: Update[] = [
 
 export const getStatusLabel = (status: CampaignStatus | string): string => {
   const statusLabels: Record<CampaignStatus, string> = {
+    not_started: '未開始',
     meeting_scheduling: '打ち合わせ予約中',
     meeting_scheduled: '打ち合わせ予約済み',
     plan_creating: '構成案作成中',
@@ -232,6 +269,7 @@ export const getStatusLabel = (status: CampaignStatus | string): string => {
 
 export const getStatusColor = (status: CampaignStatus | string): string => {
   const statusColors: Record<CampaignStatus, string> = {
+    not_started: 'bg-gray-400/20 text-gray-300 border-gray-400/30',
     meeting_scheduling: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
     meeting_scheduled: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
     plan_creating: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
@@ -260,6 +298,7 @@ export const getStatusColor = (status: CampaignStatus | string): string => {
 
 export const getNextStep = (status: CampaignStatus | string): string => {
   const nextSteps: Record<CampaignStatus, string> = {
+    not_started: 'プロモーション開始の準備をしています',
     meeting_scheduling: '打ち合わせの予約をお待ちください',
     meeting_scheduled: '打ち合わせにご参加ください',
     plan_creating: '構成案の作成を開始してください',
@@ -330,6 +369,7 @@ export const getPlatformIcon = (platform: Platform | string): string => {
 
 export const getStepColor = (step: CampaignStep): string => {
   switch (step) {
+    case 'not_started': return 'bg-gray-400/20 text-gray-300 border-gray-400/30';
     case 'meeting': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
     case 'plan_creation': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
     case 'draft_creation': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
