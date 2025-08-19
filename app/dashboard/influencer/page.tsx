@@ -4,12 +4,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { mockCampaigns } from '@/lib/mock-data';
 import CampaignCard from '@/components/CampaignCard';
 import StatusSection from '@/components/StatusSection';
+import OnboardingSurvey from '@/components/OnboardingSurvey';
+import OnboardingSurveyInline from '@/components/OnboardingSurveyInline';
 import { TrendingUp, Clock, CheckCircle, Calendar, ExternalLink, Settings, Bug, AlertCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { CampaignStatus, getStepFromStatus } from '@/types';
+import { useDesignSystem } from '@/hooks/useDesignSystem';
 
 export default function InfluencerDashboard() {
   const { user } = useAuth();
+  const ds = useDesignSystem();
   const [campaigns, setCampaigns] = useState(mockCampaigns);
   const [showDebugCard, setShowDebugCard] = useState(false);
   const [paymentCheckboxes, setPaymentCheckboxes] = useState<{[key: string]: {invoice: boolean, form: boolean}}>({});
@@ -74,10 +78,10 @@ export default function InfluencerDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: ds.bg.primary }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">キャンペーンデータを読み込み中...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: ds.border.primary }}></div>
+          <p style={{ color: ds.text.secondary }}>キャンペーンデータを読み込み中...</p>
         </div>
       </div>
     );
@@ -99,6 +103,16 @@ export default function InfluencerDashboard() {
     const currentStep = getStepFromStatus(campaign.status as CampaignStatus);
     
     switch (currentStep) {
+      case 'not_started':
+        return {
+          title: '基本情報の入力',
+          description: 'プロモーション開始前に、基本情報を入力してください。契約書の作成とスケジュール調整に使用されます。',
+          icon: AlertCircle,
+          color: 'blue',
+          action: 'onboarding',
+          inputType: 'survey'
+        };
+
       case 'meeting':
         // Dynamic title based on meeting status
         let meetingTitle = '打ち合わせの予約';
@@ -777,11 +791,11 @@ export default function InfluencerDashboard() {
 
 
   return (
-    <div className="min-h-screen bg-dark-bg">
+    <div className="min-h-screen" style={{ backgroundColor: ds.bg.primary }}>
       <div className="max-w-7xl mx-auto mobile-padding">
         <div className="mb-6 sm:mb-8">
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-2xl sm:text-3xl font-bold text-dark-text">
+            <h1 className="text-2xl sm:text-3xl font-bold" style={{ color: ds.text.primary }}>
               お疲れ様です、{user.name}さん
             </h1>
             {/* Debug Toggle Button - Only for demo accounts */}
@@ -789,7 +803,13 @@ export default function InfluencerDashboard() {
               <>
                 <button
                   onClick={() => setShowDebugCard(!showDebugCard)}
-                  className="flex items-center space-x-2 bg-dark-accent/20 hover:bg-dark-accent/30 text-dark-accent px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                  className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                  style={{ 
+                    backgroundColor: ds.button.secondary.bg,
+                    color: ds.button.secondary.text
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.hover}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.bg}
                 >
                   <Bug size={16} />
                   <span>デバッグ</span>
@@ -797,7 +817,13 @@ export default function InfluencerDashboard() {
                 <button
                   onClick={refreshData}
                   disabled={isLoading}
-                  className="flex items-center space-x-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                  className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                  style={{ 
+                    backgroundColor: ds.button.primary.bg,
+                    color: ds.button.primary.text
+                  }}
+                  onMouseEnter={(e) => !isLoading && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
+                  onMouseLeave={(e) => !isLoading && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -807,7 +833,7 @@ export default function InfluencerDashboard() {
               </>
             )}
           </div>
-          <p className="text-dark-text-secondary mobile-text">
+          <p className="mobile-text" style={{ color: ds.text.secondary }}>
             プロモーションの進捗状況と次のステップをご確認ください
           </p>
         </div>
@@ -815,31 +841,39 @@ export default function InfluencerDashboard() {
         {/* Debug Card - Only for demo accounts */}
         {showDebugCard && (user.id === 'actre_vlog_yt' || user.id === 'eigatube_yt') && (
           <div className="mb-6 sm:mb-8">
-            <div className="card border-2 border-orange-500/30 bg-orange-500/5">
+            <div className="rounded-xl p-4 sm:p-6 border-2" style={{ 
+              borderColor: ds.border.primary,
+              backgroundColor: ds.bg.card
+            }}>
               <div className="flex items-center space-x-2 mb-4">
-                <Settings className="text-orange-400" size={20} />
-                <h2 className="text-lg font-semibold text-dark-text">デバッグモード</h2>
+                <Settings size={20} style={{ color: ds.text.accent }} />
+                <h2 className="text-lg font-semibold" style={{ color: ds.text.primary }}>デバッグモード</h2>
               </div>
-              <p className="text-sm text-dark-text-secondary mb-4">
+              <p className="text-sm mb-4" style={{ color: ds.text.secondary }}>
                 デモ用アカウントでのみ表示されます。キャンペーンのステータスを変更してテストできます。
               </p>
               
               {activeCampaigns.length > 0 ? (
                 <div className="space-y-3">
                   {activeCampaigns.map(campaign => (
-                    <div key={campaign.id} className="flex items-center space-x-3 p-3 bg-dark-bg rounded-lg">
+                    <div key={campaign.id} className="flex items-center space-x-3 p-3 rounded-lg" style={{ backgroundColor: ds.bg.surface }}>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-dark-text truncate">
+                        <p className="text-sm font-medium truncate" style={{ color: ds.text.primary }}>
                           {campaign.title}
                         </p>
-                        <p className="text-xs text-dark-text-secondary">
+                        <p className="text-xs" style={{ color: ds.text.secondary }}>
                           現在: {campaign.status}
                         </p>
                       </div>
                       <select
                         value={campaign.status}
                         onChange={(e) => handleStatusChange(campaign.id, e.target.value as CampaignStatus)}
-                        className="text-sm bg-dark-bg border border-dark-border rounded px-2 py-1 text-dark-text focus:outline-none focus:ring-2 focus:ring-dark-accent"
+                        className="text-sm rounded px-2 py-1 focus:outline-none focus:ring-2"
+                        style={{ 
+                          backgroundColor: ds.form.input.bg,
+                          borderColor: ds.form.input.border,
+                          color: ds.text.primary
+                        }}
                       >
                         {getStatusOptions().map(option => (
                           <option key={option.value} value={option.value}>
@@ -851,7 +885,7 @@ export default function InfluencerDashboard() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-dark-text-secondary">
+                <p className="text-sm" style={{ color: ds.text.secondary }}>
                   アクティブなキャンペーンがありません
                 </p>
               )}
@@ -861,50 +895,65 @@ export default function InfluencerDashboard() {
 
         {/* Stats Overview */}
         <div className="mobile-grid mb-6 sm:mb-8">
-          <div className="card">
+          <div className="rounded-xl p-4 sm:p-6" style={{ 
+            backgroundColor: ds.bg.card,
+            borderColor: ds.border.primary,
+            borderWidth: '1px',
+            borderStyle: 'solid'
+          }}>
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-dark-accent/20 rounded-lg flex-shrink-0">
-                <svg className="w-6 h-6 text-dark-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="p-2 rounded-lg flex-shrink-0" style={{ backgroundColor: ds.button.primary.bg + '20' }}>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: ds.button.primary.bg }}>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
               </div>
               <div className="min-w-0">
-                <p className="text-xl sm:text-2xl font-bold text-dark-text">
+                <p className="text-xl sm:text-2xl font-bold" style={{ color: ds.text.primary }}>
                   ¥{activeCampaigns.length > 0 ? (activeCampaigns[0].contractedPrice || 0).toLocaleString() : '0'}
                 </p>
-                <p className="text-dark-text-secondary text-xs sm:text-sm">進行中PRの報酬額</p>
+                <p className="text-xs sm:text-sm" style={{ color: ds.text.secondary }}>進行中PRの報酬額</p>
               </div>
             </div>
           </div>
 
-          <div className="card">
+          <div className="rounded-xl p-4 sm:p-6" style={{ 
+            backgroundColor: ds.bg.card,
+            borderColor: ds.border.primary,
+            borderWidth: '1px',
+            borderStyle: 'solid'
+          }}>
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-orange-500/20 rounded-lg flex-shrink-0">
-                <Clock className="text-orange-400" size={20} />
+              <div className="p-2 rounded-lg flex-shrink-0" style={{ backgroundColor: '#f97316' + '20' }}>
+                <Clock size={20} style={{ color: '#f97316' }} />
               </div>
               <div className="min-w-0">
-                <p className="text-xl sm:text-2xl font-bold text-dark-text">
+                <p className="text-xl sm:text-2xl font-bold" style={{ color: ds.text.primary }}>
                   {pendingActions}
                 </p>
-                <p className="text-dark-text-secondary text-xs sm:text-sm">要対応</p>
+                <p className="text-xs sm:text-sm" style={{ color: ds.text.secondary }}>要対応</p>
               </div>
             </div>
           </div>
 
-          <div className="card">
+          <div className="rounded-xl p-4 sm:p-6" style={{ 
+            backgroundColor: ds.bg.card,
+            borderColor: ds.border.primary,
+            borderWidth: '1px',
+            borderStyle: 'solid'
+          }}>
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-green-500/20 rounded-lg flex-shrink-0">
-                <CheckCircle className="text-green-400" size={20} />
+              <div className="p-2 rounded-lg flex-shrink-0" style={{ backgroundColor: '#22c55e' + '20' }}>
+                <CheckCircle size={20} style={{ color: '#22c55e' }} />
               </div>
               <div className="min-w-0">
-                <p className="text-xl sm:text-2xl font-bold text-dark-text">
+                <p className="text-xl sm:text-2xl font-bold" style={{ color: ds.text.primary }}>
                   {daysUntilLive !== null ? (
                     daysUntilLive > 0 ? `${daysUntilLive}日` : 
                     daysUntilLive === 0 ? '今日' : 
                     `${Math.abs(daysUntilLive)}日遅れ`
                   ) : '未設定'}
                 </p>
-                <p className="text-dark-text-secondary text-xs sm:text-sm">PRまでの日数</p>
+                <p className="text-xs sm:text-sm" style={{ color: ds.text.secondary }}>PRまでの日数</p>
               </div>
             </div>
           </div>
@@ -913,17 +962,25 @@ export default function InfluencerDashboard() {
         {/* Action Section */}
         {primaryCampaign && (
           <div className="mb-6 sm:mb-8">
-            <h2 className="text-xl sm:text-2xl font-semibold text-dark-text mb-4 sm:mb-6">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
               次のステップ
             </h2>
             {getOverdueErrorMessage(primaryCampaign) && (
-              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                <p className="text-red-400 text-sm font-medium">
+              <div className="mb-4 p-3 border rounded-lg" style={{ 
+                backgroundColor: '#ef4444' + '10',
+                borderColor: '#ef4444' + '20'
+              }}>
+                <p className="text-sm font-medium" style={{ color: '#f87171' }}>
                   {getOverdueErrorMessage(primaryCampaign)}
                 </p>
               </div>
             )}
-            <div className="card">
+            <div className="rounded-xl p-4 sm:p-6" style={{ 
+              backgroundColor: ds.bg.card,
+              borderColor: ds.border.primary,
+              borderWidth: '1px',
+              borderStyle: 'solid'
+            }}>
               {(() => {
                 const action = getActionNeeded(primaryCampaign);
                 
@@ -932,14 +989,18 @@ export default function InfluencerDashboard() {
                   if (primaryCampaign.status === 'draft_submitted') {
                     return (
                       <div className="flex items-start space-x-4">
-                        <div className="p-3 rounded-lg flex-shrink-0 bg-gray-500/20 text-gray-400 border-gray-500/30">
+                        <div className="p-3 rounded-lg flex-shrink-0" style={{ 
+                          backgroundColor: ds.status.completed.bg,
+                          color: ds.status.completed.text,
+                          borderColor: ds.status.completed.border
+                        }}>
                           <CheckCircle size={24} />
                         </div>
                         <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-dark-text mb-2">
+                          <h3 className="text-lg font-semibold mb-2" style={{ color: ds.text.primary }}>
                             アクション不要：初稿確認中
                           </h3>
-                          <p className="text-dark-text-secondary">
+                          <p style={{ color: ds.text.secondary }}>
                             初稿の確認を行っています。フィードバックをお待ちください。
                           </p>
                         </div>
@@ -951,14 +1012,18 @@ export default function InfluencerDashboard() {
                   if (primaryCampaign.status === 'plan_reviewing') {
                     return (
                       <div className="flex items-start space-x-4">
-                        <div className="p-3 rounded-lg flex-shrink-0 bg-gray-500/20 text-gray-400 border-gray-500/30">
+                        <div className="p-3 rounded-lg flex-shrink-0" style={{ 
+                          backgroundColor: ds.status.completed.bg,
+                          color: ds.status.completed.text,
+                          borderColor: ds.status.completed.border
+                        }}>
                           <CheckCircle size={24} />
                         </div>
                         <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-dark-text mb-2">
+                          <h3 className="text-lg font-semibold mb-2" style={{ color: ds.text.primary }}>
                             アクション不要：構成案確認中
                           </h3>
-                          <p className="text-dark-text-secondary">
+                          <p style={{ color: ds.text.secondary }}>
                             構成案の確認を行っています。フィードバックをお待ちください。
                           </p>
                         </div>
@@ -968,14 +1033,18 @@ export default function InfluencerDashboard() {
                   
                   return (
                     <div className="flex items-start space-x-4">
-                      <div className="p-3 rounded-lg flex-shrink-0 bg-gray-500/20 text-gray-400 border-gray-500/30">
+                      <div className="p-3 rounded-lg flex-shrink-0" style={{ 
+                        backgroundColor: ds.status.completed.bg,
+                        color: ds.status.completed.text,
+                        borderColor: ds.status.completed.border
+                      }}>
                         <CheckCircle size={24} />
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-dark-text mb-2">
+                        <h3 className="text-lg font-semibold mb-2" style={{ color: ds.text.primary }}>
                           アクション不要
                         </h3>
-                        <p className="text-dark-text-secondary">
+                        <p style={{ color: ds.text.secondary }}>
                           現在、アクションは必要ありません。次のステップをお待ちください。
                         </p>
                       </div>
@@ -985,15 +1054,20 @@ export default function InfluencerDashboard() {
                 
                 return (
                   <div className="flex items-start space-x-4">
-                    <div className="p-3 rounded-lg flex-shrink-0 bg-blue-500/20 text-blue-400 border-blue-500/30">
+                    <div className="p-3 rounded-lg flex-shrink-0" style={{ 
+                      backgroundColor: ds.button.primary.bg + '20',
+                      color: ds.button.primary.bg,
+                      borderColor: ds.button.primary.bg + '30'
+                    }}>
                       <action.icon size={24} />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-dark-text mb-2">
+                      <h3 className="text-lg font-semibold mb-2" style={{ color: ds.text.primary }}>
                         {action.title}
                       </h3>
                       <p 
-                        className="text-dark-text-secondary mb-4"
+                        className="mb-4"
+                        style={{ color: ds.text.secondary }}
                         dangerouslySetInnerHTML={{ __html: action.description }}
                       />
                       
@@ -1001,15 +1075,20 @@ export default function InfluencerDashboard() {
                       {action.inputType === 'meeting' && (
                         <div className="space-y-4">
                           <div className="flex items-center space-x-3">
-                            <span className="text-sm text-dark-text-secondary">ステータス:</span>
+                            <span className="text-sm" style={{ color: ds.text.secondary }}>ステータス:</span>
                             <select
                               value={primaryCampaign.meetingStatus || 'not_scheduled'}
                               onChange={(e) => handleMeetingStatusChange(primaryCampaign.id, e.target.value as 'not_scheduled' | 'scheduled' | 'completed')}
-                              className="px-3 py-1.5 bg-dark-bg border border-dark-border rounded-lg text-sm text-dark-text focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className="px-3 py-1.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              style={{ 
+                                backgroundColor: ds.form.input.bg,
+                                borderColor: ds.form.input.border,
+                                color: ds.text.primary
+                              }}
                             >
-                              <option value="not_scheduled" className="bg-dark-bg text-dark-text">予約未完了</option>
-                              <option value="scheduled" className="bg-dark-bg text-dark-text">予約済み</option>
-                              <option value="completed" className="bg-dark-bg text-dark-text">打ち合わせ完了</option>
+                                                              <option value="not_scheduled" style={{ backgroundColor: ds.form.input.bg, color: ds.text.primary }}>予約未完了</option>
+                                <option value="scheduled" style={{ backgroundColor: ds.form.input.bg, color: ds.text.primary }}>予約済み</option>
+                                <option value="completed" style={{ backgroundColor: ds.form.input.bg, color: ds.text.primary }}>打ち合わせ完了</option>
                             </select>
                           </div>
                         </div>
@@ -1017,11 +1096,15 @@ export default function InfluencerDashboard() {
 
                       {action.inputType === 'checkbox' && (
                         <div className="flex items-center justify-end">
-                          <label className="flex items-center space-x-3 text-sm text-dark-text-secondary cursor-pointer">
+                          <label className="flex items-center space-x-3 text-sm cursor-pointer" style={{ color: ds.text.secondary }}>
                             <span>完了</span>
                             <input
                               type="checkbox"
-                              className="w-6 h-6 text-blue-500 bg-dark-bg border-dark-border rounded focus:ring-blue-500 focus:ring-2"
+                                                              className="w-6 h-6 text-blue-500 rounded focus:ring-blue-500 focus:ring-2"
+                                style={{ 
+                                  backgroundColor: ds.form.input.bg,
+                                  borderColor: ds.form.input.border
+                                }}
                             />
                           </label>
                         </div>
@@ -1031,21 +1114,29 @@ export default function InfluencerDashboard() {
                         <div className="space-y-4">
                           {action.title === 'コンテンツのスケジュール' && (
                             <div className="space-y-3">
-                              <label className="flex items-center space-x-3 text-sm text-dark-text cursor-pointer">
+                              <label className="flex items-center space-x-3 text-sm cursor-pointer" style={{ color: ds.text.primary }}>
                                 <input
                                   type="checkbox"
                                   checked={schedulingCheckboxes[primaryCampaign.id]?.summary || false}
                                   onChange={(e) => handleSchedulingCheckbox(primaryCampaign.id, 'summary', e.target.checked)}
-                                  className="w-5 h-5 text-blue-500 bg-dark-bg border-dark-border rounded focus:ring-blue-500 focus:ring-2"
+                                  className="w-5 h-5 text-blue-500 rounded focus:ring-blue-500 focus:ring-2"
+                                  style={{ 
+                                    backgroundColor: ds.form.input.bg,
+                                    borderColor: ds.form.input.border
+                                  }}
                                 />
                                 <span>指定の内容を概要欄に追加済み</span>
                               </label>
-                              <label className="flex items-center space-x-3 text-sm text-dark-text cursor-pointer">
+                              <label className="flex items-center space-x-3 text-sm cursor-pointer" style={{ color: ds.text.primary }}>
                                 <input
                                   type="checkbox"
                                   checked={schedulingCheckboxes[primaryCampaign.id]?.comment || false}
                                   onChange={(e) => handleSchedulingCheckbox(primaryCampaign.id, 'comment', e.target.checked)}
-                                  className="w-5 h-5 text-blue-500 bg-dark-bg border-dark-border rounded focus:ring-blue-500 focus:ring-2"
+                                  className="w-5 h-5 text-blue-500 rounded focus:ring-blue-500 focus:ring-2"
+                                  style={{ 
+                                    backgroundColor: ds.form.input.bg,
+                                    borderColor: ds.form.input.border
+                                  }}
                                 />
                                 <span>指定の内容を固定コメントに追加済み</span>
                               </label>
@@ -1057,11 +1148,22 @@ export default function InfluencerDashboard() {
                               placeholder="URLを入力してください"
                               value={urlInputs[primaryCampaign.id] || ''}
                               onChange={(e) => setUrlInputs(prev => ({ ...prev, [primaryCampaign.id]: e.target.value }))}
-                              className="flex-1 px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text placeholder-dark-text-secondary focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className="flex-1 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              style={{ 
+                                backgroundColor: ds.form.input.bg,
+                                borderColor: ds.form.input.border,
+                                color: ds.text.primary
+                              }}
                             />
                             <button 
                               onClick={() => handleUrlSubmission(primaryCampaign.id, primaryCampaign.status)}
-                              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
+                              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                              style={{ 
+                                backgroundColor: ds.button.primary.bg,
+                                color: ds.button.primary.text
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.hover}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.bg}
                             >
                               提出
                             </button>
@@ -1072,21 +1174,29 @@ export default function InfluencerDashboard() {
                       {action.inputType === 'payment' && (
                         <div className="space-y-4">
                           <div className="space-y-3">
-                            <label className="flex items-center space-x-3 text-sm text-dark-text cursor-pointer">
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer" style={{ color: ds.text.primary }}>
                               <input
                                 type="checkbox"
                                 checked={paymentCheckboxes[primaryCampaign.id]?.invoice || false}
                                 onChange={(e) => handlePaymentCheckbox(primaryCampaign.id, 'invoice', e.target.checked)}
-                                className="w-5 h-5 text-blue-500 bg-dark-bg border-dark-border rounded focus:ring-blue-500 focus:ring-2"
+                                className="w-5 h-5 text-blue-500 rounded focus:ring-blue-500 focus:ring-2"
+                                style={{ 
+                                  backgroundColor: ds.form.input.bg,
+                                  borderColor: ds.form.input.border
+                                }}
                               />
                               <span>こちらのテンプレートで請求書を作成</span>
                             </label>
-                            <label className="flex items-center space-x-3 text-sm text-dark-text cursor-pointer">
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer" style={{ color: ds.text.primary }}>
                               <input
                                 type="checkbox"
                                 checked={paymentCheckboxes[primaryCampaign.id]?.form || false}
                                 onChange={(e) => handlePaymentCheckbox(primaryCampaign.id, 'form', e.target.checked)}
-                                className="w-5 h-5 text-blue-500 bg-dark-bg border-dark-border rounded focus:ring-blue-500 focus:ring-2"
+                                className="w-5 h-5 text-blue-500 rounded focus:ring-blue-500 focus:ring-2"
+                                style={{ 
+                                  backgroundColor: ds.form.input.bg,
+                                  borderColor: ds.form.input.border
+                                }}
                               />
                               <span>こちらのフォームを提出</span>
                             </label>
@@ -1095,7 +1205,13 @@ export default function InfluencerDashboard() {
                             <button
                               onClick={() => handlePaymentSubmission(primaryCampaign.id)}
                               disabled={isProcessingPayment}
-                              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                              style={{ 
+                                backgroundColor: ds.button.primary.bg,
+                                color: ds.button.primary.text
+                              }}
+                              onMouseEnter={(e) => !isProcessingPayment && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
+                              onMouseLeave={(e) => !isProcessingPayment && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
                             >
                               {isProcessingPayment ? '処理中...' : '送金手続き開始'}
                             </button>
@@ -1103,23 +1219,42 @@ export default function InfluencerDashboard() {
                         </div>
                       )}
 
-                      {action.inputType === 'none' && (
-                        <div className="text-sm text-dark-text-secondary">
-                          {/* No input needed for completed/waiting states */}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        )}
+                                             {action.inputType === 'none' && (
+                         <div className="text-sm" style={{ color: ds.text.secondary }}>
+                           {/* No input needed for completed/waiting states */}
+                         </div>
+                       )}
+                     </div>
+                   </div>
+                 );
+               })()}
+             </div>
+             
+             {/* Survey form outside the action card */}
+             {(() => {
+               const action = getActionNeeded(primaryCampaign);
+               if (action && action.inputType === 'survey') {
+                 return (
+                   <div className="mt-4">
+                     <OnboardingSurveyInline
+                       campaignId={primaryCampaign.id}
+                       onComplete={() => {
+                         // Refresh the data after survey completion
+                         refreshData();
+                       }}
+                     />
+                   </div>
+                 );
+               }
+               return null;
+             })()}
+           </div>
+         )}
 
         {/* Status Section */}
         {primaryCampaign && (
           <div className="mb-6 sm:mb-8">
-            <h2 className="text-xl sm:text-2xl font-semibold text-dark-text mb-4 sm:mb-6">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
               ステータス
             </h2>
             <StatusSection campaign={primaryCampaign} />
@@ -1128,13 +1263,18 @@ export default function InfluencerDashboard() {
 
         {/* Active Campaigns */}
         <div className="mb-6 sm:mb-8">
-          <h2 className="text-xl sm:text-2xl font-semibold text-dark-text mb-4 sm:mb-6">
-            プロモーション詳細
-          </h2>
+                      <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
+              プロモーション詳細
+            </h2>
           {activeCampaigns.length > 0 ? (
             <div className="space-y-4">
               {activeCampaigns.map(campaign => (
-                <div key={campaign.id} className="card">
+                <div key={campaign.id} className="rounded-xl p-4 sm:p-6" style={{ 
+                  backgroundColor: ds.bg.card,
+                  borderColor: ds.border.primary,
+                  borderWidth: '1px',
+                  borderStyle: 'solid'
+                }}>
                   {/* Always expanded for influencer view */}
                   <div className="mobile-flex mb-4">
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
@@ -1149,10 +1289,10 @@ export default function InfluencerDashboard() {
                       </div>
                       
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-dark-text font-medium mobile-text truncate">
+                        <h3 className="font-medium mobile-text truncate" style={{ color: ds.text.primary }}>
                           {campaign.title}
                         </h3>
-                        <p className="text-dark-text-secondary text-xs sm:text-sm">
+                        <p className="text-xs sm:text-sm" style={{ color: ds.text.secondary }}>
                           {campaign.platform === 'youtube_long' && 'YouTube長編'}
                           {campaign.platform === 'youtube_short' && 'YouTubeショート'}
                           {campaign.platform === 'instagram_reel' && 'Instagramリール'}
@@ -1164,23 +1304,15 @@ export default function InfluencerDashboard() {
                       </div>
                     </div>
                   
-                    <div className={`status-badge flex-shrink-0 ${
-                      campaign.status === 'meeting_scheduling' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                      campaign.status === 'meeting_scheduled' ? 'bg-blue-600/20 text-blue-300 border-blue-600/30' :
-                      campaign.status === 'contract_pending' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                      campaign.status === 'plan_creating' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
-                      campaign.status === 'plan_submitted' ? 'bg-orange-600/20 text-orange-300 border-orange-600/30' :
-                      campaign.status === 'plan_reviewing' ? 'bg-orange-600/20 text-orange-300 border-orange-600/30' :
-                      campaign.status === 'plan_revising' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
-                      campaign.status === 'draft_creating' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' :
-                      campaign.status === 'draft_submitted' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' :
-                      campaign.status === 'draft_reviewing' ? 'bg-indigo-600/20 text-indigo-300 border-indigo-600/30' :
-                      campaign.status === 'draft_revising' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' :
-                      campaign.status === 'scheduling' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
-                      campaign.status === 'scheduled' ? 'bg-green-600/20 text-green-300 border-green-600/30' :
-                      campaign.status === 'payment_processing' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' :
-                      'bg-gray-500/20 text-gray-400 border-gray-500/30'
-                    }`}>
+                    <div 
+                      className="status-badge flex-shrink-0"
+                      style={{
+                        backgroundColor: ds.status[campaign.status as keyof typeof ds.status]?.bg || ds.status.not_started.bg,
+                        color: ds.status[campaign.status as keyof typeof ds.status]?.text || ds.status.not_started.text,
+                        borderColor: ds.status[campaign.status as keyof typeof ds.status]?.border || ds.status.not_started.border
+                      }}
+                    >
+                    {campaign.status === 'not_started' && '未開始'}
                     {campaign.status === 'meeting_scheduling' && '打ち合わせ予約中'}
                     {campaign.status === 'meeting_scheduled' && '打ち合わせ予定'}
                     {campaign.status === 'contract_pending' && '契約書待ち'}
@@ -1205,13 +1337,14 @@ export default function InfluencerDashboard() {
                   {/* Price and Next Step */}
                   <div className="mobile-grid gap-4">
                     <div className="flex items-center space-x-2 text-xs sm:text-sm">
-                      <span className="text-dark-text font-medium">
+                      <span className="font-medium" style={{ color: ds.text.primary }}>
                         ¥{(campaign.contractedPrice || 0).toLocaleString()}
                       </span>
                     </div>
                     <div className="text-xs sm:text-sm">
-                      <p className="font-medium text-dark-text mb-1">次のステップ：</p>
-                      <p className="text-dark-text-secondary">
+                      <p className="font-medium mb-1" style={{ color: ds.text.primary }}>次のステップ：</p>
+                      <p style={{ color: ds.text.secondary }}>
+                        {campaign.status === 'not_started' && '基本情報の入力を完了してください'}
                         {campaign.status === 'meeting_scheduling' && '打ち合わせの予約をお待ちください'}
                         {campaign.status === 'meeting_scheduled' && '打ち合わせにご参加ください'}
                         {campaign.status === 'contract_pending' && '契約書をご確認・サインしてください'}

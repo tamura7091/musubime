@@ -189,7 +189,28 @@ class DataService {
               updateType = 'status_change';
               break;
             default:
-              updateMessage = `${campaign.influencerName}さんのステータスが「${campaign.status}」に更新されました`;
+              // Map status to natural Japanese for the default case
+              const statusMap: { [key: string]: string } = {
+                'not_started': '未開始',
+                'meeting_scheduling': '打ち合わせ予約中',
+                'meeting_scheduled': '打ち合わせ予定',
+                'contract_pending': '契約書待ち',
+                'plan_creating': '構成案作成中',
+                'plan_submitted': '構成案提出済み',
+                'plan_reviewing': '構成案確認中',
+                'plan_revising': '構成案修正中',
+                'draft_creating': '初稿作成中',
+                'draft_submitted': '初稿提出済み',
+                'draft_reviewing': '初稿確認中',
+                'draft_revising': '初稿修正中',
+                'scheduling': '投稿準備中',
+                'scheduled': '投稿済み',
+                'payment_processing': '送金手続き中',
+                'completed': '完了',
+                'cancelled': 'キャンセル'
+              };
+              const japaneseStatus = statusMap[campaign.status] || campaign.status;
+              updateMessage = `${campaign.influencerName}さんのステータスが「${japaneseStatus}」に更新されました`;
               updateType = 'status_change';
           }
           

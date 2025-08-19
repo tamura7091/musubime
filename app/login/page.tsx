@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { useDesignSystem } from '@/hooks/useDesignSystem';
+import speakLogoLight from '@/app/assets/speak_logo_lightmode.svg';
+import speakLogoDark from '@/app/assets/speak_logo_darkmode.svg';
 
 export default function LoginPage() {
   const [id, setId] = useState('');
@@ -11,6 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const { login } = useAuth();
   const router = useRouter();
+  const ds = useDesignSystem();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,21 +45,33 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-dark-bg">
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: ds.bg.primary }}>
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-dark-text mb-2">
-            スピーク管理画面
+          <div className="flex justify-center mb-6">
+            <img 
+              src={ds.resolvedTheme === 'light' ? speakLogoLight.src : speakLogoDark.src} 
+              alt="Speak Logo" 
+              className="h-12 w-auto"
+            />
+          </div>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: ds.text.primary }}>
+            ようこそ！
           </h1>
-          <p className="text-dark-text-secondary">
-            キャンペーン管理にログインしてください
+          <p style={{ color: ds.text.secondary }}>
+            スピークのインフルエンサーPR管理画面にログインしてください
           </p>
         </div>
 
-        <div className="card">
+        <div className="rounded-xl p-6" style={{ 
+          backgroundColor: ds.bg.card,
+          borderColor: ds.border.primary,
+          borderWidth: '1px',
+          borderStyle: 'solid'
+        }}>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="id" className="block text-sm font-medium text-dark-text mb-2">
+              <label htmlFor="id" className="block text-sm font-medium mb-2" style={{ color: ds.text.primary }}>
                 キャンペーンID
               </label>
               <input
@@ -63,14 +79,21 @@ export default function LoginPage() {
                 type="text"
                 value={id}
                 onChange={(e) => setId(e.target.value)}
-                className="input w-full"
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                style={{ 
+                  backgroundColor: ds.form.input.bg,
+                  borderColor: ds.form.input.border,
+                  color: ds.text.primary,
+                  borderWidth: '1px',
+                  borderStyle: 'solid'
+                }}
                 placeholder="キャンペーンIDを入力"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-dark-text mb-2">
+              <label htmlFor="password" className="block text-sm font-medium mb-2" style={{ color: ds.text.primary }}>
                 パスワード
               </label>
               <input
@@ -78,14 +101,27 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="input w-full"
+                className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                style={{ 
+                  backgroundColor: ds.form.input.bg,
+                  borderColor: ds.form.input.border,
+                  color: ds.text.primary,
+                  borderWidth: '1px',
+                  borderStyle: 'solid'
+                }}
                 placeholder="パスワードを入力"
                 required
               />
             </div>
 
             {error && (
-              <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+              <div className="text-sm rounded-lg p-3" style={{ 
+                color: '#f87171',
+                backgroundColor: '#ef4444' + '10',
+                borderColor: '#ef4444' + '20',
+                borderWidth: '1px',
+                borderStyle: 'solid'
+              }}>
                 {error}
               </div>
             )}
@@ -93,29 +129,19 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="btn-primary w-full"
+              className="w-full px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
+              style={{ 
+                backgroundColor: ds.button.primary.bg,
+                color: ds.button.primary.text
+              }}
+              onMouseEnter={(e) => !isLoading && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
+              onMouseLeave={(e) => !isLoading && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
             >
               {isLoading ? 'ログイン中...' : 'ログイン'}
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-dark-border">
-            <p className="text-sm text-dark-text-secondary mb-4">デモアカウント:</p>
-            <div className="space-y-2 text-xs text-dark-text-secondary">
-              <div className="flex justify-between">
-                <span>インフルエンサー:</span>
-                <span>actre_vlog_yt / password</span>
-              </div>
-              <div className="flex justify-between">
-                <span>インフルエンサー:</span>
-                <span>eigatube_yt / password</span>
-              </div>
-              <div className="flex justify-between">
-                <span>管理者:</span>
-                <span>admin / admin123</span>
-              </div>
-            </div>
-          </div>
+
         </div>
       </div>
     </div>

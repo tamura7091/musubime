@@ -314,6 +314,7 @@ class GoogleSheetsService {
       'id_campaign', 
       'status_dashboard',
       'name',
+      'platform',
       'date_plan',
       'date_draft', 
       'date_live',
@@ -460,7 +461,7 @@ class GoogleSheetsService {
           id: row['id_campaign'],
           influencerId: row['id_influencer'],
           name: row['name'],
-          platform: row['platform'],
+          platform: this.mapPlatform(row['platform'] || 'yt'),
           status_dashboard: row['status_dashboard'],
           spend_jpy: row['spend_jpy'],
           followers: row['followers'],
@@ -468,6 +469,16 @@ class GoogleSheetsService {
           url_content: row['url_content']
         });
       });
+      
+      // Debug: Show all platform values
+      console.log('📊 All platform values from Google Sheets:');
+      const platformValues = validData.map(row => row['platform']).filter((val): val is string => Boolean(val));
+      const uniquePlatforms = Array.from(new Set(platformValues));
+      console.log('📋 Unique platform values:', uniquePlatforms);
+      console.log('📊 Platform value counts:', platformValues.reduce((acc, val) => {
+        acc[val] = (acc[val] || 0) + 1;
+        return acc;
+      }, {} as any));
     }
     
     return validData.map((row, index) => {
@@ -503,7 +514,13 @@ class GoogleSheetsService {
           console.log(`📊 Campaign ${row['id_campaign']}: status_dashboard="${rawStatus}", mapped to="${mappedStatus}"`);
           return mappedStatus;
         })(),
-        platform: this.mapPlatform(row['platform'] || 'yt'),
+        platform: (() => {
+          const rawPlatform = row['platform'];
+          console.log(`🔍 Campaign ${row['id_campaign']}: platform raw value = "${rawPlatform}" (type: ${typeof rawPlatform})`);
+          const mappedPlatform = this.mapPlatform(rawPlatform || 'yt');
+          console.log(`📊 Campaign ${row['id_campaign']}: platform="${rawPlatform}", mapped to="${mappedPlatform}"`);
+          return mappedPlatform;
+        })(),
         
         // Financial info
         contractedPrice: this.parsePrice(row['spend_jpy'] || '0'),
@@ -586,22 +603,32 @@ class GoogleSheetsService {
 
   // Map platform values from Google Sheets to our enum
   private mapPlatform(platform: string): string {
+    console.log(`🔍 Mapping platform: "${platform}" (type: ${typeof platform})`);
+    
     const platformMap: { [key: string]: string } = {
       'yt': 'youtube_long',
       'youtube': 'youtube_long',
       'youtube_long': 'youtube_long',
+      'sv': 'short_video', // Generic short video (could be TikTok, Instagram Reels, etc.)
       'youtube_short': 'youtube_short',
       'short': 'youtube_short',
       'ig': 'instagram_reel',
       'instagram': 'instagram_reel',
+      'instagram_reel': 'instagram_reel',
+      'tt': 'tiktok',
       'tiktok': 'tiktok',
+      'tw': 'x_twitter',
       'x': 'x_twitter',
       'twitter': 'x_twitter',
+      'x_twitter': 'x_twitter',
+      'pc': 'podcast',
       'podcast': 'podcast',
       'blog': 'blog',
     };
     
-    return platformMap[platform.toLowerCase()] || 'youtube_long';
+    const mappedPlatform = platformMap[platform.toLowerCase()] || 'youtube_long';
+    console.log(`📊 Platform mapping: "${platform}" -> "${mappedPlatform}"`);
+    return mappedPlatform;
   }
 
   // Map status values from Google Sheets to our enum
@@ -910,6 +937,76 @@ class GoogleSheetsService {
     } catch (error: any) {
       console.error('❌ Error updating campaign status:', error?.message || error);
       return { success: false, error: error?.message || 'Unknown error' };
+    }
+  }
+
+  // Update campaign onboarding data
+  async updateCampaignOnboarding(campaignId: string, updateData: any): Promise<boolean> {
+    try {
+      console.log('📝 GoogleSheetsService.updateCampaignOnboarding() called');
+      console.log('🎯 Campaign ID:', campaignId);
+      console.log('📊 Update data:', updateData);
+
+      const rawData = await this.getSheetData();
+      const campaignRowIndex = rawData.findIndex(row => row['id_campaign'] === campaignId);
+
+      if (campaignRowIndex === -1) {
+        console.error('❌ Campaign not found:', campaignId);
+        return false;
+      }
+
+      console.log('📋 Found campaign at row:', campaignRowIndex + 1);
+
+      // Prepare the update data
+      const updates: Array<{ range: string; values: string[][] }> = [];
+      const rowNumber = campaignRowIndex + 2; // +2 because sheets are 1-indexed and we have headers
+
+      // Map the update data to column letters
+      const columnMappings: { [key: string]: string } = {
+        platform: 'F', // platform column
+        contact_email: 'G', // contact_email column
+        spend_jpy: 'N', // spend_jpy column
+        date_live: 'T', // date_live column
+        date_plan: 'R', // date_plan column
+        date_draft: 'S', // date_draft column
+        repurposable: 'Z', // repurposable column (approximate)
+        status_dashboard: 'K', // status_dashboard column (approximate)
+        date_status_updated: 'V' // date_status_updated column (approximate)
+      };
+
+      // Create updates for each field
+      Object.entries(updateData).forEach(([key, value]) => {
+        if (columnMappings[key] && value !== undefined && value !== null) {
+          updates.push({
+            range: `campaigns!${columnMappings[key]}${rowNumber}`,
+            values: [[String(value)]]
+          });
+        }
+      });
+
+      if (updates.length === 0) {
+        console.error('❌ No valid updates to perform');
+        return false;
+      }
+
+      console.log('📊 Updates to perform:', updates);
+
+      // Execute the batch update
+      const batchUpdateRequest = {
+        spreadsheetId: this.spreadsheetId,
+        requestBody: {
+          valueInputOption: 'RAW',
+          data: updates
+        }
+      };
+
+      await this.sheets.spreadsheets.values.batchUpdate(batchUpdateRequest);
+      console.log('✅ Campaign onboarding update completed successfully');
+      return true;
+
+    } catch (error: any) {
+      console.error('❌ Error updating campaign onboarding:', error?.message || error);
+      return false;
     }
   }
 

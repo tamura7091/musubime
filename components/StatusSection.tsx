@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Campaign, getStepFromStatus, getStepOrder, getStepLabel, CampaignStep, CampaignStatus } from '../types';
 import Tooltip from './Tooltip';
 import { Check, Clock, Link as LinkIcon, Calendar, ChevronRight, AlertCircle } from 'lucide-react';
+import { useDesignSystem } from '@/hooks/useDesignSystem';
 
 interface StatusSectionProps {
   campaign: Campaign;
@@ -57,6 +58,7 @@ const campaignSteps: StepInfo[] = [
 ];
 
 export default function StatusSection({ campaign }: StatusSectionProps) {
+  const ds = useDesignSystem();
   const [selectedStep, setSelectedStep] = useState<StepInfo | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [linkInputs, setLinkInputs] = useState<Record<string, string>>({});
@@ -136,37 +138,47 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
 
       {/* Current Step Description - Above Flow */}
       {campaign.status === 'completed' ? (
-        <div className="card bg-green-500/10 border-green-500/20">
+        <div className="rounded-xl p-4 sm:p-6" style={{ 
+          backgroundColor: '#22c55e' + '10',
+          borderColor: '#22c55e' + '20',
+          borderWidth: '1px',
+          borderStyle: 'solid'
+        }}>
           <div className="flex items-start space-x-3">
-            <div className="w-6 h-6 sm:w-8 sm:h-8 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0">
-              <Check size={14} className="text-green-500 sm:w-4 sm:h-4" />
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#22c55e' + '20' }}>
+              <Check size={14} className="sm:w-4 sm:h-4" style={{ color: '#22c55e' }} />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-semibold text-dark-text mb-1 mobile-text">
+              <h4 className="font-semibold mb-1 mobile-text" style={{ color: ds.text.primary }}>
                 完了 - お疲れ様でした！
               </h4>
-              <p className="text-xs sm:text-sm text-dark-text-secondary mb-3">
+              <p className="text-xs sm:text-sm mb-3" style={{ color: ds.text.secondary }}>
                 このキャンペーンは正常に完了しました。ご協力ありがとうございました。
               </p>
             </div>
           </div>
         </div>
       ) : currentStep && (
-        <div className="card bg-dark-accent/10 border-dark-accent/20">
+        <div className="rounded-xl p-4 sm:p-6" style={{ 
+          backgroundColor: ds.button.primary.bg + '10',
+          borderColor: ds.button.primary.bg + '20',
+          borderWidth: '1px',
+          borderStyle: 'solid'
+        }}>
           <div className="flex items-start space-x-3">
-            <div className="w-6 h-6 sm:w-8 sm:h-8 bg-dark-accent/20 rounded-full flex items-center justify-center flex-shrink-0">
-              <Clock size={14} className="text-dark-accent sm:w-4 sm:h-4" />
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: ds.button.primary.bg + '20' }}>
+              <Clock size={14} className="sm:w-4 sm:h-4" style={{ color: ds.button.primary.bg }} />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-semibold text-dark-text mb-1 mobile-text">
+              <h4 className="font-semibold mb-1 mobile-text" style={{ color: ds.text.primary }}>
                 {currentStep.title} - 進行中
               </h4>
-              <p className="text-xs sm:text-sm text-dark-text-secondary mb-3">
+              <p className="text-xs sm:text-sm mb-3" style={{ color: ds.text.secondary }}>
                 {currentStep.description}
               </p>
               
               {currentStep.dateField && campaign.schedules[currentStep.dateField] && (
-                <div className="flex items-center space-x-2 text-xs sm:text-sm text-dark-text-secondary mb-3">
+                <div className="flex items-center space-x-2 text-xs sm:text-sm mb-3" style={{ color: ds.text.secondary }}>
                   <Calendar size={14} className="flex-shrink-0" />
                   <span>期限: {campaign.schedules[currentStep.dateField]}</span>
                 </div>
@@ -177,8 +189,13 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
       )}
 
       {/* Campaign Flow */}
-      <div className="card">
-        <h2 className="text-lg sm:text-xl font-semibold text-dark-text mb-4 sm:mb-6">
+              <div className="rounded-xl p-4 sm:p-6" style={{ 
+          backgroundColor: ds.bg.card,
+          borderColor: ds.border.primary,
+          borderWidth: '1px',
+          borderStyle: 'solid'
+        }}>
+        <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
           プロモーションの流れ
         </h2>
         
@@ -186,10 +203,11 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
         <div className="relative overflow-x-auto">
           <div className="min-w-full">
             {/* Connection line */}
-            <div className="absolute top-2 left-4 right-4 h-0.5 bg-dark-border"></div>
+            <div className="absolute top-2 left-4 right-4 h-0.5" style={{ backgroundColor: ds.border.secondary }}></div>
             <div 
-              className="absolute top-2 left-4 h-0.5 bg-dark-accent transition-all duration-500"
+              className="absolute top-2 left-4 h-0.5 transition-all duration-500"
               style={{ 
+                backgroundColor: ds.button.primary.bg,
                 width: `calc(${campaign.status === 'completed' ? 100 : (() => {
                   const currentStep = getStepFromStatus(campaign.status as CampaignStatus);
                   const currentStepIndex = campaignSteps.findIndex(step => step.id === currentStep);
@@ -240,23 +258,38 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
                       setSelectedStep(step);
                     }}
                     onMouseLeave={() => setSelectedStep(null)}
-                    className={`relative w-4 h-4 md:w-6 md:h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 hover:scale-110 z-10 ${
-                        status === 'completed' 
-                          ? 'bg-dark-accent border-dark-accent shadow-lg shadow-dark-accent/25' 
-                          : status === 'current'
-                          ? isCurrentStepDelayed()
-                            ? 'bg-red-500 border-red-500 shadow-lg shadow-red-500/25 animate-pulse'
-                            : 'bg-dark-surface border-dark-accent shadow-lg shadow-dark-accent/25 animate-pulse'
-                          : 'bg-dark-surface border-dark-border hover:border-dark-accent/50'
-                      }`}
+                    className="relative w-4 h-4 md:w-6 md:h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 hover:scale-110 z-10"
+                    style={{
+                      backgroundColor: status === 'completed' 
+                        ? ds.button.primary.bg
+                        : status === 'current'
+                        ? isCurrentStepDelayed()
+                          ? '#ef4444'
+                          : ds.bg.card
+                        : ds.bg.card,
+                      borderColor: status === 'completed' 
+                        ? ds.button.primary.bg
+                        : status === 'current'
+                        ? isCurrentStepDelayed()
+                          ? '#ef4444'
+                          : ds.button.primary.bg
+                        : ds.border.secondary,
+                      boxShadow: status === 'completed' 
+                        ? `0 10px 15px -3px ${ds.button.primary.bg}40`
+                        : status === 'current'
+                        ? isCurrentStepDelayed()
+                          ? '0 10px 15px -3px #ef444440'
+                          : `0 10px 15px -3px ${ds.button.primary.bg}40`
+                        : 'none'
+                    }}
                     >
                       {status === 'completed' ? (
-                        <Check size={10} className="text-white" />
+                        <Check size={10} style={{ color: ds.button.primary.text }} />
                       ) : status === 'current' ? (
                         isCurrentStepDelayed() ? (
-                          <AlertCircle size={10} className="text-white" />
+                          <AlertCircle size={10} style={{ color: '#ffffff' }} />
                         ) : (
-                          <Clock size={10} className="text-dark-accent" />
+                          <Clock size={10} style={{ color: ds.button.primary.bg }} />
                         )
                       ) : null
                       }
@@ -264,17 +297,17 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
 
                     {/* Step Label */}
                     <div className="mt-2 text-center w-full">
-                      <h3 className={`font-medium text-xs leading-tight break-words ${
-                        status === 'completed' 
-                          ? 'text-dark-text'
-                          : 'text-dark-text-secondary'
-                      }`}>
+                      <h3 className="font-medium text-xs leading-tight break-words" style={{
+                        color: status === 'completed' 
+                          ? ds.text.primary
+                          : ds.text.secondary
+                      }}>
                         {step.title}
                       </h3>
                       
                       {/* Date display for completed and current steps */}
                       {step.dateField && campaign.schedules[step.dateField] && (
-                        <div className="text-xs text-dark-text-secondary mt-1 hidden md:block">
+                        <div className="text-xs mt-1 hidden md:block" style={{ color: ds.text.secondary }}>
                           {formatDate(campaign.schedules[step.dateField])}
                         </div>
                       )}

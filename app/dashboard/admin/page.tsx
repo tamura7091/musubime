@@ -4,10 +4,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Users, TrendingUp, Clock, AlertCircle, Search, Filter, User, Tag, ChevronUp, ChevronDown } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { Campaign, Update } from '@/types';
+import { useDesignSystem } from '@/hooks/useDesignSystem';
 
 export default function AdminDashboard() {
   console.log('🎯 AdminDashboard component rendering');
   const { user } = useAuth();
+  const ds = useDesignSystem();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [platformFilter, setPlatformFilter] = useState<string>('all');
@@ -130,10 +132,10 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-dark-bg flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: ds.bg.primary }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-dark-accent mx-auto mb-4"></div>
-          <p className="text-dark-text-secondary">キャンペーンデータを読み込み中...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: ds.border.primary }}></div>
+          <p style={{ color: ds.text.secondary }}>キャンペーンデータを読み込み中...</p>
         </div>
       </div>
     );
@@ -219,6 +221,52 @@ export default function AdminDashboard() {
     return formatDate(date);
   };
 
+  // Map platform codes to Japanese names
+  const mapPlatformToJapanese = (platform: string): string => {
+    const platformMap: { [key: string]: string } = {
+      'youtube_long': 'YouTube長編',
+      'youtube_short': 'YouTubeショート',
+      'short_video': 'ショート動画', // Generic short video
+      'instagram_reel': 'Instagramリール',
+      'tiktok': 'TikTok',
+      'x_twitter': 'X (Twitter)',
+      'podcast': 'ポッドキャスト',
+      'blog': 'ブログ',
+      // Also handle the raw codes from Google Sheets
+      'yt': 'YouTube長編',
+      'sv': 'ショート動画',
+      'ig': 'Instagramリール',
+      'tt': 'TikTok',
+      'tw': 'X (Twitter)',
+      'pc': 'ポッドキャスト'
+    };
+    return platformMap[platform] || platform;
+  };
+
+  // Map status codes to Japanese names
+  const mapStatusToJapanese = (status: string): string => {
+    const statusMap: { [key: string]: string } = {
+      'not_started': '未開始',
+      'meeting_scheduling': '打ち合わせ予約中',
+      'meeting_scheduled': '打ち合わせ予定',
+      'contract_pending': '契約書待ち',
+      'plan_creating': '構成案作成中',
+      'plan_submitted': '構成案提出済み',
+      'plan_reviewing': '構成案確認中',
+      'plan_revising': '構成案修正中',
+      'draft_creating': '初稿作成中',
+      'draft_submitted': '初稿提出済み',
+      'draft_reviewing': '初稿確認中',
+      'draft_revising': '初稿修正中',
+      'scheduling': '投稿準備中',
+      'scheduled': '投稿済み',
+      'payment_processing': '送金手続き中',
+      'completed': '完了',
+      'cancelled': 'キャンセル'
+    };
+    return statusMap[status] || status;
+  };
+
   // Get unique statuses and platforms for filters (filter out empty values)
   const uniqueStatuses = Array.from(
     new Set(
@@ -236,71 +284,91 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-dark-bg">
+    <div className="min-h-screen" style={{ backgroundColor: ds.bg.primary }}>
       <div className="max-w-7xl mx-auto mobile-padding">
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-dark-text mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: ds.text.primary }}>
             管理者ダッシュボード
           </h1>
-          <p className="text-dark-text-secondary mobile-text">
+          <p className="mobile-text" style={{ color: ds.text.secondary }}>
             全インフルエンサーキャンペーンの概要と最新の活動状況
           </p>
         </div>
 
         {/* Stats Overview */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-          <div className="card">
+          <div className="rounded-xl p-4 sm:p-6" style={{ 
+            backgroundColor: ds.bg.card,
+            borderColor: ds.border.primary,
+            borderWidth: '1px',
+            borderStyle: 'solid'
+          }}>
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-dark-accent/20 rounded-lg">
-                <TrendingUp className="text-dark-accent" size={24} />
+              <div className="p-2 rounded-lg" style={{ backgroundColor: ds.button.primary.bg + '20' }}>
+                <TrendingUp size={24} style={{ color: ds.button.primary.bg }} />
               </div>
               <div>
-                <p className="text-2xl font-bold text-dark-text">
+                <p className="text-2xl font-bold" style={{ color: ds.text.primary }}>
                   ¥{totalValue.toLocaleString()}
                 </p>
-                <p className="text-dark-text-secondary text-sm">総契約額</p>
+                <p className="text-sm" style={{ color: ds.text.secondary }}>総契約額</p>
               </div>
             </div>
           </div>
 
-          <div className="card">
+          <div className="rounded-xl p-4 sm:p-6" style={{ 
+            backgroundColor: ds.bg.card,
+            borderColor: ds.border.primary,
+            borderWidth: '1px',
+            borderStyle: 'solid'
+          }}>
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-500/20 rounded-lg">
-                <Users className="text-blue-400" size={24} />
+              <div className="p-2 rounded-lg" style={{ backgroundColor: '#3b82f6' + '20' }}>
+                <Users size={24} style={{ color: '#3b82f6' }} />
               </div>
               <div>
-                <p className="text-2xl font-bold text-dark-text">
+                <p className="text-2xl font-bold" style={{ color: ds.text.primary }}>
                   {uniqueInfluencers.length}
                 </p>
-                <p className="text-dark-text-secondary text-sm">id_influencer</p>
+                <p className="text-sm" style={{ color: ds.text.secondary }}>id_influencer</p>
               </div>
             </div>
           </div>
 
-          <div className="card">
+          <div className="rounded-xl p-4 sm:p-6" style={{ 
+            backgroundColor: ds.bg.card,
+            borderColor: ds.border.primary,
+            borderWidth: '1px',
+            borderStyle: 'solid'
+          }}>
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-orange-500/20 rounded-lg">
-                <Clock className="text-orange-400" size={24} />
+              <div className="p-2 rounded-lg" style={{ backgroundColor: '#f97316' + '20' }}>
+                <Clock size={24} style={{ color: '#f97316' }} />
               </div>
               <div>
-                <p className="text-2xl font-bold text-dark-text">
+                <p className="text-2xl font-bold" style={{ color: ds.text.primary }}>
                   {activeCampaigns.length}
                 </p>
-                <p className="text-dark-text-secondary text-sm">進行中</p>
+                <p className="text-sm" style={{ color: ds.text.secondary }}>進行中</p>
               </div>
             </div>
           </div>
 
-          <div className="card">
+          <div className="rounded-xl p-4 sm:p-6" style={{ 
+            backgroundColor: ds.bg.card,
+            borderColor: ds.border.primary,
+            borderWidth: '1px',
+            borderStyle: 'solid'
+          }}>
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-red-500/20 rounded-lg">
-                <AlertCircle className="text-red-400" size={24} />
+              <div className="p-2 rounded-lg" style={{ backgroundColor: '#ef4444' + '20' }}>
+                <AlertCircle size={24} style={{ color: '#ef4444' }} />
               </div>
               <div>
-                <p className="text-2xl font-bold text-dark-text">
+                <p className="text-2xl font-bold" style={{ color: ds.text.primary }}>
                   {pendingApprovals}
                 </p>
-                <p className="text-dark-text-secondary text-sm">要確認</p>
+                <p className="text-sm" style={{ color: ds.text.secondary }}>要確認</p>
               </div>
             </div>
           </div>
@@ -309,19 +377,24 @@ export default function AdminDashboard() {
         {/* Main Content */}
         <div className="w-full">
             {/* Latest Updates */}
-            <div className="card mb-6">
-              <h3 className="text-lg font-semibold text-dark-text mb-4">
+            <div className="rounded-xl p-4 sm:p-6 mb-6" style={{ 
+              backgroundColor: ds.bg.card,
+              borderColor: ds.border.primary,
+              borderWidth: '1px',
+              borderStyle: 'solid'
+            }}>
+              <h3 className="text-lg font-semibold mb-4" style={{ color: ds.text.primary }}>
                 アップデート
               </h3>
               <div className="space-y-4">
                 {recentUpdates.map((update: Update) => (
                   <div key={update.id} className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-dark-accent rounded-full mt-2 flex-shrink-0"></div>
+                    <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: ds.text.accent }}></div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-dark-text">
+                      <p className="text-sm" style={{ color: ds.text.primary }}>
                         {update.message}
                       </p>
-                      <p className="text-xs text-dark-text-secondary mt-1">
+                      <p className="text-xs mt-1" style={{ color: ds.text.secondary }}>
                         {formatTimeAgo(update.timestamp)}
                       </p>
                     </div>
@@ -331,8 +404,13 @@ export default function AdminDashboard() {
             </div>
 
             {/* Campaigns Table */}
-            <div className="card">
-              <h2 className="text-xl font-semibold text-dark-text mb-4">
+            <div className="rounded-xl p-4 sm:p-6" style={{ 
+              backgroundColor: ds.bg.card,
+              borderColor: ds.border.primary,
+              borderWidth: '1px',
+              borderStyle: 'solid'
+            }}>
+              <h2 className="text-xl font-semibold mb-4" style={{ color: ds.text.primary }}>
                 キャンペーン一覧 ({filteredCampaigns.length})
               </h2>
               
@@ -342,13 +420,20 @@ export default function AdminDashboard() {
                   {/* Search */}
                   <div className="flex-1">
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-dark-text-secondary" size={16} />
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2" size={16} style={{ color: ds.text.secondary }} />
                       <input
                         type="text"
                         placeholder="インフルエンサー名またはキャンペーン名で検索..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="input pl-10 w-full"
+                        className="pl-10 w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                        style={{ 
+                          backgroundColor: ds.form.input.bg,
+                          borderColor: ds.form.input.border,
+                          color: ds.text.primary,
+                          borderWidth: '1px',
+                          borderStyle: 'solid'
+                        }}
                       />
                     </div>
                   </div>
@@ -357,16 +442,23 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Status Filter */}
                     <div className="flex items-center space-x-2">
-                      <Filter size={16} className="text-dark-text-secondary flex-shrink-0" />
+                      <Filter size={16} className="flex-shrink-0" style={{ color: ds.text.secondary }} />
                       <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="input w-full"
+                        className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                        style={{ 
+                          backgroundColor: ds.form.input.bg,
+                          borderColor: ds.form.input.border,
+                          color: ds.text.primary,
+                          borderWidth: '1px',
+                          borderStyle: 'solid'
+                        }}
                       >
                         <option value="all">全てのステータス</option>
                         {uniqueStatuses.map(status => (
                           <option key={status} value={status}>
-                            {status}
+                            {mapStatusToJapanese(status)}
                           </option>
                         ))}
                       </select>
@@ -374,16 +466,23 @@ export default function AdminDashboard() {
                     
                     {/* Platform Filter */}
                     <div className="flex items-center space-x-2">
-                      <Tag size={16} className="text-dark-text-secondary flex-shrink-0" />
+                      <Tag size={16} className="flex-shrink-0" style={{ color: ds.text.secondary }} />
                       <select
                         value={platformFilter}
                         onChange={(e) => setPlatformFilter(e.target.value)}
-                        className="input w-full"
+                        className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                        style={{ 
+                          backgroundColor: ds.form.input.bg,
+                          borderColor: ds.form.input.border,
+                          color: ds.text.primary,
+                          borderWidth: '1px',
+                          borderStyle: 'solid'
+                        }}
                       >
                         <option value="all">全てのプラットフォーム</option>
                         {uniquePlatforms.map(platform => (
                           <option key={platform} value={platform}>
-                            {platform}
+                            {mapPlatformToJapanese(platform)}
                           </option>
                         ))}
                       </select>
@@ -392,7 +491,11 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
-              <div className="border border-dark-border rounded-lg overflow-hidden isolate">
+              <div className="rounded-lg overflow-hidden isolate" style={{ 
+                borderColor: ds.border.primary,
+                borderWidth: '1px',
+                borderStyle: 'solid'
+              }}>
                 <div 
                   className="max-h-[600px] overflow-y-auto scroll-smooth"
                   style={{ 
@@ -415,20 +518,31 @@ export default function AdminDashboard() {
                 >
                   <div className="overflow-x-auto">
                     <div className="min-w-full inline-block align-middle">
-                      <table className="min-w-full divide-y divide-dark-border">
-                        <thead className="sticky top-0 bg-dark-surface/30 z-10">
-                          <tr className="bg-dark-surface/30 border-b border-dark-border h-16">
-                            <th className="text-left py-3 px-4 text-sm font-medium text-dark-text-secondary whitespace-nowrap min-w-[200px] h-16 align-middle">
+                      <table className="min-w-full" style={{ borderColor: ds.border.secondary }}>
+                        <thead className="sticky top-0 z-10" style={{ backgroundColor: ds.bg.surface + '80' }}>
+                          <tr className="h-16" style={{ 
+                            backgroundColor: ds.bg.surface + '80',
+                            borderBottomColor: ds.border.primary,
+                            borderBottomWidth: '1px',
+                            borderBottomStyle: 'solid'
+                          }}>
+                            <th className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[200px] h-16 align-middle" style={{ color: ds.text.secondary }}>
                               インフルエンサー
                             </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-dark-text-secondary whitespace-nowrap min-w-[120px] h-16 align-middle">
+                            <th className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[120px] h-16 align-middle" style={{ color: ds.text.secondary }}>
                               プラットフォーム
                             </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-dark-text-secondary whitespace-nowrap min-w-[140px] h-16 align-middle">
+                            <th className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[140px] h-16 align-middle" style={{ color: ds.text.secondary }}>
                               ステータス
                             </th>
                             <th 
-                              className="text-left py-3 px-4 text-sm font-medium text-dark-text-secondary whitespace-nowrap min-w-[120px] h-16 align-middle cursor-pointer hover:bg-dark-surface/50 transition-colors"
+                              className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[120px] h-16 align-middle cursor-pointer transition-colors"
+                              style={{ 
+                                color: ds.text.secondary,
+                                backgroundColor: 'transparent'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.bg.surface + '50'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                               onClick={() => handleSort('contractedPrice')}
                             >
                               <div className="flex items-center justify-between">
@@ -436,17 +550,23 @@ export default function AdminDashboard() {
                                 <div className="flex flex-col ml-1">
                                   <ChevronUp 
                                     size={12} 
-                                    className={`${sortField === 'contractedPrice' && sortDirection === 'asc' ? 'text-dark-accent' : 'text-dark-text-secondary/30'}`} 
+                                    style={{ color: sortField === 'contractedPrice' && sortDirection === 'asc' ? ds.text.accent : ds.text.secondary + '30' }}
                                   />
                                   <ChevronDown 
                                     size={12} 
-                                    className={`${sortField === 'contractedPrice' && sortDirection === 'desc' ? 'text-dark-accent' : 'text-dark-text-secondary/30'}`} 
+                                    style={{ color: sortField === 'contractedPrice' && sortDirection === 'desc' ? ds.text.accent : ds.text.secondary + '30' }}
                                   />
                                 </div>
                               </div>
                             </th>
                             <th 
-                              className="text-left py-3 px-4 text-sm font-medium text-dark-text-secondary whitespace-nowrap min-w-[140px] h-16 align-middle cursor-pointer hover:bg-dark-surface/50 transition-colors"
+                              className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[140px] h-16 align-middle cursor-pointer transition-colors"
+                              style={{ 
+                                color: ds.text.secondary,
+                                backgroundColor: 'transparent'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.bg.surface + '50'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                               onClick={() => handleSort('planSubmissionDate')}
                             >
                               <div className="flex items-center justify-between">
@@ -454,17 +574,23 @@ export default function AdminDashboard() {
                                 <div className="flex flex-col ml-1">
                                   <ChevronUp 
                                     size={12} 
-                                    className={`${sortField === 'planSubmissionDate' && sortDirection === 'asc' ? 'text-dark-accent' : 'text-dark-text-secondary/30'}`} 
+                                    style={{ color: sortField === 'planSubmissionDate' && sortDirection === 'asc' ? ds.text.accent : ds.text.secondary + '30' }}
                                   />
                                   <ChevronDown 
                                     size={12} 
-                                    className={`${sortField === 'planSubmissionDate' && sortDirection === 'desc' ? 'text-dark-accent' : 'text-dark-text-secondary/30'}`} 
+                                    style={{ color: sortField === 'planSubmissionDate' && sortDirection === 'desc' ? ds.text.accent : ds.text.secondary + '30' }}
                                   />
                                 </div>
                               </div>
                             </th>
                             <th 
-                              className="text-left py-3 px-4 text-sm font-medium text-dark-text-secondary whitespace-nowrap min-w-[140px] h-16 align-middle cursor-pointer hover:bg-dark-surface/50 transition-colors"
+                              className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[140px] h-16 align-middle cursor-pointer transition-colors"
+                              style={{ 
+                                color: ds.text.secondary,
+                                backgroundColor: 'transparent'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.bg.surface + '50'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                               onClick={() => handleSort('draftSubmissionDate')}
                             >
                               <div className="flex items-center justify-between">
@@ -472,17 +598,23 @@ export default function AdminDashboard() {
                                 <div className="flex flex-col ml-1">
                                   <ChevronUp 
                                     size={12} 
-                                    className={`${sortField === 'draftSubmissionDate' && sortDirection === 'asc' ? 'text-dark-accent' : 'text-dark-text-secondary/30'}`} 
+                                    style={{ color: sortField === 'draftSubmissionDate' && sortDirection === 'asc' ? ds.text.accent : ds.text.secondary + '30' }}
                                   />
                                   <ChevronDown 
                                     size={12} 
-                                    className={`${sortField === 'draftSubmissionDate' && sortDirection === 'desc' ? 'text-dark-accent' : 'text-dark-text-secondary/30'}`} 
+                                    style={{ color: sortField === 'draftSubmissionDate' && sortDirection === 'desc' ? ds.text.accent : ds.text.secondary + '30' }}
                                   />
                                 </div>
                               </div>
                             </th>
                             <th 
-                              className="text-left py-3 px-4 text-sm font-medium text-dark-text-secondary whitespace-nowrap min-w-[120px] h-16 align-middle cursor-pointer hover:bg-dark-surface/50 transition-colors"
+                              className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[120px] h-16 align-middle cursor-pointer transition-colors"
+                              style={{ 
+                                color: ds.text.secondary,
+                                backgroundColor: 'transparent'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.bg.surface + '50'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                               onClick={() => handleSort('liveDate')}
                             >
                               <div className="flex items-center justify-between">
@@ -490,20 +622,30 @@ export default function AdminDashboard() {
                                 <div className="flex flex-col ml-1">
                                   <ChevronUp 
                                     size={12} 
-                                    className={`${sortField === 'liveDate' && sortDirection === 'asc' ? 'text-dark-accent' : 'text-dark-text-secondary/30'}`} 
+                                    style={{ color: sortField === 'liveDate' && sortDirection === 'asc' ? ds.text.accent : ds.text.secondary + '30' }}
                                   />
                                   <ChevronDown 
                                     size={12} 
-                                    className={`${sortField === 'liveDate' && sortDirection === 'desc' ? 'text-dark-accent' : 'text-dark-text-secondary/30'}`} 
+                                    style={{ color: sortField === 'liveDate' && sortDirection === 'desc' ? ds.text.accent : ds.text.secondary + '30' }}
                                   />
                                 </div>
                               </div>
                             </th>
                           </tr>
                         </thead>
-                        <tbody className="bg-dark-bg divide-y divide-dark-border/30">
+                        <tbody style={{ backgroundColor: ds.bg.primary }}>
                           {filteredCampaigns.map(campaign => (
-                            <tr key={campaign.id} className="hover:bg-dark-surface/30 transition-colors h-16">
+                            <tr 
+                              key={campaign.id} 
+                              className="transition-colors h-16" 
+                              style={{
+                                borderBottomColor: ds.border.secondary + '30',
+                                borderBottomWidth: '1px',
+                                borderBottomStyle: 'solid'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.bg.surface + '30'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                            >
                               <td className="py-3 px-4 h-16">
                                 <div className="flex items-center space-x-3 h-full">
                                   {campaign.influencerAvatar ? (
@@ -513,15 +655,15 @@ export default function AdminDashboard() {
                                       className="w-8 h-8 rounded-full"
                                     />
                                   ) : (
-                                    <div className="w-8 h-8 bg-dark-accent rounded-full flex items-center justify-center">
-                                      <User size={14} className="text-white" />
+                                    <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: ds.button.primary.bg }}>
+                                      <User size={14} style={{ color: ds.button.primary.text }} />
                                     </div>
                                   )}
                                   <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-medium text-dark-text truncate">
+                                    <p className="text-sm font-medium truncate" style={{ color: ds.text.primary }}>
                                       {campaign.influencerName || campaign.title || `Campaign ${campaign.id}`}
                                     </p>
-                                    <p className="text-xs text-dark-text-secondary truncate">
+                                    <p className="text-xs truncate" style={{ color: ds.text.secondary }}>
                                       {campaign.title}
                                     </p>
                                   </div>
@@ -529,42 +671,42 @@ export default function AdminDashboard() {
                               </td>
                               <td className="py-3 px-4 h-16">
                                 <div className="flex items-center h-full">
-                                  <span className="text-sm text-dark-text-secondary truncate">
-                                    {campaign.platform}
+                                  <span className="text-sm truncate" style={{ color: ds.text.secondary }}>
+                                    {mapPlatformToJapanese(campaign.platform)}
                                   </span>
                                 </div>
                               </td>
                               <td className="py-3 px-4 h-16">
                                 <div className="flex items-center h-full">
-                                  <span className="text-sm text-dark-text-secondary truncate">
-                                    {campaign.status}
+                                  <span className="text-sm truncate" style={{ color: ds.text.secondary }}>
+                                    {mapStatusToJapanese(campaign.status)}
                                   </span>
                                 </div>
                               </td>
                               <td className="py-3 px-4 h-16">
                                 <div className="flex items-center h-full">
-                                  <span className="text-sm text-dark-text truncate">
+                                  <span className="text-sm truncate" style={{ color: ds.text.primary }}>
                                     ¥{(campaign.contractedPrice || 0).toLocaleString()}
                                   </span>
                                 </div>
                               </td>
                               <td className="py-3 px-4 h-16">
                                 <div className="flex items-center h-full">
-                                  <span className="text-sm text-dark-text-secondary truncate">
+                                  <span className="text-sm truncate" style={{ color: ds.text.secondary }}>
                                     {parseAndFormatDate(campaign.schedules?.planSubmissionDate)}
                                   </span>
                                 </div>
                               </td>
                               <td className="py-3 px-4 h-16">
                                 <div className="flex items-center h-full">
-                                  <span className="text-sm text-dark-text-secondary truncate">
+                                  <span className="text-sm truncate" style={{ color: ds.text.secondary }}>
                                     {parseAndFormatDate(campaign.schedules?.draftSubmissionDate)}
                                   </span>
                                 </div>
                               </td>
                               <td className="py-3 px-4 h-16">
                                 <div className="flex items-center h-full">
-                                  <span className="text-sm text-dark-text-secondary truncate">
+                                  <span className="text-sm truncate" style={{ color: ds.text.secondary }}>
                                     {parseAndFormatDate(campaign.schedules?.liveDate)}
                                   </span>
                                 </div>
@@ -578,7 +720,7 @@ export default function AdminDashboard() {
                 </div>
               
               {filteredCampaigns.length === 0 && (
-                <div className="text-center py-8 text-dark-text-secondary">
+                <div className="text-center py-8" style={{ color: ds.text.secondary }}>
                   検索条件に一致するキャンペーンが見つかりません
                 </div>
               )}

@@ -3,6 +3,8 @@ import StatusBadge from './StatusBadge';
 import { getNextStep, getPlatformLabel, getPlatformIcon } from '@/lib/mock-data';
 import { Calendar, ExternalLink, ChevronRight, ChevronDown, User } from 'lucide-react';
 import { useState } from 'react';
+import OnboardingSurvey from './OnboardingSurvey';
+import { useDesignSystem } from '@/hooks/useDesignSystem';
 
 interface CampaignCardProps {
   campaign: Campaign;
@@ -10,7 +12,9 @@ interface CampaignCardProps {
 }
 
 export default function CampaignCard({ campaign, showInfluencer = false }: CampaignCardProps) {
+  const ds = useDesignSystem();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showSurvey, setShowSurvey] = useState(false);
 
   const formatDate = (date: Date | string | undefined | null) => {
     if (!date) return '未定';
@@ -30,7 +34,12 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
   };
 
   return (
-    <div className="card hover:border-dark-accent/50 transition-all duration-200">
+    <div className="rounded-xl p-4 sm:p-6 transition-all duration-200" style={{ 
+      backgroundColor: ds.bg.card,
+      borderColor: isExpanded ? ds.border.primary : ds.border.secondary,
+      borderWidth: '1px',
+      borderStyle: 'solid'
+    }}>
       {/* Header - Always visible */}
       <div 
         className="flex items-center justify-between cursor-pointer"
@@ -38,7 +47,7 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
       >
         <div className="flex items-center space-x-3 flex-1">
           {/* Toggle Icon */}
-          <div className="text-dark-text-secondary">
+          <div style={{ color: ds.text.secondary }}>
             {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           </div>
           
@@ -49,10 +58,10 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
           
           {/* Title and Platform */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-dark-text font-medium truncate">
+            <h3 className="font-medium truncate" style={{ color: ds.text.primary }}>
               {campaign.title}
             </h3>
-            <p className="text-dark-text-secondary text-sm">
+            <p className="text-sm" style={{ color: ds.text.secondary }}>
               {getPlatformLabel(campaign.platform)}
             </p>
           </div>
@@ -67,11 +76,11 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
                   className="w-6 h-6 rounded-full"
                 />
               ) : (
-                <div className="w-6 h-6 rounded-full bg-dark-accent flex items-center justify-center">
-                  <User size={12} className="text-white" />
+                <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: ds.button.primary.bg }}>
+                  <User size={12} style={{ color: ds.button.primary.text }} />
                 </div>
               )}
-              <span className="text-sm text-dark-text-secondary">
+              <span className="text-sm" style={{ color: ds.text.secondary }}>
                 {campaign.influencerName}
               </span>
             </div>
@@ -80,7 +89,7 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
         
         {/* Step Badge */}
         <div className="flex items-center space-x-2">
-          <div className="text-xs text-dark-text-secondary">
+          <div className="text-xs" style={{ color: ds.text.secondary }}>
             {getStepLabel(getStepFromStatus(campaign.status as any))}
           </div>
           <StatusBadge status={campaign.status} />
@@ -89,58 +98,81 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
 
       {/* Expandable Content */}
       {isExpanded && (
-        <div className="mt-4 pt-4 border-t border-dark-border space-y-4">
+        <div className="mt-4 pt-4 border-t space-y-4" style={{ borderColor: ds.border.secondary }}>
           {/* Price and Next Step */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-center space-x-2 text-sm">
-              <span className="text-dark-text font-medium">
+              <span className="font-medium" style={{ color: ds.text.primary }}>
                 {formatCurrency(campaign.contractedPrice, campaign.currency)}
               </span>
             </div>
             <div className="text-sm">
-              <p className="font-medium text-dark-text mb-1">次のステップ：</p>
-              <p className="text-dark-text-secondary">
-                {getNextStep(campaign.status)}
-              </p>
+              <p className="font-medium mb-1" style={{ color: ds.text.primary }}>次のステップ：</p>
+              {campaign.status === 'not_started' ? (
+                <div>
+                  <p className="mb-2" style={{ color: ds.text.secondary }}>
+                    {getNextStep(campaign.status)}
+                  </p>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowSurvey(true);
+                    }}
+                    className="px-4 py-2 rounded-lg transition-colors text-sm"
+                    style={{ 
+                      backgroundColor: ds.button.primary.bg,
+                      color: ds.button.primary.text
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.hover}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.bg}
+                  >
+                    基本情報を入力
+                  </button>
+                </div>
+              ) : (
+                <p style={{ color: ds.text.secondary }}>
+                  {getNextStep(campaign.status)}
+                </p>
+              )}
             </div>
           </div>
 
           {/* Schedule */}
           <div>
-            <p className="font-medium text-dark-text mb-2">スケジュール</p>
+            <p className="font-medium mb-2" style={{ color: ds.text.primary }}>スケジュール</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
               {campaign.schedules.meetingDate && (
-                <div className="flex items-center space-x-2 text-dark-text-secondary">
+                <div className="flex items-center space-x-2" style={{ color: ds.text.secondary }}>
                   <Calendar size={14} />
                   <div>
-                    <p className="font-medium text-dark-text">打ち合わせ</p>
+                    <p className="font-medium" style={{ color: ds.text.primary }}>打ち合わせ</p>
                     <p>{formatDate(campaign.schedules.meetingDate)}</p>
                   </div>
                 </div>
               )}
               {campaign.schedules.planSubmissionDate && (
-                <div className="flex items-center space-x-2 text-dark-text-secondary">
+                <div className="flex items-center space-x-2" style={{ color: ds.text.secondary }}>
                   <Calendar size={14} />
                   <div>
-                    <p className="font-medium text-dark-text">構成案提出</p>
+                    <p className="font-medium" style={{ color: ds.text.primary }}>構成案提出</p>
                     <p>{formatDate(campaign.schedules.planSubmissionDate)}</p>
                   </div>
                 </div>
               )}
               {campaign.schedules.draftSubmissionDate && (
-                <div className="flex items-center space-x-2 text-dark-text-secondary">
+                <div className="flex items-center space-x-2" style={{ color: ds.text.secondary }}>
                   <Calendar size={14} />
                   <div>
-                    <p className="font-medium text-dark-text">初稿提出</p>
+                    <p className="font-medium" style={{ color: ds.text.primary }}>初稿提出</p>
                     <p>{formatDate(campaign.schedules.draftSubmissionDate)}</p>
                   </div>
                 </div>
               )}
               {campaign.schedules.liveDate && (
-                <div className="flex items-center space-x-2 text-dark-text-secondary">
+                <div className="flex items-center space-x-2" style={{ color: ds.text.secondary }}>
                   <Calendar size={14} />
                   <div>
-                    <p className="font-medium text-dark-text">投稿予定</p>
+                    <p className="font-medium" style={{ color: ds.text.primary }}>投稿予定</p>
                     <p>{formatDate(campaign.schedules.liveDate)}</p>
                   </div>
                 </div>
@@ -151,11 +183,11 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
           {/* Requirements */}
           {campaign.requirements.length > 0 && (
             <div>
-              <p className="font-medium text-dark-text mb-2">要件</p>
-              <ul className="space-y-1 text-sm text-dark-text-secondary">
+              <p className="font-medium mb-2" style={{ color: ds.text.primary }}>要件</p>
+              <ul className="space-y-1 text-sm" style={{ color: ds.text.secondary }}>
                 {campaign.requirements.map((req, index) => (
                   <li key={index} className="flex items-start space-x-2">
-                    <span className="text-dark-accent mt-1">•</span>
+                    <span className="mt-1" style={{ color: ds.text.accent }}>•</span>
                     <span>{req}</span>
                   </li>
                 ))}
@@ -166,7 +198,7 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
           {/* Reference Links */}
           {campaign.referenceLinks.length > 0 && (
             <div>
-              <p className="font-medium text-dark-text mb-2">参考リンク</p>
+              <p className="font-medium mb-2" style={{ color: ds.text.primary }}>参考リンク</p>
               <div className="space-y-1">
                 {campaign.referenceLinks.map((link, index) => (
                   <a
@@ -174,7 +206,10 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center space-x-2 text-sm text-dark-accent hover:text-dark-accent-hover transition-colors"
+                    className="flex items-center space-x-2 text-sm transition-colors"
+                    style={{ color: ds.text.accent }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = ds.text.accentHover}
+                    onMouseLeave={(e) => e.currentTarget.style.color = ds.text.accent}
                   >
                     <ExternalLink size={14} />
                     <span>{link.title}</span>
@@ -187,13 +222,29 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
           {/* Notes */}
           {campaign.notes && (
             <div>
-              <p className="font-medium text-dark-text mb-2">メモ</p>
-              <p className="text-sm text-dark-text-secondary bg-dark-bg rounded-lg p-3">
+              <p className="font-medium mb-2" style={{ color: ds.text.primary }}>メモ</p>
+              <p className="text-sm rounded-lg p-3" style={{ 
+                color: ds.text.secondary,
+                backgroundColor: ds.bg.surface
+              }}>
                 {campaign.notes}
               </p>
             </div>
           )}
         </div>
+      )}
+
+      {/* Onboarding Survey Modal */}
+      {showSurvey && (
+        <OnboardingSurvey
+          campaignId={campaign.id}
+          onComplete={() => {
+            setShowSurvey(false);
+            // Refresh the page to show updated data
+            window.location.reload();
+          }}
+          onCancel={() => setShowSurvey(false)}
+        />
       )}
     </div>
   );

@@ -18,6 +18,14 @@ export const mockUsers: User[] = [
     statusDashboard: 'plan_reviewing'
   },
   {
+    id: 'new_influencer_yt',
+    email: 'new_influencer@example.com',
+    name: '佐藤美咲',
+    role: 'influencer',
+    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+    statusDashboard: 'not_started'
+  },
+  {
     id: 'admin',
     email: 'admin@usespeak.com',
     name: 'スピーク運営',
