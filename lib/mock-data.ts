@@ -202,7 +202,7 @@ export const mockUpdates: Update[] = [
   }
 ];
 
-export const getStatusLabel = (status: CampaignStatus): string => {
+export const getStatusLabel = (status: CampaignStatus | string): string => {
   const statusLabels: Record<CampaignStatus, string> = {
     meeting_scheduling: '打ち合わせ予約中',
     meeting_scheduled: '打ち合わせ予約済み',
@@ -220,10 +220,17 @@ export const getStatusLabel = (status: CampaignStatus): string => {
     completed: 'PR完了',
     cancelled: 'PRキャンセル'
   };
-  return statusLabels[status];
+  
+  // Check if the status is a valid CampaignStatus type
+  if (status in statusLabels) {
+    return statusLabels[status as CampaignStatus];
+  }
+  
+  // Return the status string as is for unknown statuses
+  return status;
 };
 
-export const getStatusColor = (status: CampaignStatus): string => {
+export const getStatusColor = (status: CampaignStatus | string): string => {
   const statusColors: Record<CampaignStatus, string> = {
     meeting_scheduling: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
     meeting_scheduled: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
@@ -241,10 +248,17 @@ export const getStatusColor = (status: CampaignStatus): string => {
     completed: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
     cancelled: 'bg-red-500/20 text-red-400 border-red-500/30'
   };
-  return statusColors[status];
+  
+  // Check if the status is a valid CampaignStatus type
+  if (status in statusColors) {
+    return statusColors[status as CampaignStatus];
+  }
+  
+  // Return a default color for unknown statuses
+  return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
 };
 
-export const getNextStep = (status: CampaignStatus): string => {
+export const getNextStep = (status: CampaignStatus | string): string => {
   const nextSteps: Record<CampaignStatus, string> = {
     meeting_scheduling: '打ち合わせの予約をお待ちください',
     meeting_scheduled: '打ち合わせにご参加ください',
@@ -262,10 +276,17 @@ export const getNextStep = (status: CampaignStatus): string => {
     completed: 'プロモーション完了',
     cancelled: 'キャンペーンキャンセル済み'
   };
-  return nextSteps[status];
+  
+  // Check if the status is a valid CampaignStatus type
+  if (status in nextSteps) {
+    return nextSteps[status as CampaignStatus];
+  }
+  
+  // Return a default message for unknown statuses
+  return 'ステータスを確認中です';
 };
 
-export const getPlatformLabel = (platform: Platform): string => {
+export const getPlatformLabel = (platform: Platform | string): string => {
   const platformLabels: Record<Platform, string> = {
     youtube_long: 'YouTube長編',
     youtube_short: 'YouTubeショート',
@@ -275,10 +296,17 @@ export const getPlatformLabel = (platform: Platform): string => {
     podcast: 'ポッドキャスト',
     blog: 'ブログ'
   };
-  return platformLabels[platform];
+  
+  // Check if the platform is a valid Platform type
+  if (platform in platformLabels) {
+    return platformLabels[platform as Platform];
+  }
+  
+  // Return the platform string as is for unknown platforms
+  return platform;
 };
 
-export const getPlatformIcon = (platform: Platform): string => {
+export const getPlatformIcon = (platform: Platform | string): string => {
   const platformIcons: Record<Platform, string> = {
     youtube_long: '🎥',
     youtube_short: '📱',
@@ -288,7 +316,14 @@ export const getPlatformIcon = (platform: Platform): string => {
     podcast: '🎙️',
     blog: '✍️'
   };
-  return platformIcons[platform];
+  
+  // Check if the platform is a valid Platform type
+  if (platform in platformIcons) {
+    return platformIcons[platform as Platform];
+  }
+  
+  // Return a default icon for unknown platforms
+  return '📱';
 };
 
 

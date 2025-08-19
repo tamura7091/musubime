@@ -2,7 +2,7 @@ import { CampaignStatus } from '@/types';
 import { getStatusLabel, getStatusColor } from '@/lib/mock-data';
 
 interface StatusBadgeProps {
-  status: CampaignStatus;
+  status: CampaignStatus | string;
   className?: string;
 }
 

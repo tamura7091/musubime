@@ -54,7 +54,7 @@ class DataService {
           influencerName: (campaign as any).influencerName || campaign.title,
           influencerAvatar: undefined, // Not available in basic sheet
           status: campaign.status as any,
-          platform: campaign.platform as any,
+          platform: campaign.platform,
           contractedPrice: campaign.contractedPrice,
           currency: campaign.currency || 'JPY',
           createdAt: new Date(campaign.createdAt),
@@ -97,7 +97,7 @@ class DataService {
           influencerName: (campaign as any).influencerName || campaign.title,
           influencerAvatar: undefined, // Not available in basic sheet
           status: campaign.status as any,
-          platform: campaign.platform as any,
+          platform: campaign.platform,
           contractedPrice: campaign.contractedPrice,
           currency: campaign.currency || 'JPY',
           createdAt: new Date(campaign.createdAt),

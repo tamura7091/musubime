@@ -12,7 +12,7 @@ interface CampaignCardProps {
 export default function CampaignCard({ campaign, showInfluencer = false }: CampaignCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const formatDate = (date: Date | undefined) => {
+  const formatDate = (date: Date | string | undefined | null) => {
     if (!date) return '未定';
     return new Intl.DateTimeFormat('ja-JP', {
       month: 'numeric',
@@ -109,39 +109,39 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
           <div>
             <p className="font-medium text-dark-text mb-2">スケジュール</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-              {campaign.schedules.meeting && (
+              {campaign.schedules.meetingDate && (
                 <div className="flex items-center space-x-2 text-dark-text-secondary">
                   <Calendar size={14} />
                   <div>
                     <p className="font-medium text-dark-text">打ち合わせ</p>
-                    <p>{formatDate(campaign.schedules.meeting)}</p>
+                    <p>{formatDate(campaign.schedules.meetingDate)}</p>
                   </div>
                 </div>
               )}
-              {campaign.schedules.planSubmission && (
+              {campaign.schedules.planSubmissionDate && (
                 <div className="flex items-center space-x-2 text-dark-text-secondary">
                   <Calendar size={14} />
                   <div>
                     <p className="font-medium text-dark-text">構成案提出</p>
-                    <p>{formatDate(campaign.schedules.planSubmission)}</p>
+                    <p>{formatDate(campaign.schedules.planSubmissionDate)}</p>
                   </div>
                 </div>
               )}
-              {campaign.schedules.draftSubmission && (
+              {campaign.schedules.draftSubmissionDate && (
                 <div className="flex items-center space-x-2 text-dark-text-secondary">
                   <Calendar size={14} />
                   <div>
                     <p className="font-medium text-dark-text">初稿提出</p>
-                    <p>{formatDate(campaign.schedules.draftSubmission)}</p>
+                    <p>{formatDate(campaign.schedules.draftSubmissionDate)}</p>
                   </div>
                 </div>
               )}
-              {campaign.schedules.publishDate && (
+              {campaign.schedules.liveDate && (
                 <div className="flex items-center space-x-2 text-dark-text-secondary">
                   <Calendar size={14} />
                   <div>
                     <p className="font-medium text-dark-text">投稿予定</p>
-                    <p>{formatDate(campaign.schedules.publishDate)}</p>
+                    <p>{formatDate(campaign.schedules.liveDate)}</p>
                   </div>
                 </div>
               )}
