@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     try {
       // Check if admin login
-      if (id === 'admin' && password === 'admin123') {
+      if (id === 'teammanji' && password === 'shibuya109') {
         console.log('✅ Admin login detected');
         const adminUser: User = {
           id: 'admin',

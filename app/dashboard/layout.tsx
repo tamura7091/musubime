@@ -10,9 +10,9 @@ export default function DashboardLayout({
 }) {
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-dark-bg">
+      <div className="min-h-screen">
         <Navigation />
-        <main>{children}</main>
+        <main className="pt-16">{children}</main>
       </div>
     </AuthProvider>
   );

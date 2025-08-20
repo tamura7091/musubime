@@ -119,16 +119,16 @@ export const colors = {
   // Form colors
   form: {
     input: {
-      bg: '#161b22', // Match card background for consistency
-      border: '#21262d', // Match updated border color
+      bg: '#1a1f2e', // Slightly lighter than card background for better visibility
+      border: '#374151', // Darker border for better contrast
       focus: {
         ring: '#1c49ff', // Use brand blue for focus
         border: 'transparent',
       },
     },
     inputLight: {
-      bg: '#ffffff',
-      border: '#d1d5db', // Slightly darker border for better contrast
+      bg: '#f8fafc', // Light gray background for better visibility
+      border: '#cbd5e1', // Darker border for better contrast
       focus: {
         ring: '#1c49ff', // Use brand blue for focus
         border: 'transparent',
@@ -251,3 +251,30 @@ export const getStatusColors = (status: string) => {
       };
   }
 };
+
+// Utility function to format large numbers into abbreviated form
+export function formatAbbreviatedCurrency(amount: number, currency: string = 'JPY'): string {
+  if (amount === 0) return `¥0`;
+  
+  const absAmount = Math.abs(amount);
+  
+  if (absAmount >= 1000000000) {
+    // Billions
+    const billions = absAmount / 1000000000;
+    return `¥${billions.toFixed(1)}B`;
+  } else if (absAmount >= 1000000) {
+    // Millions
+    const millions = absAmount / 1000000;
+    return `¥${millions.toFixed(1)}M`;
+  } else if (absAmount >= 1000) {
+    // Thousands
+    const thousands = absAmount / 1000;
+    return `¥${thousands.toFixed(1)}K`;
+  } else {
+    // Less than 1000, show full number
+    return new Intl.NumberFormat('ja-JP', {
+      style: 'currency',
+      currency: currency
+    }).format(amount);
+  }
+}

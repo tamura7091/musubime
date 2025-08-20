@@ -10,6 +10,7 @@ import { TrendingUp, Clock, CheckCircle, Calendar, ExternalLink, Settings, Bug, 
 import { useState, useEffect } from 'react';
 import { CampaignStatus, getStepFromStatus } from '@/types';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
+import { formatAbbreviatedCurrency } from '@/lib/design-system';
 
 export default function InfluencerDashboard() {
   const { user } = useAuth();
@@ -909,7 +910,7 @@ export default function InfluencerDashboard() {
               </div>
               <div className="min-w-0">
                 <p className="text-xl sm:text-2xl font-bold" style={{ color: ds.text.primary }}>
-                  ¥{activeCampaigns.length > 0 ? (activeCampaigns[0].contractedPrice || 0).toLocaleString() : '0'}
+                  {formatAbbreviatedCurrency(activeCampaigns.length > 0 ? (activeCampaigns[0].contractedPrice || 0) : 0)}
                 </p>
                 <p className="text-xs sm:text-sm" style={{ color: ds.text.secondary }}>進行中PRの報酬額</p>
               </div>
@@ -1148,11 +1149,13 @@ export default function InfluencerDashboard() {
                               placeholder="URLを入力してください"
                               value={urlInputs[primaryCampaign.id] || ''}
                               onChange={(e) => setUrlInputs(prev => ({ ...prev, [primaryCampaign.id]: e.target.value }))}
-                              className="flex-1 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className="flex-1 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent border"
                               style={{ 
-                                backgroundColor: ds.form.input.bg,
-                                borderColor: ds.form.input.border,
-                                color: ds.text.primary
+                                backgroundColor: ds.resolvedTheme === 'light' ? '#f8fafc' : ds.form.input.bg,
+                                borderColor: ds.resolvedTheme === 'light' ? '#cbd5e1' : ds.form.input.border,
+                                color: ds.text.primary,
+                                borderWidth: '1px',
+                                borderStyle: 'solid'
                               }}
                             />
                             <button 
@@ -1338,7 +1341,7 @@ export default function InfluencerDashboard() {
                   <div className="mobile-grid gap-4">
                     <div className="flex items-center space-x-2 text-xs sm:text-sm">
                       <span className="font-medium" style={{ color: ds.text.primary }}>
-                        ¥{(campaign.contractedPrice || 0).toLocaleString()}
+                        {formatAbbreviatedCurrency(campaign.contractedPrice || 0)}
                       </span>
                     </div>
                     <div className="text-xs sm:text-sm">

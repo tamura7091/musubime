@@ -5,6 +5,7 @@ import { Calendar, ExternalLink, ChevronRight, ChevronDown, User } from 'lucide-
 import { useState } from 'react';
 import OnboardingSurvey from './OnboardingSurvey';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
+import { formatAbbreviatedCurrency } from '@/lib/design-system';
 
 interface CampaignCardProps {
   campaign: Campaign;
@@ -103,7 +104,7 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-center space-x-2 text-sm">
               <span className="font-medium" style={{ color: ds.text.primary }}>
-                {formatCurrency(campaign.contractedPrice, campaign.currency)}
+                {formatAbbreviatedCurrency(campaign.contractedPrice || 0, campaign.currency)}
               </span>
             </div>
             <div className="text-sm">

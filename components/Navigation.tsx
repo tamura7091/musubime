@@ -21,10 +21,12 @@ export default function Navigation() {
   if (!user) return null;
 
   return (
-    <nav className="sticky top-0 z-50 backdrop-blur-md border-b border-gray-200 dark:border-dark-border" style={{
+    <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md ${ds.resolvedTheme === 'dark' ? 'border-b border-dark-border' : ''}`} style={{
       backgroundColor: ds.resolvedTheme === 'light' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(22, 27, 34, 0.9)',
-      position: 'sticky',
+      position: 'fixed',
       top: '0',
+      left: '0',
+      right: '0',
       zIndex: 50,
       backdropFilter: 'blur(12px)',
       WebkitBackdropFilter: 'blur(12px)'

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { googleSheetsService } from '@/lib/google-sheets';
+import { formatAbbreviatedCurrency } from '@/lib/design-system';
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
     const updateData = {
       platform: platform,
       contact_email: email,
-      spend_jpy: price ? `¥${parseInt(price).toLocaleString()}` : '',
+      spend_jpy: price ? formatAbbreviatedCurrency(parseInt(price)) : '',
       date_live: uploadDate,
       date_plan: planSubmissionDate,
       date_draft: draftSubmissionDate,

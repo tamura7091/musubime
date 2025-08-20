@@ -5,6 +5,7 @@ import { Users, TrendingUp, Clock, AlertCircle, Search, Filter, User, Tag, Chevr
 import { useState, useMemo, useEffect } from 'react';
 import { Campaign, Update } from '@/types';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
+import { formatAbbreviatedCurrency } from '@/lib/design-system';
 
 export default function AdminDashboard() {
   console.log('🎯 AdminDashboard component rendering');
@@ -309,7 +310,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <p className="text-2xl font-bold" style={{ color: ds.text.primary }}>
-                  ¥{totalValue.toLocaleString()}
+                  {formatAbbreviatedCurrency(totalValue)}
                 </p>
                 <p className="text-sm" style={{ color: ds.text.secondary }}>総契約額</p>
               </div>
@@ -686,7 +687,7 @@ export default function AdminDashboard() {
                               <td className="py-3 px-4 h-16">
                                 <div className="flex items-center h-full">
                                   <span className="text-sm truncate" style={{ color: ds.text.primary }}>
-                                    ¥{(campaign.contractedPrice || 0).toLocaleString()}
+                                    {formatAbbreviatedCurrency(campaign.contractedPrice || 0)}
                                   </span>
                                 </div>
                               </td>
