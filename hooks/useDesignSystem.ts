@@ -68,7 +68,7 @@ export function useDesignSystem() {
     status: {
       not_started: {
         bg: colors.status.gray.bg,
-        text: colors.status.gray[300],
+        text: isDark ? colors.status.gray[300] : colors.status.gray[500],
         border: colors.status.gray.border,
       },
       meeting_scheduling: {
@@ -129,7 +129,7 @@ export function useDesignSystem() {
       },
       completed: {
         bg: colors.status.gray.bg,
-        text: colors.status.gray[400],
+        text: isDark ? colors.status.gray[400] : colors.status.gray[500],
         border: colors.status.gray.border,
       },
       cancelled: {
@@ -144,7 +144,7 @@ export function useDesignSystem() {
       const statusColors = {
         not_started: {
           bg: colors.status.gray.bg,
-          text: colors.status.gray[300],
+          text: isDark ? colors.status.gray[300] : colors.status.gray[500],
           border: colors.status.gray.border,
         },
         meeting_scheduling: {

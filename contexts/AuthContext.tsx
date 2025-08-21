@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, AuthState } from '@/types';
-import { mockUsers } from '@/lib/mock-data';
 import speakAppLogoPng from '@/app/assets/speak app logo.png';
 
 interface AuthContextType extends AuthState {
@@ -83,58 +82,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('❌ API authentication failed');
         console.log('📄 Error response body:', errorData);
         
-                 if (response.status === 503) {
-           console.log('⚠️ Google Sheets not configured, falling back to mock data');
-           // Fallback to mock authentication when Google Sheets isn't configured
-           console.log('🔍 Available mock users:', mockUsers.map(u => ({ id: u.id, email: u.email, name: u.name })));
-           console.log('🔍 Looking for user with ID:', id);
-           const user = mockUsers.find(u => u.id === id || u.email === id);
-           console.log('🔍 Found user in mock data:', user);
-           console.log('🔍 User lookup details:', { 
-             searchedId: id, 
-             foundById: mockUsers.find(u => u.id === id),
-             foundByEmail: mockUsers.find(u => u.email === id)
-           });
-          console.log('🔑 Password check:', { provided: password, expected: 'password', match: password === 'password' });
-          
-          if (user && password === 'password') {
-            console.log('✅ Mock authentication successful');
-            setAuthState({
-              user,
-              isAuthenticated: true,
-            });
-            localStorage.setItem('auth-user', JSON.stringify(user));
-            return true;
-          } else {
-            console.log('❌ Mock authentication failed - user not found or password mismatch');
-          }
+        if (response.status === 503) {
+          console.log('⚠️ Google Sheets not configured');
         }
       }
       
-      // Fallback to mock authentication for development
-      console.log('🔄 Trying mock authentication fallback...');
-      console.log('🔍 Available mock users:', mockUsers.map(u => ({ id: u.id, email: u.email, name: u.name })));
-      console.log('🔍 Looking for user with ID:', id);
-      const user = mockUsers.find(u => u.id === id || u.email === id);
-      console.log('🔍 Found user in mock data:', user);
-      console.log('🔍 User lookup details:', { 
-        searchedId: id, 
-        foundById: mockUsers.find(u => u.id === id),
-        foundByEmail: mockUsers.find(u => u.email === id)
-      });
-      console.log('🔑 Password check:', { provided: password, expected: 'password', match: password === 'password' });
-      
-      if (user && password === 'password') {
-        console.log('✅ Mock fallback authentication successful');
-        setAuthState({
-          user,
-          isAuthenticated: true,
-        });
-        localStorage.setItem('auth-user', JSON.stringify(user));
-        return true;
-      } else {
-        console.log('❌ Mock fallback authentication failed - user not found or password mismatch');
-      }
+      // No mock fallback
       
       console.log('❌ All authentication methods failed');
       return false;
@@ -142,23 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Login error:', error);
       console.log('🔄 Trying final mock authentication fallback due to error...');
       
-      // Fallback to mock authentication
-      console.log('🔍 Available mock users:', mockUsers.map(u => ({ id: u.id, email: u.email, name: u.name })));
-      const user = mockUsers.find(u => u.id === id || u.email === id);
-      console.log('🔍 Found user in mock data:', user);
-      console.log('🔑 Password check:', { provided: password, expected: 'password', match: password === 'password' });
-      
-      if (user && password === 'password') {
-        console.log('✅ Final mock fallback authentication successful');
-        setAuthState({
-          user,
-          isAuthenticated: true,
-        });
-        localStorage.setItem('auth-user', JSON.stringify(user));
-        return true;
-      } else {
-        console.log('❌ Final mock fallback authentication failed');
-      }
+      // No mock fallback
       
       return false;
     }

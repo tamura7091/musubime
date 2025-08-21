@@ -1,6 +1,51 @@
 import { Campaign, getStepFromStatus, getStepLabel } from '@/types';
 import StatusBadge from './StatusBadge';
-import { getNextStep, getPlatformLabel, getPlatformIcon } from '@/lib/mock-data';
+// Removed demo helpers; provide minimal labels locally
+const getPlatformLabel = (platform: string) => {
+  const map: Record<string, string> = {
+    youtube_long: 'YouTube長編',
+    youtube_short: 'YouTubeショート',
+    instagram_reel: 'Instagramリール',
+    tiktok: 'TikTok',
+    x_twitter: 'X (Twitter)',
+    podcast: 'ポッドキャスト',
+    blog: 'ブログ',
+  };
+  return map[platform] || platform;
+};
+
+const getPlatformIcon = (platform: string) => {
+  const map: Record<string, string> = {
+    youtube_long: '🎥',
+    youtube_short: '📱',
+    instagram_reel: '📸',
+    tiktok: '🎵',
+    x_twitter: '🐦',
+    podcast: '🎙️',
+    blog: '✍️',
+  };
+  return map[platform] || '📱';
+};
+
+const getNextStep = (status: string) => {
+  const map: Record<string, string> = {
+    not_started: 'プロモーション開始の準備をしています',
+    meeting_scheduling: '打ち合わせの予約をお待ちください',
+    meeting_scheduled: '打ち合わせにご参加ください',
+    plan_creating: '構成案の作成を開始してください',
+    plan_submitted: '構成案の確認をお待ちください',
+    plan_revising: '修正版構成案をご提出ください',
+    draft_creating: '初稿の作成を開始してください',
+    draft_submitted: '初稿の確認をお待ちください',
+    draft_revising: '修正版初稿をご提出ください',
+    scheduling: 'コンテンツを投稿してください',
+    scheduled: '送金手続きをお待ちください',
+    payment_processing: 'お支払い処理中です',
+    completed: 'プロモーション完了',
+    cancelled: 'キャンペーンキャンセル済み',
+  };
+  return map[status] || 'ステータスを確認中です';
+};
 import { Calendar, ExternalLink, ChevronRight, ChevronDown, User } from 'lucide-react';
 import { useState } from 'react';
 import OnboardingSurvey from './OnboardingSurvey';

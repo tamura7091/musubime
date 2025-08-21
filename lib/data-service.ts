@@ -1,6 +1,6 @@
 import { Campaign, User, Update } from '@/types';
 import { googleSheetsService } from './google-sheets';
-import { mockCampaigns, mockUsers } from './mock-data';
+// Removed demo data dependencies
 
 class DataService {
   private useGoogleSheets: boolean;
@@ -31,13 +31,13 @@ class DataService {
           role: user.email?.includes('@usespeak.com') ? 'admin' as const : 'influencer' as const,
         }));
       } catch (error) {
-        console.error('❌ Failed to fetch users from Google Sheets, falling back to mock data:', error);
-        return mockUsers;
+        console.error('❌ Failed to fetch users from Google Sheets:', error);
+        return [];
       }
     }
     
-    console.log('📋 Using mock users data');
-    return mockUsers;
+    console.log('📋 Google Sheets not configured; returning empty users list');
+    return [];
   }
 
   async getCampaigns(): Promise<Campaign[]> {
@@ -74,13 +74,13 @@ class DataService {
           campaignData: (campaign as any).campaignData,
         }));
       } catch (error) {
-        console.error('❌ Failed to fetch campaigns from Google Sheets, falling back to mock data:', error);
-        return mockCampaigns;
+        console.error('❌ Failed to fetch campaigns from Google Sheets:', error);
+        return [];
       }
     }
     
-    console.log('📋 Using mock campaigns data');
-    return mockCampaigns;
+    console.log('📋 Google Sheets not configured; returning empty campaigns list');
+    return [];
   }
 
   async getUserCampaigns(userId: string): Promise<Campaign[]> {
@@ -117,13 +117,13 @@ class DataService {
           campaignData: (campaign as any).campaignData,
         }));
       } catch (error) {
-        console.error('❌ Failed to fetch user campaigns from Google Sheets, falling back to mock data:', error);
-        return mockCampaigns.filter(campaign => campaign.influencerId === userId);
+        console.error('❌ Failed to fetch user campaigns from Google Sheets:', error);
+        return [];
       }
     }
     
-    console.log('📋 Using mock campaigns data for user:', userId);
-    return mockCampaigns.filter(campaign => campaign.influencerId === userId);
+    console.log('📋 Google Sheets not configured; returning empty campaigns list for user:', userId);
+    return [];
   }
 
     async getUpdates(): Promise<Update[]> {

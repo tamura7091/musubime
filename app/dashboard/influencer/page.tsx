@@ -1,12 +1,11 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { mockCampaigns } from '@/lib/mock-data';
 import CampaignCard from '@/components/CampaignCard';
 import StatusSection from '@/components/StatusSection';
 import OnboardingSurvey from '@/components/OnboardingSurvey';
 import OnboardingSurveyInline from '@/components/OnboardingSurveyInline';
-import { TrendingUp, Clock, CheckCircle, Calendar, ExternalLink, Settings, Bug, AlertCircle, ClipboardList, FileText, FileEdit, Video, Megaphone, CreditCard, Hourglass, XCircle } from 'lucide-react';
+import { TrendingUp, Clock, CheckCircle, Calendar, ExternalLink, Settings, Bug, AlertCircle, ClipboardList, FileText, FileEdit, Video, Megaphone, CreditCard, Hourglass, XCircle, Copy, ClipboardCheck } from 'lucide-react';
 import PreviousStepMessage from '@/components/PreviousStepMessage';
 import { useState, useEffect } from 'react';
 import { CampaignStatus, getStepFromStatus } from '@/types';
@@ -25,7 +24,7 @@ export default function InfluencerDashboard() {
   };
   const { user } = useAuth();
   const ds = useDesignSystem();
-  const [campaigns, setCampaigns] = useState(mockCampaigns);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
   const [showDebugCard, setShowDebugCard] = useState(false);
   const [paymentCheckboxes, setPaymentCheckboxes] = useState<{[key: string]: {invoice: boolean, form: boolean}}>({});
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -36,6 +35,8 @@ export default function InfluencerDashboard() {
   const [meetingUpdating, setMeetingUpdating] = useState<{[key: string]: boolean}>({});
   const [urlSubmitting, setUrlSubmitting] = useState<{[key: string]: boolean}>({});
   const [confirmingCompleted, setConfirmingCompleted] = useState<{[key: string]: boolean}>({});
+  const [copiedEmail, setCopiedEmail] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
 
   // Manual refresh function
   const refreshData = async () => {
@@ -53,7 +54,7 @@ export default function InfluencerDashboard() {
         setCampaigns(userCampaigns);
       } catch (error) {
         console.error('❌ Manual refresh: Failed to fetch campaigns:', error);
-        setCampaigns(mockCampaigns);
+        setCampaigns([]);
       } finally {
         setIsLoading(false);
       }
@@ -77,7 +78,7 @@ export default function InfluencerDashboard() {
           setCampaigns(userCampaigns);
         } catch (error) {
           console.error('❌ Failed to fetch campaigns:', error);
-          setCampaigns(mockCampaigns);
+          setCampaigns([]);
         } finally {
           setIsLoading(false);
         }
@@ -1713,6 +1714,194 @@ export default function InfluencerDashboard() {
             </div>
           )}
         </div>
+
+        {/* Premium Account Section */}
+        {primaryCampaign && (
+          <div className="mt-6 sm:mt-8">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
+              プレミアムアカウント
+            </h2>
+            <div className="rounded-xl p-4 sm:p-6" style={{ 
+              backgroundColor: ds.bg.card,
+              borderColor: ds.border.primary,
+              borderWidth: '1px',
+              borderStyle: 'solid'
+            }}>
+              <div className="space-y-6">
+                {/* App Download */}
+                <div>
+                  <p className="text-sm mb-3" style={{ color: ds.text.secondary }}>
+                    まずはアプリをダウンロードしてください
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <a
+                      href="https://apps.apple.com/jp/app/ai%E8%8B%B1%E4%BC%9A%E8%A9%B1%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AF-%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AD%E3%83%B3%E3%82%B0%E7%B7%B4%E7%BF%92%E3%81%A7%E7%99%BA%E9%9F%B3%E3%82%84%E8%8B%B1%E8%AA%9E%E3%82%92%E5%8B%89%E5%BC%B7/id1286609883"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                      style={{
+                        backgroundColor: ds.button.secondary.bg,
+                        color: ds.button.secondary.text,
+                        borderColor: ds.border.primary,
+                        borderWidth: '1px',
+                        borderStyle: 'solid',
+                        textDecoration: 'none'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.hover}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.bg}
+                    >
+                      <ExternalLink size={14} className="mr-2" />
+                      iOS
+                    </a>
+                    <a
+                      href="https://play.google.com/store/apps/details?id=com.selabs.speak&hl=ja&pli=1"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                      style={{
+                        backgroundColor: ds.button.secondary.bg,
+                        color: ds.button.secondary.text,
+                        borderColor: ds.border.primary,
+                        borderWidth: '1px',
+                        borderStyle: 'solid',
+                        textDecoration: 'none'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.hover}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.bg}
+                    >
+                      <ExternalLink size={14} className="mr-2" />
+                      Android
+                    </a>
+                  </div>
+                </div>
+
+                {/* Login Credentials */}
+                <div>
+                  <p className="text-sm mb-3" style={{ color: ds.text.secondary }}>
+                    以下の情報でログインしてください
+                  </p>
+                  
+                  {/* Check if credentials are available */}
+                  {!primaryCampaign.campaignData?.trial_login_email_dashboard || !primaryCampaign.campaignData?.trial_login_password_dashboard ? (
+                    /* Error State */
+                    <div className="p-4 rounded-lg" style={{ 
+                      backgroundColor: '#fef2f2',
+                      borderColor: '#fecaca',
+                      borderWidth: '1px',
+                      borderStyle: 'solid'
+                    }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertCircle size={16} style={{ color: '#ef4444' }} />
+                        <span className="text-sm font-medium" style={{ color: '#dc2626' }}>
+                          取得に失敗しました
+                        </span>
+                      </div>
+                      <p className="text-xs mb-3" style={{ color: '#7f1d1d' }}>
+                        ログイン情報を取得できませんでした。サポートにお問い合わせください。
+                      </p>
+                      <button
+                        onClick={() => {
+                          const subject = encodeURIComponent('プレミアムアカウント情報取得エラー');
+                          const body = encodeURIComponent(`キャンペーンID: ${primaryCampaign.id}\nエラー内容: ログイン情報（trial_login_email_dashboard, trial_login_password_dashboard）が取得できませんでした。`);
+                          window.open(`mailto:partnerships_jp@usespeak.com?subject=${subject}&body=${body}`, '_blank');
+                        }}
+                        className="inline-flex items-center px-3 py-1.5 text-xs rounded-lg transition-colors"
+                        style={{
+                          backgroundColor: '#dc2626',
+                          color: 'white'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                      >
+                        <ExternalLink size={12} className="mr-1" />
+                        サポートに報告
+                      </button>
+                    </div>
+                  ) : (
+                    /* Success State */
+                    <div className="space-y-3">
+                      {/* Email */}
+                      <div>
+                        <label className="block text-xs font-medium mb-1" style={{ color: ds.text.secondary }}>
+                          メールアドレス
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 px-3 py-2 rounded-lg font-mono text-sm" style={{ 
+                            backgroundColor: ds.bg.surface,
+                            borderColor: ds.border.secondary,
+                            borderWidth: '1px',
+                            borderStyle: 'solid',
+                            color: ds.text.primary
+                          }}>
+                            {primaryCampaign.campaignData.trial_login_email_dashboard}
+                          </div>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(primaryCampaign.campaignData!.trial_login_email_dashboard!);
+                              setCopiedEmail(true);
+                              setTimeout(() => setCopiedEmail(false), 2000);
+                            }}
+                            className="p-2 rounded-lg transition-colors"
+                            style={{
+                              backgroundColor: ds.button.secondary.bg,
+                              color: ds.button.secondary.text,
+                              borderColor: ds.border.primary,
+                              borderWidth: '1px',
+                              borderStyle: 'solid'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.hover}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.bg}
+                            title={copiedEmail ? 'コピーしました' : 'コピー'}
+                          >
+                            {copiedEmail ? <ClipboardCheck size={14} /> : <Copy size={14} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Password */}
+                      <div>
+                        <label className="block text-xs font-medium mb-1" style={{ color: ds.text.secondary }}>
+                          パスワード
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 px-3 py-2 rounded-lg font-mono text-sm" style={{ 
+                            backgroundColor: ds.bg.surface,
+                            borderColor: ds.border.secondary,
+                            borderWidth: '1px',
+                            borderStyle: 'solid',
+                            color: ds.text.primary
+                          }}>
+                            {primaryCampaign.campaignData.trial_login_password_dashboard}
+                          </div>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(primaryCampaign.campaignData!.trial_login_password_dashboard!);
+                              setCopiedPassword(true);
+                              setTimeout(() => setCopiedPassword(false), 2000);
+                            }}
+                            className="p-2 rounded-lg transition-colors"
+                            style={{
+                              backgroundColor: ds.button.secondary.bg,
+                              color: ds.button.secondary.text,
+                              borderColor: ds.border.primary,
+                              borderWidth: '1px',
+                              borderStyle: 'solid'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.hover}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.bg}
+                            title={copiedPassword ? 'コピーしました' : 'コピー'}
+                          >
+                            {copiedPassword ? <ClipboardCheck size={14} /> : <Copy size={14} />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Links Section - moved to bottom */}
         {primaryCampaign && (

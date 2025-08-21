@@ -20,6 +20,7 @@ export default function AdminDashboard() {
   const [updates, setUpdates] = useState<Update[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingActions, setProcessingActions] = useState<Set<string>>(new Set());
+  const [showAllUpdates, setShowAllUpdates] = useState(false);
   
   console.log('👤 Current user:', user);
 
@@ -177,8 +178,8 @@ export default function AdminDashboard() {
   }, 0);
   
   console.log('💰 Total value calculated:', totalValue);
-  const pendingApprovals = allCampaigns.filter(campaign => 
-    ['draft_submitted', 'plan_creating'].includes(campaign.status)
+  const pendingApprovals = updates.filter(update => 
+    update.requiresAdminAction === true
   ).length;
 
   const uniqueInfluencers = Array.from(
@@ -195,7 +196,8 @@ export default function AdminDashboard() {
   });
 
 
-  const recentUpdates = updates.slice(0, 5);
+  const displayedUpdates = showAllUpdates ? updates : updates.slice(0, 5);
+  const hasMoreUpdates = updates.length > 5;
 
   const formatTimeAgo = (date: Date | string) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -399,9 +401,9 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <p className="text-2xl font-bold" style={{ color: ds.text.primary }}>
-                  {uniqueInfluencers.length}
+                  {allCampaigns.length}
                 </p>
-                <p className="text-sm" style={{ color: ds.text.secondary }}>id_influencer</p>
+                <p className="text-sm" style={{ color: ds.text.secondary }}>キャンペーン数</p>
               </div>
             </div>
           </div>
@@ -458,7 +460,7 @@ export default function AdminDashboard() {
                 アップデート
               </h3>
               <div className="space-y-2">
-                {recentUpdates.map((update: Update) => (
+                {displayedUpdates.map((update: Update) => (
                   <div key={update.id} className="rounded-lg p-3 transition-colors" style={{ 
                     backgroundColor: update.requiresAdminAction ? ds.bg.surface : ds.bg.card
                   }}>
@@ -543,6 +545,48 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 ))}
+                
+                {/* Show More Button */}
+                {hasMoreUpdates && !showAllUpdates && (
+                  <div className="text-center pt-4">
+                    <button
+                      onClick={() => setShowAllUpdates(true)}
+                      className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                      style={{
+                        backgroundColor: ds.button.secondary.bg,
+                        color: ds.button.secondary.text,
+                        borderColor: ds.border.primary,
+                        borderWidth: '1px',
+                        borderStyle: 'solid'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.hover}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.bg}
+                    >
+                      もっと見る ({updates.length - 5}件)
+                    </button>
+                  </div>
+                )}
+                
+                {/* Show Less Button */}
+                {showAllUpdates && hasMoreUpdates && (
+                  <div className="text-center pt-4">
+                    <button
+                      onClick={() => setShowAllUpdates(false)}
+                      className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                      style={{
+                        backgroundColor: ds.button.secondary.bg,
+                        color: ds.button.secondary.text,
+                        borderColor: ds.border.primary,
+                        borderWidth: '1px',
+                        borderStyle: 'solid'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.hover}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.bg}
+                    >
+                      閉じる
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 

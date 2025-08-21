@@ -72,7 +72,7 @@ class GoogleSheetsService {
     }
   }
 
-  async getSheetData(range: string = (process.env.GOOGLE_SHEETS_RANGE || 'campaigns!A:BT')): Promise<GoogleSheetsRow[]> {
+  async getSheetData(range: string = (process.env.GOOGLE_SHEETS_RANGE || 'campaigns!A:CZ')): Promise<GoogleSheetsRow[]> {
     try {
       console.log('🔍 GoogleSheetsService.getSheetData() called');
       console.log('📊 Range:', range);
@@ -142,7 +142,7 @@ class GoogleSheetsService {
 
       const request: any = {
         spreadsheetId: this.spreadsheetId,
-        range: 'campaigns!A:BT', // Fetch full range to get all columns
+        range: 'campaigns!A:CZ', // Fetch full range to get all columns including BU, BV, etc.
       };
       
       // If using API key instead of service account
@@ -323,7 +323,10 @@ class GoogleSheetsService {
       // URLs needed for dashboard submission links
       'url_plan',
       'url_draft',
-      'url_content'
+      'url_content',
+      // Trial login credentials for premium account section
+      'trial_login_email_dashboard',
+      'trial_login_password_dashboard'
     ], influencerId);
     
     // Filter out rows with empty id_campaign
@@ -600,6 +603,9 @@ class GoogleSheetsService {
           is_row_added: row['is_row_added'],
           count_id_influencer: row['count_id_influencer'],
           noted_influencers: row['noted_influencers'],
+          // Trial login credentials
+          trial_login_email_dashboard: row['trial_login_email_dashboard'],
+          trial_login_password_dashboard: row['trial_login_password_dashboard'],
         }
       };
     });
@@ -780,7 +786,7 @@ class GoogleSheetsService {
       // First, find the row with the matching campaign ID
       const request: any = {
         spreadsheetId: this.spreadsheetId,
-        range: 'campaigns!A:BT', // Fetch full range to find the row
+        range: 'campaigns!A:CZ', // Fetch full range to find the row
       };
       
       if (this.hasApiKey && !this.hasServiceAccount) {
@@ -967,7 +973,7 @@ class GoogleSheetsService {
       // Fetch full range to locate row and map columns dynamically
       const request: any = {
         spreadsheetId: this.spreadsheetId,
-        range: 'campaigns!A:BT',
+        range: 'campaigns!A:CZ',
       };
       if (this.hasApiKey && !this.hasServiceAccount) {
         request.key = process.env.GOOGLE_SHEETS_API_KEY;

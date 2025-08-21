@@ -115,7 +115,7 @@ This UI is built with backend integration in mind. Future additions will include
 ### Adding New Features
 
 1. Define types in `types/index.ts`
-2. Add mock data in `lib/mock-data.ts`
+2. (Removed) Demo mock data previously located in `lib/mock-data.ts` has been deleted. The app now relies solely on Google Sheets. Ensure your environment variables are configured.
 3. Create components in `components/`
 4. Implement pages in `app/`
 5. Update navigation if needed
