@@ -152,10 +152,7 @@ class DataService {
               updateMessage = `${campaign.influencerName}さんから構成案が提出されました`;
               updateType = 'submission';
               break;
-            case 'plan_reviewing':
-              updateMessage = `${campaign.influencerName}さんの構成案を確認中です`;
-              updateType = 'approval';
-              break;
+            
             case 'plan_revising':
               updateMessage = `${campaign.influencerName}さんの構成案を修正中です`;
               updateType = 'approval';
@@ -163,10 +160,6 @@ class DataService {
             case 'draft_submitted':
               updateMessage = `${campaign.influencerName}さんから初稿が提出されました`;
               updateType = 'submission';
-              break;
-            case 'draft_reviewing':
-              updateMessage = `${campaign.influencerName}さんの初稿を確認中です`;
-              updateType = 'approval';
               break;
             case 'draft_revising':
               updateMessage = `${campaign.influencerName}さんの初稿を修正中です`;
@@ -196,12 +189,10 @@ class DataService {
                 'meeting_scheduled': '打ち合わせ予定',
                 'contract_pending': '契約書待ち',
                 'plan_creating': '構成案作成中',
-                'plan_submitted': '構成案提出済み',
-                'plan_reviewing': '構成案確認中',
+                'plan_submitted': '構成案確認中',
                 'plan_revising': '構成案修正中',
                 'draft_creating': '初稿作成中',
                 'draft_submitted': '初稿提出済み',
-                'draft_reviewing': '初稿確認中',
                 'draft_revising': '初稿修正中',
                 'scheduling': '投稿準備中',
                 'scheduled': '投稿済み',

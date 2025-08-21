@@ -14,13 +14,13 @@ export function useDesignSystem() {
     bg: {
       primary: isDark ? colors.dark.bg : colors.light.bg,
       card: isDark ? colors.dark.card : colors.light.card,
-      surface: isDark ? '#1a1a2e' : '#ffffff',
+      surface: isDark ? '#262626' : '#ffffff',
     },
     
     // Border colors
     border: {
       primary: isDark ? colors.dark.border : colors.light.border,
-      secondary: isDark ? '#3d3d5c' : '#e5e7eb',
+      secondary: isDark ? '#404040' : '#e5e7eb',
     },
     
     // Text colors
@@ -91,11 +91,7 @@ export function useDesignSystem() {
         text: colors.status.orange[300],
         border: colors.status.orange.border.replace('0.3', '0.4'),
       },
-      plan_reviewing: {
-        bg: colors.status.orange.bg.replace('0.2', '0.3'),
-        text: colors.status.orange[300],
-        border: colors.status.orange.border.replace('0.3', '0.4'),
-      },
+      
       plan_revising: {
         bg: colors.status.orange.bg,
         text: colors.status.orange[400],
@@ -110,11 +106,6 @@ export function useDesignSystem() {
         bg: colors.status.indigo.bg,
         text: colors.status.indigo[400],
         border: colors.status.indigo.border,
-      },
-      draft_reviewing: {
-        bg: colors.status.indigo.bg.replace('0.2', '0.3'),
-        text: colors.status.indigo[300],
-        border: colors.status.indigo.border.replace('0.3', '0.4'),
       },
       draft_revising: {
         bg: colors.status.indigo.bg,
@@ -176,11 +167,7 @@ export function useDesignSystem() {
           text: colors.status.orange[300],
           border: colors.status.orange.border.replace('0.3', '0.4'),
         },
-        plan_reviewing: {
-          bg: colors.status.orange.bg.replace('0.2', '0.3'),
-          text: colors.status.orange[300],
-          border: colors.status.orange.border.replace('0.3', '0.4'),
-        },
+        
         plan_revising: {
           bg: colors.status.orange.bg,
           text: colors.status.orange[400],
@@ -195,11 +182,6 @@ export function useDesignSystem() {
           bg: colors.status.indigo.bg,
           text: colors.status.indigo[400],
           border: colors.status.indigo.border,
-        },
-        draft_reviewing: {
-          bg: colors.status.indigo.bg.replace('0.2', '0.3'),
-          text: colors.status.indigo[300],
-          border: colors.status.indigo.border.replace('0.3', '0.4'),
         },
         draft_revising: {
           bg: colors.status.indigo.bg,

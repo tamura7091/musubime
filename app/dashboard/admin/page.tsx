@@ -217,9 +217,19 @@ export default function AdminDashboard() {
   };
 
   const parseAndFormatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return '未定';
-    const date = new Date(dateString);
-    return formatDate(date);
+    if (!dateString || dateString.trim() === '') return '未定';
+    
+    try {
+      const date = new Date(dateString);
+      
+      // Check if the date is valid
+      if (isNaN(date.getTime())) return '未定';
+      
+      return formatDate(date);
+    } catch (error) {
+      console.warn('Invalid date string:', dateString);
+      return '未定';
+    }
   };
 
   // Map platform codes to Japanese names
@@ -252,12 +262,10 @@ export default function AdminDashboard() {
       'meeting_scheduled': '打ち合わせ予定',
       'contract_pending': '契約書待ち',
       'plan_creating': '構成案作成中',
-      'plan_submitted': '構成案提出済み',
-      'plan_reviewing': '構成案確認中',
+      'plan_submitted': '構成案確認中',
       'plan_revising': '構成案修正中',
       'draft_creating': '初稿作成中',
       'draft_submitted': '初稿提出済み',
-      'draft_reviewing': '初稿確認中',
       'draft_revising': '初稿修正中',
       'scheduling': '投稿準備中',
       'scheduled': '投稿済み',
@@ -294,6 +302,75 @@ export default function AdminDashboard() {
           <p className="mobile-text" style={{ color: ds.text.secondary }}>
             全インフルエンサーキャンペーンの概要と最新の活動状況
           </p>
+        </div>
+
+        {/* Links Card */}
+        <div className="rounded-xl p-4 sm:p-6 mb-6" style={{ 
+          backgroundColor: ds.bg.card,
+          borderColor: ds.border.primary,
+          borderWidth: '1px',
+          borderStyle: 'solid'
+        }}>
+          <h3 className="text-lg font-semibold mb-4" style={{ color: ds.text.primary }}>
+            リンク
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ds.text.accent }} />
+              <a
+                href="https://usespeak.notion.site/YouTube-4-0-5b88f1ad34ed45f3aaeca324af039665?source=copy_link"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: ds.text.accent, textDecoration: 'underline' }}
+              >
+                ガイドライン（YouTube長編）
+              </a>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ds.text.accent }} />
+              <a
+                href="https://usespeak.notion.site/1b3792ec2f10800f9f94e476a87c06f1?source=copy_link"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: ds.text.accent, textDecoration: 'underline' }}
+              >
+                ガイドライン（ショート動画）
+              </a>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ds.text.accent }} />
+              <a
+                href="https://usespeak.notion.site/Podcast-224792ec2f1080f2a7d5fce804ce4b93?source=copy_link"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: ds.text.accent, textDecoration: 'underline' }}
+              >
+                ガイドライン（ポッドキャスト）
+              </a>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ds.text.accent }} />
+              <a
+                href="https://docs.google.com/document/d/13Ljg7rR8hsaZflGt3N0sB_g9ad-391G7Nhl4ICwVybg/copy"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: ds.text.accent, textDecoration: 'underline' }}
+              >
+                ドラフトテンプレート
+              </a>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ds.text.accent }} />
+              <a
+                href="https://docs.google.com/spreadsheets/d/1R7FffUOmZtlCo8Cm7TYOVTAixQ7Qz-ax3UC3rpgreVc/copy"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: ds.text.accent, textDecoration: 'underline' }}
+              >
+                請求書テンプレート
+              </a>
+            </div>
+          </div>
         </div>
 
         {/* Stats Overview */}
@@ -498,7 +575,7 @@ export default function AdminDashboard() {
                 borderStyle: 'solid'
               }}>
                 <div 
-                  className="max-h-[600px] overflow-y-auto scroll-smooth"
+                  className="relative max-h-[600px] overflow-y-auto scroll-smooth"
                   style={{ 
                     scrollbarWidth: 'thin',
                     scrollbarColor: 'rgba(156, 163, 175, 0.3) transparent'
@@ -519,7 +596,7 @@ export default function AdminDashboard() {
                 >
                   <div className="overflow-x-auto">
                     <div className="min-w-full inline-block align-middle">
-                      <table className="min-w-full" style={{ borderColor: ds.border.secondary }}>
+                      <table className="min-w-full border-separate" style={{ borderColor: ds.border.secondary, borderSpacing: 0 }}>
                         <thead className="sticky top-0 z-10" style={{ backgroundColor: ds.bg.surface + '80' }}>
                           <tr className="h-16" style={{ 
                             backgroundColor: ds.bg.surface + '80',
@@ -527,20 +604,20 @@ export default function AdminDashboard() {
                             borderBottomWidth: '1px',
                             borderBottomStyle: 'solid'
                           }}>
-                            <th className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[200px] h-16 align-middle" style={{ color: ds.text.secondary }}>
+                            <th className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[200px] h-16 align-middle sticky -top-px z-10" style={{ color: ds.text.secondary, backgroundColor: ds.bg.surface + '80' }}>
                               インフルエンサー
                             </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[120px] h-16 align-middle" style={{ color: ds.text.secondary }}>
+                            <th className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[120px] h-16 align-middle sticky -top-px z-10" style={{ color: ds.text.secondary, backgroundColor: ds.bg.surface + '80' }}>
                               プラットフォーム
                             </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[140px] h-16 align-middle" style={{ color: ds.text.secondary }}>
+                            <th className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[140px] h-16 align-middle sticky -top-px z-10" style={{ color: ds.text.secondary, backgroundColor: ds.bg.surface + '80' }}>
                               ステータス
                             </th>
                             <th 
-                              className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[120px] h-16 align-middle cursor-pointer transition-colors"
+                              className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[120px] h-16 align-middle cursor-pointer transition-colors sticky -top-px z-10"
                               style={{ 
                                 color: ds.text.secondary,
-                                backgroundColor: 'transparent'
+                                backgroundColor: ds.bg.surface + '80'
                               }}
                               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.bg.surface + '50'}
                               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -561,10 +638,10 @@ export default function AdminDashboard() {
                               </div>
                             </th>
                             <th 
-                              className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[140px] h-16 align-middle cursor-pointer transition-colors"
+                              className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[140px] h-16 align-middle cursor-pointer transition-colors sticky -top-px z-10"
                               style={{ 
                                 color: ds.text.secondary,
-                                backgroundColor: 'transparent'
+                                backgroundColor: ds.bg.surface + '80'
                               }}
                               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.bg.surface + '50'}
                               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -585,10 +662,10 @@ export default function AdminDashboard() {
                               </div>
                             </th>
                             <th 
-                              className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[140px] h-16 align-middle cursor-pointer transition-colors"
+                              className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[140px] h-16 align-middle cursor-pointer transition-colors sticky -top-px z-10"
                               style={{ 
                                 color: ds.text.secondary,
-                                backgroundColor: 'transparent'
+                                backgroundColor: ds.bg.surface + '80'
                               }}
                               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.bg.surface + '50'}
                               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -609,10 +686,10 @@ export default function AdminDashboard() {
                               </div>
                             </th>
                             <th 
-                              className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[120px] h-16 align-middle cursor-pointer transition-colors"
+                              className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[120px] h-16 align-middle cursor-pointer transition-colors sticky -top-px z-10"
                               style={{ 
                                 color: ds.text.secondary,
-                                backgroundColor: 'transparent'
+                                backgroundColor: ds.bg.surface + '80'
                               }}
                               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.bg.surface + '50'}
                               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}

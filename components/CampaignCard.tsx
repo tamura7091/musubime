@@ -19,11 +19,25 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
 
   const formatDate = (date: Date | string | undefined | null) => {
     if (!date) return '未定';
-    return new Intl.DateTimeFormat('ja-JP', {
-      month: 'numeric',
-      day: 'numeric',
-      year: 'numeric'
-    }).format(new Date(date));
+    
+    // Handle empty strings
+    if (typeof date === 'string' && date.trim() === '') return '未定';
+    
+    try {
+      const dateObj = new Date(date);
+      
+      // Check if the date is valid
+      if (isNaN(dateObj.getTime())) return '未定';
+      
+      return new Intl.DateTimeFormat('ja-JP', {
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric'
+      }).format(dateObj);
+    } catch (error) {
+      console.warn('Invalid date value:', date);
+      return '未定';
+    }
   };
 
   const formatCurrency = (amount: number | null | undefined, currency: string) => {

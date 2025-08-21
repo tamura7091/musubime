@@ -2,9 +2,9 @@
 export const colors = {
   // Background colors
   dark: {
-    bg: '#0d1117', // Softer dark background - easier on eyes than pure black
-    card: '#161b22', // Card background with subtle contrast
-    border: '#21262d', // Softer border color
+    bg: '#0f0f0f', // Modern dark background with better contrast
+    card: '#1a1a1a', // Card background with improved contrast
+    border: '#333333', // Better visible border color
   },
   light: {
     bg: '#fafbfc', // Softer than pure white - easier on eyes
@@ -14,8 +14,8 @@ export const colors = {
   
   // Text colors
   text: {
-    primary: '#f0f6fc', // Primary text (softer white)
-    secondary: '#8b949e', // Secondary text (softer gray)
+    primary: '#ffffff', // Primary text (pure white for better contrast)
+    secondary: '#a0a0a0', // Secondary text (improved contrast)
     accent: '#58a6ff', // Accent text (brand blue lighter)
     accentHover: '#1c49ff', // Accent text hover (brand blue)
   },
@@ -119,8 +119,8 @@ export const colors = {
   // Form colors
   form: {
     input: {
-      bg: '#1a1f2e', // Slightly lighter than card background for better visibility
-      border: '#374151', // Darker border for better contrast
+      bg: '#2a2a2a', // Darker background for better contrast in dark mode
+      border: '#404040', // More visible border
       focus: {
         ring: '#1c49ff', // Use brand blue for focus
         border: 'transparent',
@@ -134,7 +134,7 @@ export const colors = {
         border: 'transparent',
       },
     },
-    placeholder: '#8b949e',
+    placeholder: '#666666', // Better contrast for placeholders
     placeholderLight: '#6b7280',
   },
   
@@ -177,7 +177,6 @@ export const getStatusColors = (status: string) => {
         border: colors.status.orange.border,
       };
     case 'plan_submitted':
-    case 'plan_reviewing':
       return {
         bg: colors.status.orange.bg.replace('0.2', '0.3'),
         text: colors.status.orange[300],
@@ -197,15 +196,9 @@ export const getStatusColors = (status: string) => {
       };
     case 'draft_submitted':
       return {
-        bg: colors.status.indigo.bg,
-        text: colors.status.indigo[400],
-        border: colors.status.indigo.border,
-      };
-    case 'draft_reviewing':
-      return {
-        bg: colors.status.indigo.bg.replace('0.2', '0.3'),
-        text: colors.status.indigo[300],
-        border: colors.status.indigo.border.replace('0.3', '0.4'),
+        bg: colors.status.purple.bg.replace('0.2', '0.3'),
+        text: colors.status.purple[400],
+        border: colors.status.purple.border.replace('0.3', '0.4'),
       };
     case 'draft_revising':
       return {

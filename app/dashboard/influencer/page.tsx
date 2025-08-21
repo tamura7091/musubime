@@ -6,7 +6,8 @@ import CampaignCard from '@/components/CampaignCard';
 import StatusSection from '@/components/StatusSection';
 import OnboardingSurvey from '@/components/OnboardingSurvey';
 import OnboardingSurveyInline from '@/components/OnboardingSurveyInline';
-import { TrendingUp, Clock, CheckCircle, Calendar, ExternalLink, Settings, Bug, AlertCircle } from 'lucide-react';
+import { TrendingUp, Clock, CheckCircle, Calendar, ExternalLink, Settings, Bug, AlertCircle, ClipboardList, FileText, FileEdit, Video, Megaphone, CreditCard, Hourglass, XCircle } from 'lucide-react';
+import PreviousStepMessage from '@/components/PreviousStepMessage';
 import { useState, useEffect } from 'react';
 import { CampaignStatus, getStepFromStatus } from '@/types';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
@@ -22,6 +23,10 @@ export default function InfluencerDashboard() {
   const [urlInputs, setUrlInputs] = useState<{[key: string]: string}>({});
   const [schedulingCheckboxes, setSchedulingCheckboxes] = useState<{[key: string]: {summary: boolean, comment: boolean}}>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [paymentWaiting, setPaymentWaiting] = useState<{[key: string]: boolean}>({});
+  const [meetingUpdating, setMeetingUpdating] = useState<{[key: string]: boolean}>({});
+  const [urlSubmitting, setUrlSubmitting] = useState<{[key: string]: boolean}>({});
+  const [confirmingCompleted, setConfirmingCompleted] = useState<{[key: string]: boolean}>({});
 
   // Manual refresh function
   const refreshData = async () => {
@@ -99,6 +104,36 @@ export default function InfluencerDashboard() {
   const totalEarnings = userCampaigns
     .reduce((sum, campaign) => sum + (campaign.contractedPrice || 0), 0);
 
+  // Map action type to icon component for the Action card
+  const getActionIconByType = (type: string) => {
+    switch (type) {
+      case 'onboarding':
+        return ClipboardList;
+      case 'meeting':
+        return Calendar;
+      case 'plan':
+        return FileText;
+      case 'plan_revising':
+        return FileEdit;
+      case 'content':
+        return Video;
+      case 'draft_revising':
+        return FileEdit;
+      case 'publish':
+        return Megaphone;
+      case 'payment':
+        return CreditCard;
+      case 'waiting':
+        return Hourglass;
+      case 'completed':
+        return CheckCircle;
+      case 'cancelled':
+        return XCircle;
+      default:
+        return AlertCircle;
+    }
+  };
+
   // Get action needed for a campaign based on current step
   const getActionNeeded = (campaign: any) => {
     const currentStep = getStepFromStatus(campaign.status as CampaignStatus);
@@ -123,7 +158,7 @@ export default function InfluencerDashboard() {
           // Show plan creation action instead
           return {
             title: '構成案の作成',
-            description: 'プロモーションの構成案を作成してください',
+            description: 'プロモーションの構成案を作成しリンクを共有してください',
             icon: AlertCircle,
             color: 'blue',
             action: 'plan',
@@ -151,7 +186,7 @@ export default function InfluencerDashboard() {
         if (campaign.status === 'plan_creating') {
           return {
             title: '構成案の作成',
-            description: 'プロモーションの構成案を作成してください',
+            description: 'プロモーションの構成案を作成しリンクを共有してください',
             icon: AlertCircle,
             color: 'blue',
             action: 'plan',
@@ -161,15 +196,6 @@ export default function InfluencerDashboard() {
           return {
             title: '構成案の確認待ち',
             description: '提出した構成案の確認をお待ちください',
-            icon: Clock,
-            color: 'orange',
-            action: 'waiting',
-            inputType: 'none'
-          };
-        } else if (campaign.status === 'plan_reviewing') {
-          return {
-            title: '構成案の確認中',
-            description: '構成案の確認中です。修正が必要な場合はお知らせします。',
             icon: Clock,
             color: 'orange',
             action: 'waiting',
@@ -207,15 +233,6 @@ export default function InfluencerDashboard() {
             action: 'waiting',
             inputType: 'none'
           };
-        } else if (campaign.status === 'draft_reviewing') {
-          return {
-            title: '初稿の確認中',
-            description: '初稿の確認中です。修正が必要な場合はお知らせします。',
-            icon: Clock,
-            color: 'purple',
-            action: 'waiting',
-            inputType: 'none'
-          };
         } else if (campaign.status === 'draft_revising') {
           return {
             title: '初稿の修正',
@@ -241,11 +258,11 @@ export default function InfluencerDashboard() {
         } else if (campaign.status === 'scheduled') {
           return {
             title: '投稿完了',
-            description: 'コンテンツの投稿が完了しました。送金手続きをお待ちください。',
-            icon: CheckCircle,
-            color: 'green',
-            action: 'completed',
-            inputType: 'none'
+            description: 'コンテンツの投稿が完了しました。次に送金手続きを進めてください。',
+            icon: CreditCard,
+            color: 'blue',
+            action: 'payment',
+            inputType: 'payment'
           };
         }
         break;
@@ -253,17 +270,17 @@ export default function InfluencerDashboard() {
       case 'payment':
         if (campaign.status === 'payment_processing') {
           return {
-            title: 'お支払いフォームの提出',
-            description: 'こちらのリンクからお支払いフォームをご提出ください',
-            icon: AlertCircle,
-            color: 'blue',
-            action: 'payment',
-            inputType: 'none'
+            title: '送金手続き中です',
+            description: 'ご提出いただいた内容を確認し送金手続きに移行します。着金が確認でき次第以下のボタンよりお知らせください。',
+            icon: CreditCard,
+            color: 'orange',
+            action: 'confirm_payment',
+            inputType: 'confirm_payment'
           };
         } else if (campaign.status === 'completed') {
           return {
             title: 'アクション不要：PR完了',
-            description: 'プロモーションが完了しました。お疲れ様でした！',
+            description: 'プロモーションが完了しました。ありがとうございました！',
             icon: CheckCircle,
             color: 'green',
             action: 'completed',
@@ -311,12 +328,12 @@ export default function InfluencerDashboard() {
     let completedSteps = 0;
     
     // Check if meeting step is completed
-    if (currentStep !== 'meeting' || ['plan_creating', 'plan_submitted', 'plan_reviewing', 'plan_revising', 'draft_creating', 'draft_submitted', 'draft_reviewing', 'draft_revising', 'scheduling', 'scheduled', 'payment_processing', 'completed'].includes(campaign.status)) {
+    if (currentStep !== 'meeting' || ['plan_creating', 'plan_submitted', 'plan_revising', 'draft_creating', 'draft_submitted', 'draft_revising', 'scheduling', 'scheduled', 'payment_processing', 'completed'].includes(campaign.status)) {
       completedSteps++;
     }
     
     // Check if plan_creation step is completed
-    if (currentStep !== 'plan_creation' || ['draft_creating', 'draft_submitted', 'draft_reviewing', 'draft_revising', 'scheduling', 'scheduled', 'payment_processing', 'completed'].includes(campaign.status)) {
+    if (currentStep !== 'plan_creation' || ['draft_creating', 'draft_submitted', 'draft_revising', 'scheduling', 'scheduled', 'payment_processing', 'completed'].includes(campaign.status)) {
       completedSteps++;
     }
     
@@ -349,6 +366,52 @@ export default function InfluencerDashboard() {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     return diffDays;
+  };
+
+  // Format date helper for schedule display
+  const formatDate = (date: Date | string | undefined | null) => {
+    if (!date) return '未定';
+    if (typeof date === 'string' && date.trim() === '') return '未定';
+    try {
+      const dateObj = new Date(date);
+      if (isNaN(dateObj.getTime())) return '未定';
+      return new Intl.DateTimeFormat('ja-JP', {
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric'
+      }).format(dateObj);
+    } catch {
+      return '未定';
+    }
+  };
+
+  // Ensure URL is absolute to avoid being treated as a relative path by the browser
+  const getAbsoluteUrl = (url: string | undefined | null) => {
+    if (!url) return '';
+    const trimmed = url.trim();
+    if (!trimmed) return '';
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed.replace(/^\/+/, '')}`;
+  };
+
+  // Dynamic guideline link based on platform
+  const getGuidelineUrl = (platform: string | undefined) => {
+    if (!platform) return '';
+    if (platform === 'youtube_long' || platform === 'yt') {
+      return 'https://usespeak.notion.site/YouTube-4-0-5b88f1ad34ed45f3aaeca324af039665?source=copy_link';
+    }
+    if (platform === 'podcast' || platform === 'pc') {
+      return 'https://usespeak.notion.site/Podcast-224792ec2f1080f2a7d5fce804ce4b93?source=copy_link';
+    }
+    if (
+      platform === 'youtube_short' ||
+      platform === 'short_video' ||
+      platform === 'instagram_reel' ||
+      platform === 'tiktok'
+    ) {
+      return 'https://usespeak.notion.site/1b3792ec2f10800f9f94e476a87c06f1?source=copy_link';
+    }
+    return '';
   };
 
   // Get the most active campaign for status display
@@ -389,6 +452,7 @@ export default function InfluencerDashboard() {
     
     if (window.confirm(confirmMessage)) {
       try {
+        setMeetingUpdating(prev => ({ ...prev, [campaignId]: true }));
         let newStatus: string;
         
         if (status === 'completed') {
@@ -443,6 +507,9 @@ export default function InfluencerDashboard() {
         console.error('❌ Error updating meeting status:', error);
         alert('更新に失敗しました。もう一度お試しください。');
       }
+      finally {
+        setMeetingUpdating(prev => ({ ...prev, [campaignId]: false }));
+      }
     }
   };
 
@@ -457,6 +524,7 @@ export default function InfluencerDashboard() {
   };
 
   const handlePaymentSubmission = async (campaignId: string) => {
+    if (!window.confirm('送金手続きを開始しますか？')) return;
     const campaignCheckboxes = paymentCheckboxes[campaignId] || { invoice: false, form: false };
     
     if (!campaignCheckboxes.invoice || !campaignCheckboxes.form) {
@@ -498,6 +566,9 @@ export default function InfluencerDashboard() {
               : campaign
           )
         );
+
+        // Show waiting state immediately after CTA
+        setPaymentWaiting(prev => ({ ...prev, [campaignId]: true }));
       } else {
         console.error('❌ Failed to update payment status:', result.error);
         
@@ -517,13 +588,29 @@ export default function InfluencerDashboard() {
   };
 
   const handlePaymentCheckbox = (campaignId: string, type: 'invoice' | 'form', checked: boolean) => {
-    setPaymentCheckboxes(prev => ({
-      ...prev,
-      [campaignId]: {
-        ...prev[campaignId],
-        [type]: checked
-      }
-    }));
+    setPaymentCheckboxes(prev => {
+      const updated = {
+        ...prev,
+        [campaignId]: {
+          ...prev[campaignId],
+          [type]: checked
+        }
+      };
+
+      return updated;
+    });
+  };
+
+  // Confirm payment completion CTA (着金を確認しました)
+  const handleConfirmPaymentCompleted = async (campaignId: string) => {
+    const ok = window.confirm('着金を確認しましたか？この操作は取り消せません。');
+    if (!ok) return;
+    setConfirmingCompleted(prev => ({ ...prev, [campaignId]: true }));
+    try {
+      await handleStatusChange(campaignId, 'completed');
+    } finally {
+      setConfirmingCompleted(prev => ({ ...prev, [campaignId]: false }));
+    }
   };
 
   // Function to advance to next step when current step is completed
@@ -621,7 +708,7 @@ export default function InfluencerDashboard() {
         urlType: 'plan'
       },
       'plan_revising': {
-        nextStatus: 'plan_reviewing',
+        nextStatus: 'plan_submitted',
         confirmMessage: '修正版構成案を提出しますか？',
         urlType: 'plan'
       },
@@ -632,7 +719,7 @@ export default function InfluencerDashboard() {
         urlType: 'draft'
       },
       'draft_revising': {
-        nextStatus: 'draft_reviewing',
+        nextStatus: 'draft_submitted',
         confirmMessage: '修正版初稿を提出しますか？',
         urlType: 'draft'
       },
@@ -649,6 +736,7 @@ export default function InfluencerDashboard() {
 
     if (window.confirm(transition.confirmMessage)) {
       try {
+        setUrlSubmitting(prev => ({ ...prev, [campaignId]: true }));
         // Update Google Sheets via API
         const response = await fetch('/api/campaigns/update', {
           method: 'POST',
@@ -674,6 +762,7 @@ export default function InfluencerDashboard() {
           console.log('✅ Campaign updated successfully in Google Sheets');
           
           // Update local state
+          // Persist status as 'scheduled' and do NOT auto-advance to payment here
           setCampaigns(prevCampaigns => 
             prevCampaigns.map(campaign => 
               campaign.id === campaignId 
@@ -685,25 +774,7 @@ export default function InfluencerDashboard() {
           // Clear the URL input
           setUrlInputs(prev => ({ ...prev, [campaignId]: '' }));
           
-          // Check if this completes the current step and advance to next step if needed
-          setTimeout(() => {
-            const updatedCampaign = campaigns.find(c => c.id === campaignId);
-            if (updatedCampaign) {
-              const currentStep = getStepFromStatus(transition.nextStatus as CampaignStatus);
-              
-              // Check if this status completes the current step
-              const stepCompletionStatuses: Record<string, string[]> = {
-                'plan_creation': ['plan_submitted', 'plan_reviewing'],
-                'draft_creation': ['draft_submitted', 'draft_reviewing'],
-                'scheduling': ['scheduled']
-              };
-              
-              if (stepCompletionStatuses[currentStep] && stepCompletionStatuses[currentStep].includes(transition.nextStatus)) {
-                // Step is completed, advance to next step
-                advanceToNextStep(campaignId, transition.nextStatus);
-              }
-            }
-          }, 100);
+          // Do not auto-advance; we remain at scheduled until payment step is triggered
         } else {
           console.error('❌ Failed to update campaign:', result.error);
           
@@ -717,6 +788,8 @@ export default function InfluencerDashboard() {
       } catch (error) {
         console.error('❌ Error updating campaign:', error);
         alert('更新に失敗しました。もう一度お試しください。');
+      } finally {
+        setUrlSubmitting(prev => ({ ...prev, [campaignId]: false }));
       }
     }
   };
@@ -776,11 +849,10 @@ export default function InfluencerDashboard() {
     { value: 'meeting_scheduled', label: '打ち合わせ予約済み' },
     { value: 'plan_creating', label: '構成案作成中' },
     { value: 'plan_submitted', label: '構成案提出済み' },
-    { value: 'plan_reviewing', label: '構成案確認中' },
+    
     { value: 'plan_revising', label: '構成案修正中' },
     { value: 'draft_creating', label: '初稿作成中' },
     { value: 'draft_submitted', label: '初稿提出済み' },
-    { value: 'draft_reviewing', label: '初稿確認中' },
     { value: 'draft_revising', label: '初稿修正中' },
     { value: 'scheduling', label: '投稿準備中' },
     { value: 'scheduled', label: '投稿済み' },
@@ -834,9 +906,13 @@ export default function InfluencerDashboard() {
               </>
             )}
           </div>
-          <p className="mobile-text" style={{ color: ds.text.secondary }}>
-            プロモーションの進捗状況と次のステップをご確認ください
-          </p>
+          {primaryCampaign ? (
+            <PreviousStepMessage status={primaryCampaign.status} />
+          ) : (
+            <p className="mobile-text" style={{ color: ds.text.secondary }}>
+              進捗状況をご確認ください
+            </p>
+          )}
         </div>
 
         {/* Debug Card - Only for demo accounts */}
@@ -1009,28 +1085,7 @@ export default function InfluencerDashboard() {
                     );
                   }
                   
-                  // Special case for plan_review status
-                  if (primaryCampaign.status === 'plan_reviewing') {
-                    return (
-                      <div className="flex items-start space-x-4">
-                        <div className="p-3 rounded-lg flex-shrink-0" style={{ 
-                          backgroundColor: ds.status.completed.bg,
-                          color: ds.status.completed.text,
-                          borderColor: ds.status.completed.border
-                        }}>
-                          <CheckCircle size={24} />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold mb-2" style={{ color: ds.text.primary }}>
-                            アクション不要：構成案確認中
-                          </h3>
-                          <p style={{ color: ds.text.secondary }}>
-                            構成案の確認を行っています。フィードバックをお待ちください。
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  }
+                  
                   
                   return (
                     <div className="flex items-start space-x-4">
@@ -1053,14 +1108,55 @@ export default function InfluencerDashboard() {
                   );
                 }
                 
+                // If payment waiting, show a dedicated waiting card
+                if (paymentWaiting[primaryCampaign.id]) {
+                  return (
+                    <div className="flex items-start space-x-4">
+                      <div className="p-3 rounded-lg flex-shrink-0" style={{ 
+                        backgroundColor: '#f97316' + '20',
+                        color: '#f97316',
+                        borderColor: '#f97316' + '30'
+                      }}>
+                        <CreditCard size={24} />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold mb-2" style={{ color: ds.text.primary }}>
+                          送金手続き中：着金を確認次第以下のボタンよりお知らせください
+                        </h3>
+                        <p className="mb-4" style={{ color: ds.text.secondary }}>
+                          ご提出いただいた内容を確認し送金手続きに移行します。着金が確認でき次第以下のボタンよりお知らせください。
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => handleConfirmPaymentCompleted(primaryCampaign.id)}
+                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                            style={{ backgroundColor: ds.button.primary.bg, color: ds.button.primary.text }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.hover}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.bg}
+                          >
+                            {confirmingCompleted[primaryCampaign.id] ? '更新中...' : '着金を確認しました'}
+                          </button>
+                          <a
+                            href="mailto:naoki@usespeak.com?subject=%E9%80%81%E9%87%91%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6%E5%95%8F%E3%81%84%E5%90%88%E3%82%8F%E3%81%9B&body=%E3%82%AD%E3%83%A3%E3%83%B3%E3%83%9A%E3%83%BC%E3%83%B3ID%3A%20"
+                            className="text-sm"
+                            style={{ color: '#60a5fa', textDecoration: 'underline' }}
+                          >
+                            送金について問い合わせる
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div className="flex items-start space-x-4">
                     <div className="p-3 rounded-lg flex-shrink-0" style={{ 
-                      backgroundColor: ds.button.primary.bg + '20',
-                      color: ds.button.primary.bg,
-                      borderColor: ds.button.primary.bg + '30'
+                      backgroundColor: '#f97316' + '20',
+                      color: '#f97316',
+                      borderColor: '#f97316' + '30'
                     }}>
-                      <action.icon size={24} />
+                      {(() => { const IconComp = getActionIconByType(action.action); return <IconComp size={24} />; })()}
                     </div>
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold mb-2" style={{ color: ds.text.primary }}>
@@ -1080,6 +1176,7 @@ export default function InfluencerDashboard() {
                             <select
                               value={primaryCampaign.meetingStatus || 'not_scheduled'}
                               onChange={(e) => handleMeetingStatusChange(primaryCampaign.id, e.target.value as 'not_scheduled' | 'scheduled' | 'completed')}
+                              disabled={!!meetingUpdating[primaryCampaign.id]}
                               className="px-3 py-1.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               style={{ 
                                 backgroundColor: ds.form.input.bg,
@@ -1151,8 +1248,8 @@ export default function InfluencerDashboard() {
                               onChange={(e) => setUrlInputs(prev => ({ ...prev, [primaryCampaign.id]: e.target.value }))}
                               className="flex-1 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent border"
                               style={{ 
-                                backgroundColor: ds.resolvedTheme === 'light' ? '#f8fafc' : ds.form.input.bg,
-                                borderColor: ds.resolvedTheme === 'light' ? '#cbd5e1' : ds.form.input.border,
+                                backgroundColor: ds.form.input.bg,
+                                borderColor: ds.form.input.border,
                                 color: ds.text.primary,
                                 borderWidth: '1px',
                                 borderStyle: 'solid'
@@ -1160,6 +1257,7 @@ export default function InfluencerDashboard() {
                             />
                             <button 
                               onClick={() => handleUrlSubmission(primaryCampaign.id, primaryCampaign.status)}
+                              disabled={!!urlSubmitting[primaryCampaign.id]}
                               className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                               style={{ 
                                 backgroundColor: ds.button.primary.bg,
@@ -1168,7 +1266,7 @@ export default function InfluencerDashboard() {
                               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.hover}
                               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.bg}
                             >
-                              提出
+                              {urlSubmitting[primaryCampaign.id] ? '送信中...' : '提出'}
                             </button>
                           </div>
                         </div>
@@ -1188,7 +1286,17 @@ export default function InfluencerDashboard() {
                                   borderColor: ds.form.input.border
                                 }}
                               />
-                              <span>こちらのテンプレートで請求書を作成</span>
+                              <span>
+                                <a
+                                  href={`https://docs.google.com/spreadsheets/d/1R7FffUOmZtlCo8Cm7TYOVTAixQ7Qz-ax3UC3rpgreVc/copy`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ color: '#60a5fa', textDecoration: 'underline' }}
+                                >
+                                  テンプレート
+                                </a>
+                                を利用し請求書を作成
+                              </span>
                             </label>
                             <label className="flex items-center space-x-3 text-sm cursor-pointer" style={{ color: ds.text.primary }}>
                               <input
@@ -1201,7 +1309,17 @@ export default function InfluencerDashboard() {
                                   borderColor: ds.form.input.border
                                 }}
                               />
-                              <span>こちらのフォームを提出</span>
+                              <span>
+                                <a
+                                  href={`https://docs.google.com/forms/d/e/1FAIpQLSeVeZAPnB3YdyU2L3b9dqUUYOcVtijPnY6VYLX9Dq-O5rThLA/viewform?usp=pp_url&entry.1107506212=${encodeURIComponent(primaryCampaign.id)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ color: '#60a5fa', textDecoration: 'underline' }}
+                                >
+                                  こちらの
+                                </a>
+                                フォームを記入
+                              </span>
                             </label>
                           </div>
                           <div className="flex justify-end">
@@ -1222,43 +1340,60 @@ export default function InfluencerDashboard() {
                         </div>
                       )}
 
-                                             {action.inputType === 'none' && (
-                         <div className="text-sm" style={{ color: ds.text.secondary }}>
-                           {/* No input needed for completed/waiting states */}
-                         </div>
-                       )}
-                     </div>
-                   </div>
-                 );
-               })()}
-             </div>
-             
-             {/* Survey form outside the action card */}
-             {(() => {
-               const action = getActionNeeded(primaryCampaign);
-               if (action && action.inputType === 'survey') {
-                 return (
-                   <div className="mt-4">
-                     <OnboardingSurveyInline
-                       campaignId={primaryCampaign.id}
-                       onComplete={() => {
-                         // Refresh the data after survey completion
-                         refreshData();
-                       }}
-                     />
-                   </div>
-                 );
-               }
-               return null;
-             })()}
-           </div>
-         )}
+                      {action.inputType === 'survey' && (
+                        <div className="mt-2">
+                          <OnboardingSurveyInline
+                            campaignId={primaryCampaign.id}
+                            onComplete={() => {
+                              // Refresh the data after survey completion
+                              refreshData();
+                            }}
+                            embedded
+                          />
+                        </div>
+                      )}
+
+                      {action.inputType === 'none' && (
+                        <div className="text-sm" style={{ color: ds.text.secondary }}>
+                          {/* No input needed for completed/waiting states */}
+                        </div>
+                      )}
+
+                      {action.inputType === 'confirm_payment' && (
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => handleConfirmPaymentCompleted(primaryCampaign.id)}
+                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                            style={{ backgroundColor: ds.button.primary.bg, color: ds.button.primary.text }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.hover}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.bg}
+                          >
+                            {confirmingCompleted[primaryCampaign.id] ? '更新中...' : '着金を確認しました'}
+                          </button>
+                          <a
+                            href="mailto:naoki@usespeak.com?subject=%E9%80%81%E9%87%91%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6%E5%95%8F%E3%81%84%E5%90%88%E3%82%8F%E3%81%9B&body=%E3%82%AD%E3%83%A3%E3%83%B3%E3%83%9A%E3%83%BC%E3%83%B3ID%3A%20"
+                            className="text-sm"
+                            style={{ color: '#60a5fa', textDecoration: 'underline' }}
+                          >
+                            送金について問い合わせる
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+            
+            {/* Survey now rendered inside the action card when applicable */}
+          </div>
+        )}
 
         {/* Status Section */}
         {primaryCampaign && (
           <div className="mb-6 sm:mb-8">
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
-              ステータス
+              PRの流れとステータス
             </h2>
             <StatusSection campaign={primaryCampaign} />
           </div>
@@ -1321,11 +1456,11 @@ export default function InfluencerDashboard() {
                     {campaign.status === 'contract_pending' && '契約書待ち'}
                     {campaign.status === 'plan_creating' && '構成案作成中'}
                     {campaign.status === 'plan_submitted' && '構成案提出済み'}
-                    {campaign.status === 'plan_reviewing' && '構成案確認中'}
+                    
                     {campaign.status === 'plan_revising' && '構成案修正中'}
                     {campaign.status === 'draft_creating' && '初稿作成中'}
                     {campaign.status === 'draft_submitted' && '初稿提出済み'}
-                    {campaign.status === 'draft_reviewing' && '初稿確認中'}
+
                     {campaign.status === 'draft_revising' && '初稿修正中'}
                     {campaign.status === 'scheduling' && '投稿準備中'}
                     {campaign.status === 'scheduled' && '投稿済み'}
@@ -1353,17 +1488,109 @@ export default function InfluencerDashboard() {
                         {campaign.status === 'contract_pending' && '契約書をご確認・サインしてください'}
                         {campaign.status === 'plan_creating' && '構成案の作成を開始してください'}
                         {campaign.status === 'plan_submitted' && '構成案の確認をお待ちください'}
-                        {campaign.status === 'plan_reviewing' && '構成案の確認をお待ちください'}
+                        
                         {campaign.status === 'plan_revising' && '修正版構成案をご提出ください'}
                         {campaign.status === 'draft_creating' && '初稿の作成を開始してください'}
                         {campaign.status === 'draft_submitted' && '初稿の確認をお待ちください'}
-                        {campaign.status === 'draft_reviewing' && '修正があれば対応してください'}
+
                         {campaign.status === 'draft_revising' && '修正版初稿をご提出ください'}
                         {campaign.status === 'scheduling' && 'コンテンツを投稿してください'}
                         {campaign.status === 'scheduled' && '送金手続きをお待ちください'}
                         {campaign.status === 'payment_processing' && 'お支払い処理中です'}
                         {campaign.status === 'completed' && 'プロモーション完了'}
                       </p>
+                    </div>
+                  </div>
+
+                  {/* Schedule - key dates */}
+                  <div>
+                    <p className="font-medium mb-2" style={{ color: ds.text.primary }}>スケジュール</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                      <div className="flex items-center space-x-2" style={{ color: ds.text.secondary }}>
+                        <Calendar size={14} />
+                        <div>
+                          <p className="font-medium" style={{ color: ds.text.primary }}>構成案提出</p>
+                          <p>{formatDate(campaign.schedules?.planSubmissionDate)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2" style={{ color: ds.text.secondary }}>
+                        <Calendar size={14} />
+                        <div>
+                          <p className="font-medium" style={{ color: ds.text.primary }}>初稿提出</p>
+                          <p>{formatDate(campaign.schedules?.draftSubmissionDate)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2" style={{ color: ds.text.secondary }}>
+                        <Calendar size={14} />
+                        <div>
+                          <p className="font-medium" style={{ color: ds.text.primary }}>PR投稿</p>
+                          <p>{formatDate(campaign.schedules?.liveDate)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Submission Links */}
+                  <div>
+                    <p className="font-medium mb-2" style={{ color: ds.text.primary }}>提出リンク</p>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex items-center space-x-2">
+                        {campaign.campaignData?.url_plan && campaign.campaignData.url_plan.trim() !== '' ? (
+                          <a
+                            href={getAbsoluteUrl(campaign.campaignData.url_plan)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center space-x-2"
+                            style={{ color: ds.text.accent }}
+                          >
+                            <ExternalLink size={14} />
+                            <span>構成案リンク</span>
+                          </a>
+                        ) : (
+                          <>
+                            <span className="font-medium" style={{ color: ds.text.primary }}>構成案リンク</span>
+                            <span style={{ color: ds.text.secondary }}>未提出</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {campaign.campaignData?.url_draft && campaign.campaignData.url_draft.trim() !== '' ? (
+                          <a
+                            href={getAbsoluteUrl(campaign.campaignData.url_draft)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center space-x-2"
+                            style={{ color: ds.text.accent }}
+                          >
+                            <ExternalLink size={14} />
+                            <span>初稿リンク</span>
+                          </a>
+                        ) : (
+                          <>
+                            <span className="font-medium" style={{ color: ds.text.primary }}>初稿リンク</span>
+                            <span style={{ color: ds.text.secondary }}>未提出</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {campaign.campaignData?.url_content && campaign.campaignData.url_content.trim() !== '' ? (
+                          <a
+                            href={getAbsoluteUrl(campaign.campaignData.url_content)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center space-x-2"
+                            style={{ color: ds.text.accent }}
+                          >
+                            <ExternalLink size={14} />
+                            <span>PR投稿リンク</span>
+                          </a>
+                        ) : (
+                          <>
+                            <span className="font-medium" style={{ color: ds.text.primary }}>PR投稿リンク</span>
+                            <span style={{ color: ds.text.secondary }}>未提出</span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1385,7 +1612,6 @@ export default function InfluencerDashboard() {
                   {/* Reference Links */}
                   {campaign.referenceLinks.length > 0 && (
                     <div>
-                      <p className="font-medium text-dark-text mb-2">参考リンク</p>
                       <div className="space-y-1">
                         {campaign.referenceLinks.map((link, index) => (
                           <a
@@ -1427,7 +1653,65 @@ export default function InfluencerDashboard() {
             </div>
           </div>
         )}
+
+        {/* Links Section - moved to bottom */}
+        {primaryCampaign && (
+          <div className="mt-6 sm:mt-8">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
+              リンク
+            </h2>
+            <div className="rounded-xl p-4 sm:p-6" style={{ 
+              backgroundColor: ds.bg.card,
+              borderColor: ds.border.primary,
+              borderWidth: '1px',
+              borderStyle: 'solid'
+            }}>
+              <div className="space-y-2 text-sm">
+                {(() => {
+                  const url = getGuidelineUrl(primaryCampaign.platform as string);
+                  if (!url) return null;
+                  return (
+                    <div className="flex items-center space-x-2">
+                      <ExternalLink size={14} style={{ color: ds.text.accent }} />
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: ds.text.accent, textDecoration: 'underline' }}
+                      >
+                        ガイドライン
+                      </a>
+                    </div>
+                  );
+                })()}
+                <div className="flex items-center space-x-2">
+                  <ExternalLink size={14} style={{ color: ds.text.accent }} />
+                  <a
+                    href="https://docs.google.com/document/d/13Ljg7rR8hsaZflGt3N0sB_g9ad-391G7Nhl4ICwVybg/copy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: ds.text.accent, textDecoration: 'underline' }}
+                  >
+                    ドラフトテンプレート
+                  </a>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <ExternalLink size={14} style={{ color: ds.text.accent }} />
+                  <a
+                    href="https://docs.google.com/spreadsheets/d/1R7FffUOmZtlCo8Cm7TYOVTAixQ7Qz-ax3UC3rpgreVc/copy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: ds.text.accent, textDecoration: 'underline' }}
+                  >
+                    請求書テンプレート
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+

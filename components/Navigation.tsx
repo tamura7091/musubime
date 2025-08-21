@@ -7,6 +7,7 @@ import ThemeSwitcher from './ThemeSwitcher';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
 import speakLogoLight from '@/app/assets/speak_logo_lightmode.svg';
 import speakLogoDark from '@/app/assets/speak_logo_darkmode.svg';
+import speakAppLogoPng from '@/app/assets/speak app logo.png';
 
 export default function Navigation() {
   const { user, logout } = useAuth();
@@ -45,17 +46,23 @@ export default function Navigation() {
             <ThemeSwitcher />
             
             <div className="flex items-center space-x-3">
-              {user.avatar ? (
-                <img
-                  src={user.avatar}
-                  alt={user.name}
-                  className="w-8 h-8 rounded-full"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: ds.button.primary.bg }}>
-                  <User size={16} style={{ color: ds.button.primary.text }} />
-                </div>
-              )}
+              {(() => {
+                const avatarSrc = user.avatar || (user.role === 'admin' ? speakAppLogoPng.src : '');
+                if (avatarSrc) {
+                  return (
+                    <img
+                      src={avatarSrc}
+                      alt={user.name}
+                      className="w-8 h-8 rounded-full"
+                    />
+                  );
+                }
+                return (
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: ds.button.primary.bg }}>
+                    <User size={16} style={{ color: ds.button.primary.text }} />
+                  </div>
+                );
+              })()}
               <div className="text-sm">
                 <p className="font-medium" style={{ color: ds.text.primary }}>{user.name}</p>
                 <p style={{ color: ds.text.secondary }}>

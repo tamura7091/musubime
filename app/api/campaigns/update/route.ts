@@ -61,14 +61,7 @@ export async function POST(request: NextRequest) {
               updateMessage = `${campaign.influencerName}さんのプロモーションが完了しました`;
               updateType = 'status_change';
               break;
-            case 'plan_reviewing':
-              updateMessage = `${campaign.influencerName}さんの構成案を確認中です`;
-              updateType = 'approval';
-              break;
-            case 'draft_reviewing':
-              updateMessage = `${campaign.influencerName}さんの初稿を確認中です`;
-              updateType = 'approval';
-              break;
+            
             default:
               updateMessage = `${campaign.influencerName}さんのステータスが「${newStatus}」に更新されました`;
               updateType = 'status_change';

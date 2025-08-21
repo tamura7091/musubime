@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, AuthState } from '@/types';
 import { mockUsers } from '@/lib/mock-data';
+import speakAppLogoPng from '@/app/assets/speak app logo.png';
 
 interface AuthContextType extends AuthState {
   login: (id: string, password: string) => Promise<boolean>;
@@ -41,7 +42,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: 'admin',
           name: 'スピークチーム',
           email: 'admin@usespeak.com',
-          role: 'admin'
+          role: 'admin',
+          avatar: speakAppLogoPng.src
         };
         setAuthState({
           user: adminUser,

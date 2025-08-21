@@ -15,11 +15,9 @@ export type CampaignStatus =
   | 'meeting_scheduled'     // 打ち合わせ予約済み
   | 'plan_creating'         // 構成案作成中
   | 'plan_submitted'        // 構成案提出済み
-  | 'plan_reviewing'        // 構成案確認中
   | 'plan_revising'         // 構成案修正中
   | 'draft_creating'        // 初稿作成中
   | 'draft_submitted'       // 初稿提出済み
-  | 'draft_reviewing'       // 初稿確認中
   | 'draft_revising'        // 初稿修正中
   | 'scheduling'            // 投稿準備中
   | 'scheduled'             // 投稿済み
@@ -46,12 +44,10 @@ export const getStepFromStatus = (status: CampaignStatus): CampaignStep => {
       return 'meeting';
     case 'plan_creating':
     case 'plan_submitted':
-    case 'plan_reviewing':
     case 'plan_revising':
       return 'plan_creation';
     case 'draft_creating':
     case 'draft_submitted':
-    case 'draft_reviewing':
     case 'draft_revising':
       return 'draft_creation';
     case 'scheduling':

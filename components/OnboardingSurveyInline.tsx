@@ -7,6 +7,7 @@ import { useDesignSystem } from '@/hooks/useDesignSystem';
 interface OnboardingSurveyInlineProps {
   campaignId: string;
   onComplete: () => void;
+  embedded?: boolean;
 }
 
 interface SurveyData {
@@ -20,10 +21,11 @@ interface SurveyData {
   repurposable: 'yes' | 'no';
 }
 
-export default function OnboardingSurveyInline({ campaignId, onComplete }: OnboardingSurveyInlineProps) {
+export default function OnboardingSurveyInline({ campaignId, onComplete, embedded = false }: OnboardingSurveyInlineProps) {
   const ds = useDesignSystem();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [surveyData, setSurveyData] = useState<SurveyData>({
     platform: '',
     contractName: '',
@@ -58,7 +60,7 @@ export default function OnboardingSurveyInline({ campaignId, onComplete }: Onboa
     {
       title: '報酬額（税別）',
       field: 'price',
-      type: 'number',
+      type: 'text',
       placeholder: '50000'
     },
     {
@@ -89,10 +91,15 @@ export default function OnboardingSurveyInline({ campaignId, onComplete }: Onboa
   ];
 
   const handleInputChange = (field: keyof SurveyData, value: string) => {
-    setSurveyData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    if (field === 'price') {
+      // Keep only digits
+      const digitsOnly = value.replace(/\D/g, '');
+      // Format with commas
+      const withCommas = digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      setSurveyData(prev => ({ ...prev, price: withCommas }));
+      return;
+    }
+    setSurveyData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleNext = () => {
@@ -109,6 +116,7 @@ export default function OnboardingSurveyInline({ campaignId, onComplete }: Onboa
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    setErrorMessage(null);
     try {
       const response = await fetch('/api/campaigns/onboarding', {
         method: 'POST',
@@ -124,10 +132,17 @@ export default function OnboardingSurveyInline({ campaignId, onComplete }: Onboa
       if (response.ok) {
         onComplete();
       } else {
-        console.error('Failed to submit survey');
+        let message = 'Failed to submit survey';
+        try {
+          const data = await response.json();
+          message = data?.message || data?.error || message;
+        } catch {}
+        console.error('Failed to submit survey:', message);
+        setErrorMessage(message);
       }
     } catch (error) {
       console.error('Error submitting survey:', error);
+      setErrorMessage('サーバーエラーが発生しました。しばらくしてから再度お試しください。');
     } finally {
       setIsSubmitting(false);
     }
@@ -138,10 +153,10 @@ export default function OnboardingSurveyInline({ campaignId, onComplete }: Onboa
   const canProceed = surveyData[currentStepData.field as keyof SurveyData] !== '';
 
   return (
-    <div style={{ 
-      backgroundColor: ds.bg.card, 
-      borderColor: ds.border.primary 
-    }} className="border rounded-lg p-4">
+    <div
+      style={embedded ? undefined : { backgroundColor: ds.bg.card, borderColor: ds.border.primary }}
+      className={embedded ? "pt-2" : "border rounded-lg p-4"}
+    >
       {/* Progress Bar */}
       <div className="mb-4">
         <div className="flex justify-between text-sm mb-2" style={{ 
@@ -165,6 +180,11 @@ export default function OnboardingSurveyInline({ campaignId, onComplete }: Onboa
 
       {/* Current Step */}
       <div className="mb-4">
+        {errorMessage && (
+          <div className="mb-3 p-3 rounded text-sm" style={{ backgroundColor: '#ef4444' + '10', color: '#f87171', border: '1px solid ' + '#ef4444' + '30' }}>
+            {errorMessage}
+          </div>
+        )}
         <h3 className="text-lg font-medium mb-3" style={{ 
           color: ds.text.primary 
         }}>
@@ -206,37 +226,8 @@ export default function OnboardingSurveyInline({ campaignId, onComplete }: Onboa
             ))}
           </select>
         ) : currentStepData.type === 'date' ? (
-          <div className="relative">
-            <input
-              type="date"
-              value={surveyData[currentStepData.field as keyof SurveyData] as string}
-              onChange={(e) => handleInputChange(currentStepData.field as keyof SurveyData, e.target.value)}
-              style={{
-                backgroundColor: ds.form.input.bg,
-                borderColor: ds.form.input.border,
-                color: ds.text.primary,
-                paddingRight: '2.5rem',
-              }}
-              className="w-full p-3 rounded-lg focus:ring-2 focus:border-transparent"
-              onFocus={(e) => {
-                e.target.style.borderColor = ds.form.input.focus.ring;
-                e.target.style.boxShadow = `0 0 0 2px ${ds.form.input.focus.ring}`;
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = ds.form.input.border;
-                e.target.style.boxShadow = 'none';
-              }}
-            />
-            <Calendar 
-              size={20} 
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none"
-              style={{ color: ds.text.accent }}
-            />
-          </div>
-        ) : (
           <input
-            type={currentStepData.type}
-            placeholder={currentStepData.placeholder}
+            type="date"
             value={surveyData[currentStepData.field as keyof SurveyData] as string}
             onChange={(e) => handleInputChange(currentStepData.field as keyof SurveyData, e.target.value)}
             style={{
@@ -254,6 +245,39 @@ export default function OnboardingSurveyInline({ campaignId, onComplete }: Onboa
               e.target.style.boxShadow = 'none';
             }}
           />
+        ) : (
+          <div>
+            <input
+              type={currentStepData.type}
+              placeholder={currentStepData.placeholder}
+              value={surveyData[currentStepData.field as keyof SurveyData] as string}
+              onChange={(e) => handleInputChange(currentStepData.field as keyof SurveyData, e.target.value)}
+              style={{
+                backgroundColor: ds.form.input.bg,
+                borderColor: ds.form.input.border,
+                color: ds.text.primary,
+              }}
+              className="w-full p-3 rounded-lg focus:ring-2 focus:border-transparent"
+              onFocus={(e) => {
+                e.target.style.borderColor = ds.form.input.focus.ring;
+                e.target.style.boxShadow = `0 0 0 2px ${ds.form.input.focus.ring}`;
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = ds.form.input.border;
+                e.target.style.boxShadow = 'none';
+              }}
+            />
+            {currentStepData.field === 'price' && (
+              <div className="mt-2 text-xs" style={{ color: ds.text.secondary }}>
+                {(() => {
+                  const raw = (surveyData.price || '').replace(/,/g, '');
+                  const num = raw ? parseInt(raw, 10) : 0;
+                  const taxIncluded = Math.round(num * 1.1);
+                  return `税込 (10%): ¥${taxIncluded.toLocaleString('ja-JP')}`;
+                })()}
+              </div>
+            )}
+          </div>
         )}
       </div>
 

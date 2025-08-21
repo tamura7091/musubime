@@ -319,7 +319,11 @@ class GoogleSheetsService {
       'date_draft', 
       'date_live',
       'date_deal_closed',
-      'date_status_updated'
+      'date_status_updated',
+      // URLs needed for dashboard submission links
+      'url_plan',
+      'url_draft',
+      'url_content'
     ], influencerId);
     
     // Filter out rows with empty id_campaign
@@ -638,9 +642,9 @@ class GoogleSheetsService {
       'contract prep': 'contract_pending',
       'contract_pending': 'contract_pending',
       'plan_submission': 'plan_creating',
-      'plan_review': 'plan_reviewing',
+      'plan_review': 'plan_submitted',
       'content_creation': 'draft_creating',
-      'draft_review': 'draft_reviewing',
+      'draft_review': 'draft_submitted',
       'ready_to_publish': 'scheduling',
       'live': 'scheduled',
       'PAYOUT_DONE': 'completed',
@@ -653,11 +657,9 @@ class GoogleSheetsService {
       'meeting_scheduled': 'meeting_scheduled',
       'plan_creating': 'plan_creating',
       'plan_submitted': 'plan_submitted',
-      'plan_reviewing': 'plan_reviewing',
       'plan_revising': 'plan_revising',
       'draft_creating': 'draft_creating',
       'draft_submitted': 'draft_submitted',
-      'draft_reviewing': 'draft_reviewing',
       'draft_revising': 'draft_revising',
       'scheduling': 'scheduling',
       'scheduled': 'scheduled',
@@ -869,7 +871,7 @@ class GoogleSheetsService {
       }
 
       // Update date fields based on status
-      if (newStatus === 'plan_submitted' || newStatus === 'plan_reviewing') {
+      if (newStatus === 'plan_submitted') {
         const datePlanIndex = headers.findIndex(header => header === 'date_plan');
         if (datePlanIndex !== -1) {
           const dateRange = `campaigns!${this.columnIndexToLetter(datePlanIndex)}${campaignRowIndex + 1}`;
@@ -881,7 +883,7 @@ class GoogleSheetsService {
         }
       }
 
-      if (newStatus === 'draft_submitted' || newStatus === 'draft_reviewing') {
+      if (newStatus === 'draft_submitted') {
         const dateDraftIndex = headers.findIndex(header => header === 'date_draft');
         if (dateDraftIndex !== -1) {
           const dateRange = `campaigns!${this.columnIndexToLetter(dateDraftIndex)}${campaignRowIndex + 1}`;
@@ -941,57 +943,98 @@ class GoogleSheetsService {
   }
 
   // Update campaign onboarding data
-  async updateCampaignOnboarding(campaignId: string, updateData: any): Promise<boolean> {
+  async updateCampaignOnboarding(
+    campaignId: string,
+    updateData: Record<string, string>
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       console.log('📝 GoogleSheetsService.updateCampaignOnboarding() called');
       console.log('🎯 Campaign ID:', campaignId);
       console.log('📊 Update data:', updateData);
 
-      const rawData = await this.getSheetData();
-      const campaignRowIndex = rawData.findIndex(row => row['id_campaign'] === campaignId);
-
-      if (campaignRowIndex === -1) {
-        console.error('❌ Campaign not found:', campaignId);
-        return false;
+      // Ensure write access is possible
+      if (!this.hasServiceAccount) {
+        console.log('⚠️ No Service Account configured - cannot write to Google Sheets');
+        return {
+          success: false,
+          error: 'Google Sheets write access requires Service Account credentials. Please configure GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY.'
+        };
       }
 
-      console.log('📋 Found campaign at row:', campaignRowIndex + 1);
+      this.assertConfigured();
 
-      // Prepare the update data
-      const updates: Array<{ range: string; values: string[][] }> = [];
-      const rowNumber = campaignRowIndex + 2; // +2 because sheets are 1-indexed and we have headers
-
-      // Map the update data to column letters
-      const columnMappings: { [key: string]: string } = {
-        platform: 'F', // platform column
-        contact_email: 'G', // contact_email column
-        spend_jpy: 'N', // spend_jpy column
-        date_live: 'T', // date_live column
-        date_plan: 'R', // date_plan column
-        date_draft: 'S', // date_draft column
-        repurposable: 'Z', // repurposable column (approximate)
-        status_dashboard: 'K', // status_dashboard column (approximate)
-        date_status_updated: 'V' // date_status_updated column (approximate)
+      // Fetch full range to locate row and map columns dynamically
+      const request: any = {
+        spreadsheetId: this.spreadsheetId,
+        range: 'campaigns!A:BT',
       };
+      if (this.hasApiKey && !this.hasServiceAccount) {
+        request.key = process.env.GOOGLE_SHEETS_API_KEY;
+      }
 
-      // Create updates for each field
-      Object.entries(updateData).forEach(([key, value]) => {
-        if (columnMappings[key] && value !== undefined && value !== null) {
-          updates.push({
-            range: `campaigns!${columnMappings[key]}${rowNumber}`,
-            values: [[String(value)]]
-          });
+      const response = await this.sheets.spreadsheets.values.get(request);
+      const rows = response.data.values;
+      if (!rows || rows.length === 0) {
+        return { success: false, error: 'No data found in sheet' };
+      }
+
+      const headers = rows[0] as string[];
+
+      // Find row index for campaign; data starts at row index 4 (5th row in sheet)
+      const idCampaignIndex = headers.findIndex(h => h === 'id_campaign');
+      if (idCampaignIndex === -1) {
+        return { success: false, error: 'id_campaign column not found' };
+      }
+
+      let sheetRowIndex = -1;
+      for (let i = 4; i < rows.length; i++) {
+        if (rows[i][idCampaignIndex] === campaignId) {
+          sheetRowIndex = i;
+          break;
         }
-      });
+      }
+
+      if (sheetRowIndex === -1) {
+        console.error('❌ Campaign not found:', campaignId);
+        return { success: false, error: `Campaign with ID ${campaignId} not found` };
+      }
+
+      console.log('📋 Found campaign at sheet row:', sheetRowIndex + 1);
+
+      // Build updates dynamically from headers
+      const updates: Array<{ range: string; values: any[][] }> = [];
+      const targetRowNumber = sheetRowIndex + 1; // 1-based
+
+      const desiredColumns = [
+        'platform',
+        'contact_email',
+        'spend_jpy',
+        'date_live',
+        'date_plan',
+        'date_draft',
+        'repurposable',
+        'status_dashboard',
+        'date_status_updated'
+      ];
+
+      for (const key of desiredColumns) {
+        const value = updateData[key];
+        if (value === undefined || value === null) continue;
+        const colIndex = headers.findIndex(h => h === key);
+        if (colIndex === -1) {
+          console.log(`ℹ️ Column "${key}" not found in sheet headers; skipping.`);
+          continue;
+        }
+        const range = `campaigns!${this.columnIndexToLetter(colIndex)}${targetRowNumber}`;
+        updates.push({ range, values: [[String(value)]] });
+        console.log(`📊 Queued update ${key} at ${range} = "${value}"`);
+      }
 
       if (updates.length === 0) {
         console.error('❌ No valid updates to perform');
-        return false;
+        return { success: false, error: 'No valid updates to perform' };
       }
 
-      console.log('📊 Updates to perform:', updates);
-
-      // Execute the batch update
       const batchUpdateRequest = {
         spreadsheetId: this.spreadsheetId,
         requestBody: {
@@ -1000,13 +1043,14 @@ class GoogleSheetsService {
         }
       };
 
+      console.log('📡 Executing onboarding batch update with', updates.length, 'updates');
       await this.sheets.spreadsheets.values.batchUpdate(batchUpdateRequest);
       console.log('✅ Campaign onboarding update completed successfully');
-      return true;
+      return { success: true };
 
     } catch (error: any) {
       console.error('❌ Error updating campaign onboarding:', error?.message || error);
-      return false;
+      return { success: false, error: error?.message || 'Unknown error' };
     }
   }
 

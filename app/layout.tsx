@@ -1,14 +1,15 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { ThemeProvider } from '@/contexts/ThemeContext'
+import speakAppLogoPng from '@/app/assets/speak app logo.png'
 
 export const metadata: Metadata = {
   title: 'Speak Influencer Management',
   description: 'Manage influencer campaigns with ease',
   icons: {
-    icon: '/favicon.png',
-    shortcut: '/favicon.png',
-    apple: '/favicon.png',
+    icon: speakAppLogoPng.src,
+    shortcut: speakAppLogoPng.src,
+    apple: speakAppLogoPng.src,
   },
 }
 

@@ -29,25 +29,32 @@ export async function POST(request: NextRequest) {
       repurposable
     });
 
-    // Update the campaign in Google Sheets
-    const updateData = {
-      platform: platform,
-      contact_email: email,
-      spend_jpy: price ? formatAbbreviatedCurrency(parseInt(price)) : '',
-      date_live: uploadDate,
-      date_plan: planSubmissionDate,
-      date_draft: draftSubmissionDate,
-      repurposable: repurposable === 'yes' ? 'TRUE' : 'FALSE',
-      status_dashboard: 'meeting_scheduling', // Move to next status
-      date_status_updated: new Date().toISOString().split('T')[0] // Today's date
+    // Sanitize and normalize inputs
+    const normalizedPrice = typeof price === 'string' ? price.replace(/\D/g, '') : '';
+    const safeRepurposable = repurposable === 'yes' ? 'TRUE' : 'FALSE';
+
+    // Build update payload; avoid overwriting platform if not provided by the inline form
+    const updateData: Record<string, string> = {
+      contact_email: email || '',
+      spend_jpy: normalizedPrice || '',
+      date_live: uploadDate || '',
+      date_plan: planSubmissionDate || '',
+      date_draft: draftSubmissionDate || '',
+      repurposable: safeRepurposable,
+      status_dashboard: 'meeting_scheduling',
+      date_status_updated: new Date().toISOString().split('T')[0]
     };
+
+    if (platform) {
+      updateData.platform = platform;
+    }
 
     console.log('🔄 Updating campaign with data:', updateData);
 
     // Find and update the campaign row
-    const success = await googleSheetsService.updateCampaignOnboarding(campaignId, updateData);
+    const result = await googleSheetsService.updateCampaignOnboarding(campaignId, updateData);
 
-    if (success) {
+    if (result.success) {
       console.log('✅ Campaign onboarding completed successfully');
       return NextResponse.json({ 
         success: true, 
@@ -56,7 +63,7 @@ export async function POST(request: NextRequest) {
     } else {
       console.error('❌ Failed to update campaign onboarding');
       return NextResponse.json(
-        { success: false, message: '更新に失敗しました' },
+        { success: false, message: result.error || '更新に失敗しました' },
         { status: 500 }
       );
     }

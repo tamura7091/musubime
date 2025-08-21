@@ -73,11 +73,25 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
 
   const formatDate = (date: Date | string | undefined | null) => {
     if (!date) return null;
-    return new Intl.DateTimeFormat('ja-JP', {
-      month: 'numeric',
-      day: 'numeric',
-      year: 'numeric'
-    }).format(new Date(date));
+    
+    // Handle empty strings
+    if (typeof date === 'string' && date.trim() === '') return null;
+    
+    try {
+      const dateObj = new Date(date);
+      
+      // Check if the date is valid
+      if (isNaN(dateObj.getTime())) return null;
+      
+      return new Intl.DateTimeFormat('ja-JP', {
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric'
+      }).format(dateObj);
+    } catch (error) {
+      console.warn('Invalid date value:', date);
+      return null;
+    }
   };
 
   // Check if action is overdue (more than 1 day past due)
@@ -136,58 +150,6 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
   return (
     <div className="space-y-6">
 
-      {/* Current Step Description - Above Flow */}
-      {campaign.status === 'completed' ? (
-        <div className="rounded-xl p-4 sm:p-6" style={{ 
-          backgroundColor: '#22c55e' + '10',
-          borderColor: '#22c55e' + '20',
-          borderWidth: '1px',
-          borderStyle: 'solid'
-        }}>
-          <div className="flex items-start space-x-3">
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#22c55e' + '20' }}>
-              <Check size={14} className="sm:w-4 sm:h-4" style={{ color: '#22c55e' }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="font-semibold mb-1 mobile-text" style={{ color: ds.text.primary }}>
-                完了 - お疲れ様でした！
-              </h4>
-              <p className="text-xs sm:text-sm mb-3" style={{ color: ds.text.secondary }}>
-                このキャンペーンは正常に完了しました。ご協力ありがとうございました。
-              </p>
-            </div>
-          </div>
-        </div>
-      ) : currentStep && (
-        <div className="rounded-xl p-4 sm:p-6" style={{ 
-          backgroundColor: ds.button.primary.bg + '10',
-          borderColor: ds.button.primary.bg + '20',
-          borderWidth: '1px',
-          borderStyle: 'solid'
-        }}>
-          <div className="flex items-start space-x-3">
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: ds.button.primary.bg + '20' }}>
-              <Clock size={14} className="sm:w-4 sm:h-4" style={{ color: ds.button.primary.bg }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="font-semibold mb-1 mobile-text" style={{ color: ds.text.primary }}>
-                {currentStep.title} - 進行中
-              </h4>
-              <p className="text-xs sm:text-sm mb-3" style={{ color: ds.text.secondary }}>
-                {currentStep.description}
-              </p>
-              
-              {currentStep.dateField && campaign.schedules[currentStep.dateField] && (
-                <div className="flex items-center space-x-2 text-xs sm:text-sm mb-3" style={{ color: ds.text.secondary }}>
-                  <Calendar size={14} className="flex-shrink-0" />
-                  <span>期限: {campaign.schedules[currentStep.dateField]}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Campaign Flow */}
               <div className="rounded-xl p-4 sm:p-6" style={{ 
           backgroundColor: ds.bg.card,
@@ -195,9 +157,6 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
           borderWidth: '1px',
           borderStyle: 'solid'
         }}>
-        <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
-          プロモーションの流れ
-        </h2>
         
         {/* Flow visualization */}
         <div className="relative overflow-x-auto">
