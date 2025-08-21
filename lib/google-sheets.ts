@@ -636,7 +636,7 @@ class GoogleSheetsService {
   }
 
   // Map status values from Google Sheets to our enum
-  private mapStatus(status: string): string {
+  public mapStatus(status: string): string {
     const statusMap: { [key: string]: string } = {
       // Legacy status mappings
       'contract prep': 'contract_pending',
@@ -820,7 +820,8 @@ class GoogleSheetsService {
 
       // Prepare the update data
       const updates: { range: string; values: any[][] }[] = [];
-      const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      const currentDateTime = new Date().toISOString(); // Full ISO timestamp with date and time
+      const currentDate = currentDateTime.split('T')[0]; // YYYY-MM-DD format for date-only fields
 
       // Update status_dashboard
       const statusDashboardIndex = headers.findIndex(header => header === 'status_dashboard');
@@ -833,15 +834,15 @@ class GoogleSheetsService {
         console.log(`📊 Updating status_dashboard at ${statusRange} to "${newStatus}"`);
       }
 
-      // Update date_status_updated
+      // Update date_status_updated with full timestamp (date + time)
       const dateStatusUpdatedIndex = headers.findIndex(header => header === 'date_status_updated');
       if (dateStatusUpdatedIndex !== -1) {
         const dateRange = `campaigns!${this.columnIndexToLetter(dateStatusUpdatedIndex)}${campaignRowIndex + 1}`;
         updates.push({
           range: dateRange,
-          values: [[currentDate]]
+          values: [[currentDateTime]] // Use full timestamp instead of just date
         });
-        console.log(`📅 Updating date_status_updated at ${dateRange} to "${currentDate}"`);
+        console.log(`📅 Updating date_status_updated at ${dateRange} to "${currentDateTime}"`);
       }
 
       // Update URL fields based on type
@@ -1018,8 +1019,15 @@ class GoogleSheetsService {
       ];
 
       for (const key of desiredColumns) {
-        const value = updateData[key];
+        let value = updateData[key];
         if (value === undefined || value === null) continue;
+        
+        // Special handling for date_status_updated - use full timestamp
+        if (key === 'date_status_updated') {
+          value = new Date().toISOString(); // Full ISO timestamp with date and time
+          console.log(`🕒 Using full timestamp for date_status_updated: ${value}`);
+        }
+        
         const colIndex = headers.findIndex(h => h === key);
         if (colIndex === -1) {
           console.log(`ℹ️ Column "${key}" not found in sheet headers; skipping.`);

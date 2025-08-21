@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       date_draft: draftSubmissionDate || '',
       repurposable: safeRepurposable,
       status_dashboard: 'meeting_scheduling',
-      date_status_updated: new Date().toISOString().split('T')[0]
+      date_status_updated: new Date().toISOString() // Full timestamp with date and time
     };
 
     if (platform) {

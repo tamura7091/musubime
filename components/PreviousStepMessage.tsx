@@ -8,7 +8,7 @@ interface PreviousStepMessageProps {
 }
 
 const messages: Record<string, string> = {
-  not_started: '🎉 ご参加ありがとうございます！まずは基本情報のご入力をお願いします。',
+  not_started: '🎉 Welcome! まずは基本情報のご入力をお願いします。',
   meeting_scheduling: '✅ 基本情報のご入力ありがとうございます！打ち合わせのご予約にお進みください。',
   meeting_scheduled: '📅 打ち合わせのご予約ありがとうございます！当日のご参加をお願いします。',
   plan_creating: '🤝 打ち合わせありがとうございました！構成案の作成をお願いします。',

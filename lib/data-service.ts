@@ -127,58 +127,115 @@ class DataService {
   }
 
     async getUpdates(): Promise<Update[]> {
-    // Simple: Find rows with date_status_updated and use their status_dashboard
+    // Get updates directly from Google Sheets using date_status_updated and status_dashboard
     if (this.useGoogleSheets) {
       try {
-        const campaigns = await this.getCampaigns();
+        console.log('🔍 Fetching updates directly from Google Sheets...');
+        
+        // Get specific columns needed for updates including URLs for submissions
+        const rawData = await googleSheetsService.getSpecificColumns([
+          'id_campaign',
+          'id_influencer', 
+          'name',
+          'status_dashboard',
+          'date_status_updated',
+          'url_plan',
+          'url_draft',
+          'url_content'
+        ]);
+        
+        console.log(`📊 Fetched ${rawData.length} rows from Google Sheets for updates`);
+        
         const updates: Update[] = [];
         
-        // Find campaigns that have date_status_updated
-        const campaignsWithUpdates = campaigns.filter(campaign => {
-          return campaign.updatedAt && campaign.updatedAt.toString() !== '';
-        });
-        
-        console.log(`📊 Found ${campaignsWithUpdates.length} campaigns with date_status_updated`);
-        
-        // Generate updates based on status_dashboard
-        campaignsWithUpdates.forEach(campaign => {
-          const statusUpdateDate = new Date(campaign.updatedAt);
+        // Process each row that has both date_status_updated and status_dashboard
+        rawData.forEach((row, index) => {
+          const campaignId = row['id_campaign'];
+          const influencerId = row['id_influencer'];
+          const influencerName = row['name'];
+          const statusDashboard = row['status_dashboard'];
+          const dateStatusUpdated = row['date_status_updated'];
+          const urlPlan = row['url_plan'];
+          const urlDraft = row['url_draft'];
+          const urlContent = row['url_content'];
+          
+          // Skip rows without essential data
+          if (!campaignId || !influencerId || !statusDashboard || !dateStatusUpdated) {
+            if (index < 5) { // Debug first 5 rows
+              console.log(`⚠️ Skipping row ${index + 1} - missing data:`, {
+                campaignId: !!campaignId,
+                influencerId: !!influencerId,
+                statusDashboard: !!statusDashboard,
+                dateStatusUpdated: !!dateStatusUpdated
+              });
+            }
+            return;
+          }
+          
+          // Parse the date_status_updated
+          let updateDate: Date;
+          try {
+            updateDate = new Date(dateStatusUpdated);
+            if (isNaN(updateDate.getTime())) {
+              console.log(`⚠️ Invalid date_status_updated for campaign ${campaignId}: "${dateStatusUpdated}"`);
+              return;
+            }
+          } catch (error) {
+            console.log(`⚠️ Error parsing date_status_updated for campaign ${campaignId}: "${dateStatusUpdated}"`);
+            return;
+          }
+          
+          // Map the status_dashboard to our internal status and generate message
+          const mappedStatus = googleSheetsService.mapStatus(statusDashboard);
           let updateMessage = '';
           let updateType: 'submission' | 'status_change' | 'approval' = 'status_change';
+          let submissionUrl: string | undefined;
+          let submissionType: 'plan' | 'draft' | 'content' | undefined;
+          let requiresAdminAction = false;
+          let actionType: 'approve_plan' | 'revise_plan' | 'approve_draft' | 'revise_draft' | undefined;
           
-          // Generate update message based on status_dashboard
-          switch (campaign.status) {
+          console.log(`🔍 Processing update for ${campaignId}: status_dashboard="${statusDashboard}" -> mapped="${mappedStatus}"`);
+          
+          // Generate update message based on mapped status
+          switch (mappedStatus) {
             case 'plan_submitted':
-              updateMessage = `${campaign.influencerName}さんから構成案が提出されました`;
+              updateMessage = `${influencerName}さんから構成案が提出されました`;
               updateType = 'submission';
+              submissionUrl = urlPlan;
+              submissionType = 'plan';
+              requiresAdminAction = true;
+              actionType = 'approve_plan';
               break;
-            
             case 'plan_revising':
-              updateMessage = `${campaign.influencerName}さんの構成案を修正中です`;
+              updateMessage = `${influencerName}さんの構成案を修正中です`;
               updateType = 'approval';
               break;
             case 'draft_submitted':
-              updateMessage = `${campaign.influencerName}さんから初稿が提出されました`;
+              updateMessage = `${influencerName}さんから初稿が提出されました`;
               updateType = 'submission';
+              submissionUrl = urlDraft;
+              submissionType = 'draft';
+              requiresAdminAction = true;
+              actionType = 'approve_draft';
               break;
             case 'draft_revising':
-              updateMessage = `${campaign.influencerName}さんの初稿を修正中です`;
+              updateMessage = `${influencerName}さんの初稿を修正中です`;
               updateType = 'approval';
               break;
             case 'scheduling':
-              updateMessage = `${campaign.influencerName}さんのコンテンツ投稿準備中です`;
+              updateMessage = `${influencerName}さんのコンテンツ投稿準備中です`;
               updateType = 'status_change';
               break;
             case 'scheduled':
-              updateMessage = `${campaign.influencerName}さんのコンテンツが投稿されました！`;
+              updateMessage = `${influencerName}さんのコンテンツが投稿されました！`;
               updateType = 'status_change';
               break;
             case 'completed':
-              updateMessage = `${campaign.influencerName}さんのプロモーションが完了しました`;
+              updateMessage = `${influencerName}さんのプロモーションが完了しました`;
               updateType = 'status_change';
               break;
             case 'cancelled':
-              updateMessage = `${campaign.influencerName}さんのプロモーションがキャンセルされました`;
+              updateMessage = `${influencerName}さんのプロモーションがキャンセルされました`;
               updateType = 'status_change';
               break;
             default:
@@ -200,20 +257,27 @@ class DataService {
                 'completed': '完了',
                 'cancelled': 'キャンセル'
               };
-              const japaneseStatus = statusMap[campaign.status] || campaign.status;
-              updateMessage = `${campaign.influencerName}さんのステータスが「${japaneseStatus}」に更新されました`;
+              const japaneseStatus = statusMap[mappedStatus] || mappedStatus;
+              updateMessage = `${influencerName}さんのステータスが「${japaneseStatus}」に更新されました`;
               updateType = 'status_change';
           }
           
           updates.push({
-            id: `update_${campaign.id}_${campaign.status}`,
+            id: `update_${campaignId}_${mappedStatus}_${dateStatusUpdated}`,
             message: updateMessage,
-            timestamp: statusUpdateDate,
+            timestamp: updateDate,
             type: updateType,
-            campaignId: campaign.id,
-            influencerId: campaign.influencerId,
-            influencerName: campaign.influencerName,
+            campaignId: campaignId,
+            influencerId: influencerId,
+            influencerName: influencerName || 'Unknown',
+            submissionUrl: submissionUrl,
+            submissionType: submissionType,
+            currentStatus: mappedStatus,
+            requiresAdminAction: requiresAdminAction,
+            actionType: actionType,
           });
+          
+          console.log(`✅ Created update: ${updateMessage} (${dateStatusUpdated})`);
         });
         
         // Sort by timestamp (newest first) and return latest 10 updates
@@ -221,10 +285,16 @@ class DataService {
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
           .slice(0, 10);
         
-        console.log(`✅ Generated ${sortedUpdates.length} updates`);
+        console.log(`✅ Generated ${sortedUpdates.length} updates from Google Sheets`);
+        console.log('📊 Latest updates:', sortedUpdates.map(u => ({
+          message: u.message,
+          timestamp: u.timestamp,
+          rawStatus: u.id.split('_')[2] // Extract original status from ID
+        })));
+        
         return sortedUpdates;
       } catch (error) {
-        console.error('Failed to generate updates from Google Sheets:', error);
+        console.error('❌ Failed to generate updates from Google Sheets:', error);
         return [];
       }
     }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, TrendingUp, Clock, AlertCircle, Search, Filter, User, Tag, ChevronUp, ChevronDown } from 'lucide-react';
+import { Users, TrendingUp, Clock, AlertCircle, Search, Filter, User, Tag, ChevronUp, ChevronDown, ExternalLink, Check, X } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { Campaign, Update } from '@/types';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   const [allCampaigns, setAllCampaigns] = useState<Campaign[]>([]);
   const [updates, setUpdates] = useState<Update[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processingActions, setProcessingActions] = useState<Set<string>>(new Set());
   
   console.log('👤 Current user:', user);
 
@@ -276,6 +277,65 @@ export default function AdminDashboard() {
     return statusMap[status] || status;
   };
 
+  // Handle admin actions on updates
+  const handleAdminAction = async (update: Update, action: string) => {
+    // Show confirmation dialog
+    const actionText = action.includes('approve') ? '承認' : '修正依頼';
+    const submissionText = update.submissionType === 'plan' ? '構成案' : '初稿';
+    const influencerName = update.influencerName;
+    
+    const confirmMessage = `${influencerName}さんの${submissionText}を${actionText}しますか？`;
+    const isConfirmed = window.confirm(confirmMessage);
+    
+    if (!isConfirmed) {
+      return;
+    }
+    
+    const actionId = `${update.id}_${action}`;
+    setProcessingActions(prev => new Set(prev).add(actionId));
+    
+    try {
+      console.log('🔄 Executing admin action:', { update: update.id, action });
+      
+      const response = await fetch('/api/admin/actions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          campaignId: update.campaignId,
+          influencerId: update.influencerId,
+          action: action,
+          submissionType: update.submissionType
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('✅ Admin action completed:', result.message);
+        
+        // Show success message (you can implement a toast notification here)
+        alert(result.message);
+        
+        // Refresh the updates to show the new status
+        window.location.reload();
+      } else {
+        console.error('❌ Admin action failed:', result.error);
+        alert(`エラー: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('❌ Admin action error:', error);
+      alert('アクションの実行に失敗しました');
+    } finally {
+      setProcessingActions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(actionId);
+        return newSet;
+      });
+    }
+  };
+
   // Get unique statuses and platforms for filters (filter out empty values)
   const uniqueStatuses = Array.from(
     new Set(
@@ -304,74 +364,7 @@ export default function AdminDashboard() {
           </p>
         </div>
 
-        {/* Links Card */}
-        <div className="rounded-xl p-4 sm:p-6 mb-6" style={{ 
-          backgroundColor: ds.bg.card,
-          borderColor: ds.border.primary,
-          borderWidth: '1px',
-          borderStyle: 'solid'
-        }}>
-          <h3 className="text-lg font-semibold mb-4" style={{ color: ds.text.primary }}>
-            リンク
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-            <div className="flex items-center space-x-2">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ds.text.accent }} />
-              <a
-                href="https://usespeak.notion.site/YouTube-4-0-5b88f1ad34ed45f3aaeca324af039665?source=copy_link"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: ds.text.accent, textDecoration: 'underline' }}
-              >
-                ガイドライン（YouTube長編）
-              </a>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ds.text.accent }} />
-              <a
-                href="https://usespeak.notion.site/1b3792ec2f10800f9f94e476a87c06f1?source=copy_link"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: ds.text.accent, textDecoration: 'underline' }}
-              >
-                ガイドライン（ショート動画）
-              </a>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ds.text.accent }} />
-              <a
-                href="https://usespeak.notion.site/Podcast-224792ec2f1080f2a7d5fce804ce4b93?source=copy_link"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: ds.text.accent, textDecoration: 'underline' }}
-              >
-                ガイドライン（ポッドキャスト）
-              </a>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ds.text.accent }} />
-              <a
-                href="https://docs.google.com/document/d/13Ljg7rR8hsaZflGt3N0sB_g9ad-391G7Nhl4ICwVybg/copy"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: ds.text.accent, textDecoration: 'underline' }}
-              >
-                ドラフトテンプレート
-              </a>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ds.text.accent }} />
-              <a
-                href="https://docs.google.com/spreadsheets/d/1R7FffUOmZtlCo8Cm7TYOVTAixQ7Qz-ax3UC3rpgreVc/copy"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: ds.text.accent, textDecoration: 'underline' }}
-              >
-                請求書テンプレート
-              </a>
-            </div>
-          </div>
-        </div>
+
 
         {/* Stats Overview */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
@@ -464,17 +457,89 @@ export default function AdminDashboard() {
               <h3 className="text-lg font-semibold mb-4" style={{ color: ds.text.primary }}>
                 アップデート
               </h3>
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {recentUpdates.map((update: Update) => (
-                  <div key={update.id} className="flex items-start space-x-3">
-                    <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: ds.text.accent }}></div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm" style={{ color: ds.text.primary }}>
-                        {update.message}
-                      </p>
-                      <p className="text-xs mt-1" style={{ color: ds.text.secondary }}>
-                        {formatTimeAgo(update.timestamp)}
-                      </p>
+                  <div key={update.id} className="rounded-lg p-3 transition-colors" style={{ 
+                    backgroundColor: update.requiresAdminAction ? ds.bg.surface : ds.bg.card
+                  }}>
+                    <div className="flex items-center justify-between">
+                      {/* Left side - Message and timestamp */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                            update.requiresAdminAction ? 'animate-pulse' : ''
+                          }`} style={{ 
+                            backgroundColor: update.requiresAdminAction ? '#ef4444' : ds.text.secondary 
+                          }}></div>
+                          <p className="text-sm truncate" style={{ color: ds.text.primary }}>
+                            {update.message}
+                          </p>
+                          <span className="text-xs whitespace-nowrap" style={{ color: ds.text.secondary }}>
+                            {formatTimeAgo(update.timestamp)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Right side - Actions */}
+                      {update.requiresAdminAction ? (
+                        <div className="flex items-center space-x-2 ml-3">
+                          {/* Review Link */}
+                          {update.submissionUrl && (
+                            <a
+                              href={update.submissionUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center space-x-1 text-xs px-2 py-1 rounded transition-colors"
+                              style={{ 
+                                backgroundColor: ds.button.secondary.bg,
+                                color: ds.button.secondary.text
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.hover}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.bg}
+                            >
+                              <ExternalLink size={10} />
+                              <span>確認</span>
+                            </a>
+                          )}
+                          
+                          {/* Action Buttons */}
+                          <button
+                            onClick={() => handleAdminAction(update, update.actionType!)}
+                            disabled={processingActions.has(`${update.id}_${update.actionType}`)}
+                            className="inline-flex items-center space-x-1 text-xs px-2 py-1 rounded transition-colors disabled:opacity-50"
+                            style={{ 
+                              backgroundColor: '#10b981',
+                              color: 'white'
+                            }}
+                          >
+                            {processingActions.has(`${update.id}_${update.actionType}`) ? (
+                              <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              <Check size={10} />
+                            )}
+                            <span>承認</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => handleAdminAction(update, 
+                              update.submissionType === 'plan' ? 'revise_plan' : 'revise_draft'
+                            )}
+                            disabled={processingActions.has(`${update.id}_${update.submissionType === 'plan' ? 'revise_plan' : 'revise_draft'}`)}
+                            className="inline-flex items-center space-x-1 text-xs px-2 py-1 rounded transition-colors disabled:opacity-50"
+                            style={{ 
+                              backgroundColor: '#f59e0b',
+                              color: 'white'
+                            }}
+                          >
+                            {processingActions.has(`${update.id}_${update.submissionType === 'plan' ? 'revise_plan' : 'revise_draft'}`) ? (
+                              <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              <X size={10} />
+                            )}
+                            <span>修正</span>
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -802,6 +867,75 @@ export default function AdminDashboard() {
                   検索条件に一致するキャンペーンが見つかりません
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+
+        {/* Links Card - Moved to bottom */}
+        <div className="rounded-xl p-4 sm:p-6 mt-6" style={{ 
+          backgroundColor: ds.bg.card,
+          borderColor: ds.border.primary,
+          borderWidth: '1px',
+          borderStyle: 'solid'
+        }}>
+          <h3 className="text-lg font-semibold mb-4" style={{ color: ds.text.primary }}>
+            リンク
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ds.text.accent }} />
+              <a
+                href="https://usespeak.notion.site/YouTube-4-0-5b88f1ad34ed45f3aaeca324af039665?source=copy_link"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: ds.text.accent, textDecoration: 'underline' }}
+              >
+                ガイドライン（YouTube長編）
+              </a>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ds.text.accent }} />
+              <a
+                href="https://usespeak.notion.site/1b3792ec2f10800f9f94e476a87c06f1?source=copy_link"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: ds.text.accent, textDecoration: 'underline' }}
+              >
+                ガイドライン（ショート動画）
+              </a>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ds.text.accent }} />
+              <a
+                href="https://usespeak.notion.site/Podcast-224792ec2f1080f2a7d5fce804ce4b93?source=copy_link"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: ds.text.accent, textDecoration: 'underline' }}
+              >
+                ガイドライン（ポッドキャスト）
+              </a>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ds.text.accent }} />
+              <a
+                href="https://docs.google.com/document/d/13Ljg7rR8hsaZflGt3N0sB_g9ad-391G7Nhl4ICwVybg/copy"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: ds.text.accent, textDecoration: 'underline' }}
+              >
+                ドラフトテンプレート
+              </a>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ds.text.accent }} />
+              <a
+                href="https://docs.google.com/spreadsheets/d/1R7FffUOmZtlCo8Cm7TYOVTAixQ7Qz-ax3UC3rpgreVc/copy"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: ds.text.accent, textDecoration: 'underline' }}
+              >
+                請求書テンプレート
+              </a>
             </div>
           </div>
         </div>

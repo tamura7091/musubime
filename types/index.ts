@@ -182,6 +182,12 @@ export interface Update {
   type: 'status_change' | 'submission' | 'approval' | 'message';
   message: string;
   timestamp: Date;
+  // Additional fields for admin actions
+  submissionUrl?: string;
+  submissionType?: 'plan' | 'draft' | 'content';
+  currentStatus?: string;
+  requiresAdminAction?: boolean;
+  actionType?: 'approve_plan' | 'revise_plan' | 'approve_draft' | 'revise_draft';
 }
 
 export interface AuthState {
