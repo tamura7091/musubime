@@ -159,8 +159,8 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
         }}>
         
         {/* Flow visualization */}
-        <div className="relative overflow-x-auto">
-          <div className="min-w-full">
+        <div className="relative">
+          <div className="w-full">
             {/* Connection line */}
             <div className="absolute top-2 left-4 right-4 h-0.5" style={{ backgroundColor: ds.border.secondary }}></div>
             <div 

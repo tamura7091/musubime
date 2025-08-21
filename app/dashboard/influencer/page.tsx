@@ -14,6 +14,15 @@ import { useDesignSystem } from '@/hooks/useDesignSystem';
 import { formatAbbreviatedCurrency } from '@/lib/design-system';
 
 export default function InfluencerDashboard() {
+  // Prefer full currency unless it overflows; fallback to abbreviated (K/M)
+  const formatCurrencyFull = (amount: number, currency: string = 'JPY') => {
+    return new Intl.NumberFormat('ja-JP', { style: 'currency', currency }).format(amount || 0);
+  };
+
+  const formatCurrencySmart = (amount: number, maxChars: number = 12, currency: string = 'JPY') => {
+    const full = formatCurrencyFull(amount, currency);
+    return full.length <= maxChars ? full : formatAbbreviatedCurrency(amount, currency);
+  };
   const { user } = useAuth();
   const ds = useDesignSystem();
   const [campaigns, setCampaigns] = useState(mockCampaigns);
@@ -94,14 +103,22 @@ export default function InfluencerDashboard() {
   }
 
   const userCampaigns = campaigns; // Already filtered by user in data service
-  const activeCampaigns = userCampaigns.filter(campaign => 
+  
+  // Sort campaigns by liveDate in descending order (most recent first)
+  const sortedUserCampaigns = [...userCampaigns].sort((a, b) => {
+    const aDate = a.schedules?.liveDate ? new Date(a.schedules.liveDate).getTime() : 0;
+    const bDate = b.schedules?.liveDate ? new Date(b.schedules.liveDate).getTime() : 0;
+    return bDate - aDate; // Descending order
+  });
+  
+  const activeCampaigns = sortedUserCampaigns.filter(campaign => 
     !['completed', 'cancelled'].includes(campaign.status)
   );
-  const completedCampaigns = userCampaigns.filter(campaign => 
+  const completedCampaigns = sortedUserCampaigns.filter(campaign => 
     campaign.status === 'completed'
   );
 
-  const totalEarnings = userCampaigns
+  const totalEarnings = sortedUserCampaigns
     .reduce((sum, campaign) => sum + (campaign.contractedPrice || 0), 0);
 
   // Map action type to icon component for the Action card
@@ -150,10 +167,25 @@ export default function InfluencerDashboard() {
         };
 
       case 'meeting':
-        // Dynamic title based on meeting status
-        let meetingTitle = '打ち合わせの予約';
-        if (campaign.meetingStatus === 'scheduled') {
-          meetingTitle = '打ち合わせへの参加';
+        // Show different actions based on meeting status
+        if (!campaign.meetingStatus || campaign.meetingStatus === 'not_scheduled') {
+          return {
+            title: '打ち合わせの予約',
+            description: '<a href="https://calendly.com/speak-naoki/30min-1" target="_blank" style="color: #60a5fa; text-decoration: underline;">こちらから</a>打ち合わせを予約し「予約完了」ボタンをクリックしてください',
+            icon: Calendar,
+            color: 'blue',
+            action: 'meeting_schedule',
+            inputType: 'meeting_schedule'
+          };
+        } else if (campaign.meetingStatus === 'scheduled') {
+          return {
+            title: '打ち合わせへの参加',
+            description: '予約済みの打ち合わせに参加し、完了後に「打ち合わせ完了」ボタンをクリックしてください',
+            icon: Calendar,
+            color: 'blue',
+            action: 'meeting_complete',
+            inputType: 'meeting_complete'
+          };
         } else if (campaign.meetingStatus === 'completed') {
           // Show plan creation action instead
           return {
@@ -165,21 +197,7 @@ export default function InfluencerDashboard() {
             inputType: 'url'
           };
         }
-        
-        // Dynamic description based on meeting status
-        let meetingDescription = '<a href="https://calendly.com/speak-naoki/30min-1" target="_blank" style="color: #60a5fa; text-decoration: underline;">こちらから</a>打ち合わせを予約し、以下のステータスを変更してください';
-        if (campaign.meetingStatus === 'scheduled') {
-          meetingDescription = '<a href="https://calendly.com/speak-naoki/30min-1" target="_blank" style="color: #60a5fa; text-decoration: underline;">こちらから</a>打ち合わせに参加し、以下のステータスを変更してください';
-        }
-        
-        return {
-          title: meetingTitle,
-          description: meetingDescription,
-          icon: Calendar,
-          color: 'blue',
-          action: 'meeting',
-          inputType: 'meeting'
-        };
+        break;
 
       case 'plan_creation':
         // Show different actions based on current status within the step
@@ -368,6 +386,65 @@ export default function InfluencerDashboard() {
     return diffDays;
   };
 
+  // Calculate days left until a specific date
+  const getDaysUntil = (date: Date | string | undefined | null) => {
+    if (!date) return null;
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    dateObj.setHours(0, 0, 0, 0);
+    const diffTime = dateObj.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  // Get next-step label and days remaining based on current status
+  const getNextStepInfo = (campaign: any): { label: string; days: number | null } => {
+    const status = campaign.status as CampaignStatus;
+    // Default to PR投稿 using liveDate
+    let label = 'PR投稿';
+    let targetDate: string | null | undefined = campaign?.schedules?.liveDate;
+
+    // Do not compute days for completed campaigns
+    if (status === 'completed') {
+      return { label: 'PR投稿', days: null };
+    }
+
+    switch (status) {
+      case 'not_started':
+      case 'meeting_scheduling':
+      case 'meeting_scheduled':
+      case 'plan_creating':
+      case 'plan_revising':
+        label = '構成案';
+        targetDate = campaign?.schedules?.planSubmissionDate;
+        break;
+      case 'plan_submitted':
+      case 'draft_creating':
+      case 'draft_revising':
+        label = '初稿';
+        targetDate = campaign?.schedules?.draftSubmissionDate;
+        break;
+      case 'draft_submitted':
+      case 'scheduling':
+      case 'scheduled':
+      case 'payment_processing':
+        label = 'PR投稿';
+        targetDate = campaign?.schedules?.liveDate;
+        break;
+      case 'cancelled':
+        // Keep default; there is effectively no next step but we show PR as N/A
+        label = 'PR投稿';
+        targetDate = campaign?.schedules?.liveDate;
+        break;
+      default:
+        label = 'PR投稿';
+        targetDate = campaign?.schedules?.liveDate;
+    }
+
+    return { label, days: getDaysUntil(targetDate) };
+  };
+
   // Format date helper for schedule display
   const formatDate = (date: Date | string | undefined | null) => {
     if (!date) return '未定';
@@ -420,9 +497,20 @@ export default function InfluencerDashboard() {
   // Get days left for the primary campaign
   const daysUntilLive = primaryCampaign ? getDaysUntilLive(primaryCampaign) : null;
 
+  // Get next step info (label and days) for the primary campaign
+  const nextStepInfo = primaryCampaign ? getNextStepInfo(primaryCampaign) : null;
+
+  // Total payout across all campaigns (used when there are no active campaigns)
+  const totalPayoutAllCampaigns = (sortedUserCampaigns || []).reduce((sum: number, c: any) => {
+    const price = typeof c?.contractedPrice === 'number' ? c.contractedPrice : 0;
+    return sum + price;
+  }, 0);
+
   // Check if action is overdue (more than 1 day past due)
   const isActionOverdue = (campaign: any) => {
     if (!campaign.schedules?.liveDate) return false;
+    // Never show overdue for completed campaigns
+    if (campaign.status === 'completed') return false;
     
     const daysLeft = getDaysUntilLive(campaign);
     return daysLeft !== null && daysLeft < -1; // More than 1 day overdue
@@ -448,10 +536,8 @@ export default function InfluencerDashboard() {
   };
 
   const handleMeetingStatusChange = async (campaignId: string, status: 'not_scheduled' | 'scheduled' | 'completed') => {
-    const confirmMessage = `ステータスを「${status === 'not_scheduled' ? '予約未完了' : status === 'scheduled' ? '予約済み' : '打ち合わせ完了'}」に変更しますか？`;
-    
-    if (window.confirm(confirmMessage)) {
-      try {
+    // No confirmation needed for button-based actions as they are explicit
+    try {
         setMeetingUpdating(prev => ({ ...prev, [campaignId]: true }));
         let newStatus: string;
         
@@ -510,7 +596,6 @@ export default function InfluencerDashboard() {
       finally {
         setMeetingUpdating(prev => ({ ...prev, [campaignId]: false }));
       }
-    }
   };
 
   const handleSchedulingCheckbox = (campaignId: string, type: 'summary' | 'comment', checked: boolean) => {
@@ -603,7 +688,7 @@ export default function InfluencerDashboard() {
 
   // Confirm payment completion CTA (着金を確認しました)
   const handleConfirmPaymentCompleted = async (campaignId: string) => {
-    const ok = window.confirm('着金を確認しましたか？この操作は取り消せません。');
+    const ok = window.confirm('着金を確認しましたか？');
     if (!ok) return;
     setConfirmingCompleted(prev => ({ ...prev, [campaignId]: true }));
     try {
@@ -867,16 +952,21 @@ export default function InfluencerDashboard() {
     <div className="min-h-screen" style={{ backgroundColor: ds.bg.primary }}>
       <div className="max-w-7xl mx-auto mobile-padding">
         <div className="mb-6 sm:mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-2xl sm:text-3xl font-bold" style={{ color: ds.text.primary }}>
-              お疲れ様です、{user.name}さん
-            </h1>
-            {/* Debug Toggle Button - Only for demo accounts */}
+          {/* Responsive Header Layout */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-2">
+            {/* Greeting Section */}
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate" style={{ color: ds.text.primary }}>
+                お疲れ様です、{user.name}さん
+              </h1>
+            </div>
+            
+            {/* Debug Buttons Section - Only for demo accounts */}
             {(user.id === 'actre_vlog_yt' || user.id === 'eigatube_yt') && (
-              <>
+              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                 <button
                   onClick={() => setShowDebugCard(!showDebugCard)}
-                  className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                  className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors"
                   style={{ 
                     backgroundColor: ds.button.secondary.bg,
                     color: ds.button.secondary.text
@@ -884,13 +974,14 @@ export default function InfluencerDashboard() {
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.hover}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.bg}
                 >
-                  <Bug size={16} />
-                  <span>デバッグ</span>
+                  <Bug size={14} className="sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">デバッグ</span>
+                  <span className="sm:hidden">デバッグ</span>
                 </button>
                 <button
                   onClick={refreshData}
                   disabled={isLoading}
-                  className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors disabled:opacity-50"
                   style={{ 
                     backgroundColor: ds.button.primary.bg,
                     color: ds.button.primary.text
@@ -898,12 +989,13 @@ export default function InfluencerDashboard() {
                   onMouseEnter={(e) => !isLoading && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
                   onMouseLeave={(e) => !isLoading && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  <span>{isLoading ? '更新中...' : '更新'}</span>
+                  <span className="hidden sm:inline">{isLoading ? '更新中...' : '更新'}</span>
+                  <span className="sm:hidden">{isLoading ? '更新中' : '更新'}</span>
                 </button>
-              </>
+              </div>
             )}
           </div>
           {primaryCampaign ? (
@@ -980,15 +1072,17 @@ export default function InfluencerDashboard() {
           }}>
             <div className="flex items-center space-x-3">
               <div className="p-2 rounded-lg flex-shrink-0" style={{ backgroundColor: ds.button.primary.bg + '20' }}>
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: ds.button.primary.bg }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                </svg>
+                <CreditCard size={20} style={{ color: ds.button.primary.bg }} />
               </div>
               <div className="min-w-0">
                 <p className="text-xl sm:text-2xl font-bold" style={{ color: ds.text.primary }}>
-                  {formatAbbreviatedCurrency(activeCampaigns.length > 0 ? (activeCampaigns[0].contractedPrice || 0) : 0)}
+                  {activeCampaigns.length > 0
+                    ? formatCurrencySmart(activeCampaigns.reduce((sum, c) => sum + (c.contractedPrice || 0), 0))
+                    : formatCurrencySmart(totalPayoutAllCampaigns)}
                 </p>
-                <p className="text-xs sm:text-sm" style={{ color: ds.text.secondary }}>進行中PRの報酬額</p>
+                <p className="text-xs sm:text-sm" style={{ color: ds.text.secondary }}>
+                  {activeCampaigns.length > 0 ? '進行中PRの報酬額' : 'PR報酬総額'}
+                </p>
               </div>
             </div>
           </div>
@@ -1024,13 +1118,13 @@ export default function InfluencerDashboard() {
               </div>
               <div className="min-w-0">
                 <p className="text-xl sm:text-2xl font-bold" style={{ color: ds.text.primary }}>
-                  {daysUntilLive !== null ? (
-                    daysUntilLive > 0 ? `${daysUntilLive}日` : 
-                    daysUntilLive === 0 ? '今日' : 
-                    `${Math.abs(daysUntilLive)}日遅れ`
-                  ) : '未設定'}
+                  {nextStepInfo && nextStepInfo.days !== null ? (
+                    nextStepInfo.days > 0 ? `${nextStepInfo.days}日` :
+                    nextStepInfo.days === 0 ? '今日' :
+                    `${Math.abs(nextStepInfo.days)}日遅れ`
+                  ) : '未確定'}
                 </p>
-                <p className="text-xs sm:text-sm" style={{ color: ds.text.secondary }}>PRまでの日数</p>
+                <p className="text-xs sm:text-sm" style={{ color: ds.text.secondary }}>{nextStepInfo ? `${nextStepInfo.label}までの日数` : '次のステップまでの日数'}</p>
               </div>
             </div>
           </div>
@@ -1137,11 +1231,11 @@ export default function InfluencerDashboard() {
                             {confirmingCompleted[primaryCampaign.id] ? '更新中...' : '着金を確認しました'}
                           </button>
                           <a
-                            href="mailto:naoki@usespeak.com?subject=%E9%80%81%E9%87%91%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6%E5%95%8F%E3%81%84%E5%90%88%E3%82%8F%E3%81%9B&body=%E3%82%AD%E3%83%A3%E3%83%B3%E3%83%9A%E3%83%BC%E3%83%B3ID%3A%20"
+                            href={`mailto:naoki@usespeak.com?subject=%E9%80%81%E9%87%91%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6%E5%95%8F%E3%81%84%E5%90%88%E3%82%8F%E3%81%9B&body=%E3%82%AD%E3%83%A3%E3%83%B3%E3%83%9A%E3%83%BC%E3%83%B3ID%3A%20${encodeURIComponent(primaryCampaign.id)}`}
                             className="text-sm"
                             style={{ color: '#60a5fa', textDecoration: 'underline' }}
                           >
-                            送金について問い合わせる
+                            インフルエンサー送金について
                           </a>
                         </div>
                       </div>
@@ -1169,26 +1263,39 @@ export default function InfluencerDashboard() {
                       />
                       
                       {/* Input Section based on inputType */}
-                      {action.inputType === 'meeting' && (
-                        <div className="space-y-4">
-                          <div className="flex items-center space-x-3">
-                            <span className="text-sm" style={{ color: ds.text.secondary }}>ステータス:</span>
-                            <select
-                              value={primaryCampaign.meetingStatus || 'not_scheduled'}
-                              onChange={(e) => handleMeetingStatusChange(primaryCampaign.id, e.target.value as 'not_scheduled' | 'scheduled' | 'completed')}
-                              disabled={!!meetingUpdating[primaryCampaign.id]}
-                              className="px-3 py-1.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              style={{ 
-                                backgroundColor: ds.form.input.bg,
-                                borderColor: ds.form.input.border,
-                                color: ds.text.primary
-                              }}
-                            >
-                                                              <option value="not_scheduled" style={{ backgroundColor: ds.form.input.bg, color: ds.text.primary }}>予約未完了</option>
-                                <option value="scheduled" style={{ backgroundColor: ds.form.input.bg, color: ds.text.primary }}>予約済み</option>
-                                <option value="completed" style={{ backgroundColor: ds.form.input.bg, color: ds.text.primary }}>打ち合わせ完了</option>
-                            </select>
-                          </div>
+                      {action.inputType === 'meeting_schedule' && (
+                        <div className="flex justify-end">
+                          <button
+                            onClick={() => handleMeetingStatusChange(primaryCampaign.id, 'scheduled')}
+                            disabled={!!meetingUpdating[primaryCampaign.id]}
+                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                            style={{ 
+                              backgroundColor: ds.button.primary.bg,
+                              color: ds.button.primary.text
+                            }}
+                            onMouseEnter={(e) => !meetingUpdating[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
+                            onMouseLeave={(e) => !meetingUpdating[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
+                          >
+                            {meetingUpdating[primaryCampaign.id] ? '更新中...' : '予約完了'}
+                          </button>
+                        </div>
+                      )}
+
+                      {action.inputType === 'meeting_complete' && (
+                        <div className="flex justify-end">
+                          <button
+                            onClick={() => handleMeetingStatusChange(primaryCampaign.id, 'completed')}
+                            disabled={!!meetingUpdating[primaryCampaign.id]}
+                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                            style={{ 
+                              backgroundColor: ds.button.primary.bg,
+                              color: ds.button.primary.text
+                            }}
+                            onMouseEnter={(e) => !meetingUpdating[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
+                            onMouseLeave={(e) => !meetingUpdating[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
+                          >
+                            {meetingUpdating[primaryCampaign.id] ? '更新中...' : '打ち合わせ完了'}
+                          </button>
                         </div>
                       )}
 
@@ -1311,7 +1418,7 @@ export default function InfluencerDashboard() {
                               />
                               <span>
                                 <a
-                                  href={`https://docs.google.com/forms/d/e/1FAIpQLSeVeZAPnB3YdyU2L3b9dqUUYOcVtijPnY6VYLX9Dq-O5rThLA/viewform?usp=pp_url&entry.1107506212=${encodeURIComponent(primaryCampaign.id)}`}
+                                  href={`https://docs.google.com/forms/d/e/1FAIpQLSf5LXFdcD77wApBa2KxxoaBlGDGFu4pvIaI9HvfvnhJv-fDsg/viewform?usp=pp_url&entry.503165310=${encodeURIComponent(primaryCampaign.id)}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   style={{ color: '#60a5fa', textDecoration: 'underline' }}
@@ -1371,7 +1478,7 @@ export default function InfluencerDashboard() {
                             {confirmingCompleted[primaryCampaign.id] ? '更新中...' : '着金を確認しました'}
                           </button>
                           <a
-                            href="mailto:naoki@usespeak.com?subject=%E9%80%81%E9%87%91%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6%E5%95%8F%E3%81%84%E5%90%88%E3%82%8F%E3%81%9B&body=%E3%82%AD%E3%83%A3%E3%83%B3%E3%83%9A%E3%83%BC%E3%83%B3ID%3A%20"
+                            href={`mailto:naoki@usespeak.com?subject=%E9%80%81%E9%87%91%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6%E5%95%8F%E3%81%84%E5%90%88%E3%82%8F%E3%81%9B&body=%E3%82%AD%E3%83%A3%E3%83%B3%E3%83%9A%E3%83%BC%E3%83%B3ID%3A%20${encodeURIComponent(primaryCampaign.id)}`}
                             className="text-sm"
                             style={{ color: '#60a5fa', textDecoration: 'underline' }}
                           >
@@ -1399,260 +1506,213 @@ export default function InfluencerDashboard() {
           </div>
         )}
 
-        {/* Active Campaigns */}
+                {/* All Campaigns */}
         <div className="mb-6 sm:mb-8">
-                      <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
-              プロモーション詳細
-            </h2>
-          {activeCampaigns.length > 0 ? (
+          <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
+            プロモーション詳細
+          </h2>
+          {sortedUserCampaigns.length > 0 ? (
             <div className="space-y-4">
-              {activeCampaigns.map(campaign => (
-                <div key={campaign.id} className="rounded-xl p-4 sm:p-6" style={{ 
+              {/* Notion-style Database Table with Horizontal Scroll */}
+              <div className="relative">
+                <div className="overflow-x-auto" style={{ 
                   backgroundColor: ds.bg.card,
                   borderColor: ds.border.primary,
                   borderWidth: '1px',
-                  borderStyle: 'solid'
+                  borderStyle: 'solid',
+                  borderRadius: '8px'
                 }}>
-                  {/* Always expanded for influencer view */}
-                  <div className="mobile-flex mb-4">
-                    <div className="flex items-center space-x-3 flex-1 min-w-0">
-                      <div className="text-base sm:text-lg flex-shrink-0">
-                        {campaign.platform === 'youtube_long' && '🎥'}
-                        {campaign.platform === 'youtube_short' && '📱'}
-                        {campaign.platform === 'instagram_reel' && '📸'}
-                        {campaign.platform === 'tiktok' && '🎵'}
-                        {campaign.platform === 'x_twitter' && '🐦'}
-                        {campaign.platform === 'podcast' && '🎙️'}
-                        {campaign.platform === 'blog' && '✍️'}
-                      </div>
+                  {/* Scroll indicator shadow */}
+                  <div 
+                    className="absolute top-0 right-0 w-8 h-full pointer-events-none z-10"
+                    style={{
+                      background: `linear-gradient(to left, ${ds.bg.card}99, transparent)`,
+                      borderTopRightRadius: '8px',
+                      borderBottomRightRadius: '8px'
+                    }}
+                  />
+                <div className="min-w-[1400px]">
+                  {/* Table Header */}
+                  <div className="grid grid-cols-10 gap-6 px-6 py-3 border-b" style={{ borderColor: ds.border.secondary, backgroundColor: ds.bg.surface }}>
+                    <div className="text-xs font-medium whitespace-nowrap min-w-[150px]" style={{ color: ds.text.secondary }}>キャンペーン名</div>
+                    <div className="text-xs font-medium whitespace-nowrap min-w-[120px]" style={{ color: ds.text.secondary }}>プラットフォーム</div>
+                    <div className="text-xs font-medium whitespace-nowrap min-w-[130px]" style={{ color: ds.text.secondary }}>ステータス</div>
+                    <div className="text-xs font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>報酬</div>
+                    <div className="text-xs font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>構成案提出</div>
+                    <div className="text-xs font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>初稿提出</div>
+                    <div className="text-xs font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>PR投稿</div>
+                    <div className="text-xs font-medium whitespace-nowrap min-w-[80px]" style={{ color: ds.text.secondary }}>構成案リンク</div>
+                    <div className="text-xs font-medium whitespace-nowrap min-w-[80px]" style={{ color: ds.text.secondary }}>初稿リンク</div>
+                    <div className="text-xs font-medium whitespace-nowrap min-w-[80px]" style={{ color: ds.text.secondary }}>PR投稿リンク</div>
+                  </div>
+
+                  {/* Table Rows - All Campaigns */}
+                  {sortedUserCampaigns.map(campaign => (
+                    <div key={campaign.id} className="grid grid-cols-10 gap-6 px-6 py-3 border-b hover:bg-opacity-50" 
+                         style={{ borderColor: ds.border.secondary }}
+                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.bg.surface + '50'}
+                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                       
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium mobile-text truncate" style={{ color: ds.text.primary }}>
-                          {campaign.title}
-                        </h3>
-                        <p className="text-xs sm:text-sm" style={{ color: ds.text.secondary }}>
-                          {campaign.platform === 'youtube_long' && 'YouTube長編'}
-                          {campaign.platform === 'youtube_short' && 'YouTubeショート'}
-                          {campaign.platform === 'instagram_reel' && 'Instagramリール'}
-                          {campaign.platform === 'tiktok' && 'TikTok'}
-                          {campaign.platform === 'x_twitter' && 'X (Twitter)'}
-                          {campaign.platform === 'podcast' && 'ポッドキャスト'}
-                          {campaign.platform === 'blog' && 'ブログ'}
-                        </p>
+                      {/* Campaign Name */}
+                      <div className="text-sm font-medium min-w-[150px]" style={{ color: ds.text.primary }}>
+                        <div className="min-w-[150px] max-w-[200px]">
+                          <span className="block truncate" title={campaign.title}>
+                            {campaign.title}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Platform */}
+                      <div className="text-sm flex items-center space-x-2 min-w-[120px]" style={{ color: ds.text.primary }}>
+                        <div className="min-w-[120px] flex items-center space-x-2">
+                          <span className="text-base flex-shrink-0">
+                            {campaign.platform === 'youtube_long' && '🎥'}
+                            {campaign.platform === 'youtube_short' && '📱'}
+                            {campaign.platform === 'instagram_reel' && '📸'}
+                            {campaign.platform === 'tiktok' && '🎵'}
+                            {campaign.platform === 'x_twitter' && '🐦'}
+                            {campaign.platform === 'podcast' && '🎙️'}
+                            {campaign.platform === 'blog' && '✍️'}
+                          </span>
+                          <span className="text-xs whitespace-nowrap" style={{ color: ds.text.secondary }}>
+                            {campaign.platform === 'youtube_long' && 'YouTube長編'}
+                            {campaign.platform === 'youtube_short' && 'YouTubeショート'}
+                            {campaign.platform === 'instagram_reel' && 'Instagramリール'}
+                            {campaign.platform === 'tiktok' && 'TikTok'}
+                            {campaign.platform === 'x_twitter' && 'X (Twitter)'}
+                            {campaign.platform === 'podcast' && 'ポッドキャスト'}
+                            {campaign.platform === 'blog' && 'ブログ'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Status */}
+                      <div className="text-sm min-w-[130px]">
+                        <div className="min-w-[130px]">
+                          <span 
+                            className="px-2 py-1 rounded text-xs font-medium whitespace-nowrap inline-block"
+                            style={{
+                              backgroundColor: ds.status[campaign.status as keyof typeof ds.status]?.bg || ds.status.not_started.bg,
+                              color: ds.status[campaign.status as keyof typeof ds.status]?.text || ds.status.not_started.text
+                            }}
+                          >
+                            {campaign.status === 'not_started' && '未開始'}
+                            {campaign.status === 'meeting_scheduling' && '打ち合わせ予約中'}
+                            {campaign.status === 'meeting_scheduled' && '打ち合わせ予定'}
+                            {campaign.status === 'contract_pending' && '契約書待ち'}
+                            {campaign.status === 'plan_creating' && '構成案作成中'}
+                            {campaign.status === 'plan_submitted' && '構成案提出済み'}
+                            {campaign.status === 'plan_revising' && '構成案修正中'}
+                            {campaign.status === 'draft_creating' && '初稿作成中'}
+                            {campaign.status === 'draft_submitted' && '初稿提出済み'}
+                            {campaign.status === 'draft_revising' && '初稿修正中'}
+                            {campaign.status === 'scheduling' && '投稿準備中'}
+                            {campaign.status === 'scheduled' && '投稿済み'}
+                            {campaign.status === 'payment_processing' && '送金手続き中'}
+                            {campaign.status === 'completed' && '完了'}
+                            {campaign.status === 'cancelled' && 'キャンセル'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Price */}
+                      <div className="text-sm font-semibold min-w-[100px]" style={{ color: ds.text.primary }}>
+                        <div className="min-w-[100px] whitespace-nowrap">
+                          {formatCurrencySmart(campaign.contractedPrice || 0)}
+                        </div>
+                      </div>
+
+                      {/* Plan Submission Date */}
+                      <div className="text-sm min-w-[100px]" style={{ color: ds.text.primary }}>
+                        <div className="min-w-[100px] whitespace-nowrap">
+                          {formatDate(campaign.schedules?.planSubmissionDate)}
+                        </div>
+                      </div>
+
+                      {/* Draft Submission Date */}
+                      <div className="text-sm min-w-[100px]" style={{ color: ds.text.primary }}>
+                        <div className="min-w-[100px] whitespace-nowrap">
+                          {formatDate(campaign.schedules?.draftSubmissionDate)}
+                        </div>
+                      </div>
+
+                      {/* PR Launch Date */}
+                      <div className="text-sm min-w-[100px]" style={{ color: ds.text.primary }}>
+                        <div className="min-w-[100px] whitespace-nowrap">
+                          {formatDate(campaign.schedules?.liveDate)}
+                        </div>
+                      </div>
+
+                      {/* Plan Link */}
+                      <div className="text-sm">
+                        <div className="min-w-[60px] text-center">
+                          {campaign.campaignData?.url_plan && campaign.campaignData.url_plan.trim() !== '' ? (
+                            <a
+                              href={getAbsoluteUrl(campaign.campaignData.url_plan)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center hover:underline"
+                              style={{ color: ds.text.accent }}
+                            >
+                              <ExternalLink size={12} />
+                            </a>
+                          ) : (
+                            <span style={{ color: ds.text.secondary }}>-</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Draft Link */}
+                      <div className="text-sm">
+                        <div className="min-w-[60px] text-center">
+                          {campaign.campaignData?.url_draft && campaign.campaignData.url_draft.trim() !== '' ? (
+                            <a
+                              href={getAbsoluteUrl(campaign.campaignData.url_draft)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center hover:underline"
+                              style={{ color: ds.text.accent }}
+                            >
+                              <ExternalLink size={12} />
+                            </a>
+                          ) : (
+                            <span style={{ color: ds.text.secondary }}>-</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* PR Content Link */}
+                      <div className="text-sm">
+                        <div className="min-w-[60px] text-center">
+                          {campaign.campaignData?.url_content && campaign.campaignData.url_content.trim() !== '' ? (
+                            <a
+                              href={getAbsoluteUrl(campaign.campaignData.url_content)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center hover:underline"
+                              style={{ color: ds.text.accent }}
+                            >
+                              <ExternalLink size={12} />
+                            </a>
+                          ) : (
+                            <span style={{ color: ds.text.secondary }}>-</span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  
-                    <div 
-                      className="status-badge flex-shrink-0"
-                      style={{
-                        backgroundColor: ds.status[campaign.status as keyof typeof ds.status]?.bg || ds.status.not_started.bg,
-                        color: ds.status[campaign.status as keyof typeof ds.status]?.text || ds.status.not_started.text,
-                        borderColor: ds.status[campaign.status as keyof typeof ds.status]?.border || ds.status.not_started.border
-                      }}
-                    >
-                    {campaign.status === 'not_started' && '未開始'}
-                    {campaign.status === 'meeting_scheduling' && '打ち合わせ予約中'}
-                    {campaign.status === 'meeting_scheduled' && '打ち合わせ予定'}
-                    {campaign.status === 'contract_pending' && '契約書待ち'}
-                    {campaign.status === 'plan_creating' && '構成案作成中'}
-                    {campaign.status === 'plan_submitted' && '構成案提出済み'}
-                    
-                    {campaign.status === 'plan_revising' && '構成案修正中'}
-                    {campaign.status === 'draft_creating' && '初稿作成中'}
-                    {campaign.status === 'draft_submitted' && '初稿提出済み'}
-
-                    {campaign.status === 'draft_revising' && '初稿修正中'}
-                    {campaign.status === 'scheduling' && '投稿準備中'}
-                    {campaign.status === 'scheduled' && '投稿済み'}
-                    {campaign.status === 'payment_processing' && '送金手続き中'}
-                    {campaign.status === 'completed' && '完了'}
-                    {campaign.status === 'cancelled' && 'キャンセル'}
-                  </div>
+                  ))}
                 </div>
-
-                {/* Always show expanded content */}
-                <div className="space-y-4">
-                  {/* Price and Next Step */}
-                  <div className="mobile-grid gap-4">
-                    <div className="flex items-center space-x-2 text-xs sm:text-sm">
-                      <span className="font-medium" style={{ color: ds.text.primary }}>
-                        {formatAbbreviatedCurrency(campaign.contractedPrice || 0)}
-                      </span>
-                    </div>
-                    <div className="text-xs sm:text-sm">
-                      <p className="font-medium mb-1" style={{ color: ds.text.primary }}>次のステップ：</p>
-                      <p style={{ color: ds.text.secondary }}>
-                        {campaign.status === 'not_started' && '基本情報の入力を完了してください'}
-                        {campaign.status === 'meeting_scheduling' && '打ち合わせの予約をお待ちください'}
-                        {campaign.status === 'meeting_scheduled' && '打ち合わせにご参加ください'}
-                        {campaign.status === 'contract_pending' && '契約書をご確認・サインしてください'}
-                        {campaign.status === 'plan_creating' && '構成案の作成を開始してください'}
-                        {campaign.status === 'plan_submitted' && '構成案の確認をお待ちください'}
-                        
-                        {campaign.status === 'plan_revising' && '修正版構成案をご提出ください'}
-                        {campaign.status === 'draft_creating' && '初稿の作成を開始してください'}
-                        {campaign.status === 'draft_submitted' && '初稿の確認をお待ちください'}
-
-                        {campaign.status === 'draft_revising' && '修正版初稿をご提出ください'}
-                        {campaign.status === 'scheduling' && 'コンテンツを投稿してください'}
-                        {campaign.status === 'scheduled' && '送金手続きをお待ちください'}
-                        {campaign.status === 'payment_processing' && 'お支払い処理中です'}
-                        {campaign.status === 'completed' && 'プロモーション完了'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Schedule - key dates */}
-                  <div>
-                    <p className="font-medium mb-2" style={{ color: ds.text.primary }}>スケジュール</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-                      <div className="flex items-center space-x-2" style={{ color: ds.text.secondary }}>
-                        <Calendar size={14} />
-                        <div>
-                          <p className="font-medium" style={{ color: ds.text.primary }}>構成案提出</p>
-                          <p>{formatDate(campaign.schedules?.planSubmissionDate)}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2" style={{ color: ds.text.secondary }}>
-                        <Calendar size={14} />
-                        <div>
-                          <p className="font-medium" style={{ color: ds.text.primary }}>初稿提出</p>
-                          <p>{formatDate(campaign.schedules?.draftSubmissionDate)}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2" style={{ color: ds.text.secondary }}>
-                        <Calendar size={14} />
-                        <div>
-                          <p className="font-medium" style={{ color: ds.text.primary }}>PR投稿</p>
-                          <p>{formatDate(campaign.schedules?.liveDate)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Submission Links */}
-                  <div>
-                    <p className="font-medium mb-2" style={{ color: ds.text.primary }}>提出リンク</p>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex items-center space-x-2">
-                        {campaign.campaignData?.url_plan && campaign.campaignData.url_plan.trim() !== '' ? (
-                          <a
-                            href={getAbsoluteUrl(campaign.campaignData.url_plan)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center space-x-2"
-                            style={{ color: ds.text.accent }}
-                          >
-                            <ExternalLink size={14} />
-                            <span>構成案リンク</span>
-                          </a>
-                        ) : (
-                          <>
-                            <span className="font-medium" style={{ color: ds.text.primary }}>構成案リンク</span>
-                            <span style={{ color: ds.text.secondary }}>未提出</span>
-                          </>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {campaign.campaignData?.url_draft && campaign.campaignData.url_draft.trim() !== '' ? (
-                          <a
-                            href={getAbsoluteUrl(campaign.campaignData.url_draft)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center space-x-2"
-                            style={{ color: ds.text.accent }}
-                          >
-                            <ExternalLink size={14} />
-                            <span>初稿リンク</span>
-                          </a>
-                        ) : (
-                          <>
-                            <span className="font-medium" style={{ color: ds.text.primary }}>初稿リンク</span>
-                            <span style={{ color: ds.text.secondary }}>未提出</span>
-                          </>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {campaign.campaignData?.url_content && campaign.campaignData.url_content.trim() !== '' ? (
-                          <a
-                            href={getAbsoluteUrl(campaign.campaignData.url_content)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center space-x-2"
-                            style={{ color: ds.text.accent }}
-                          >
-                            <ExternalLink size={14} />
-                            <span>PR投稿リンク</span>
-                          </a>
-                        ) : (
-                          <>
-                            <span className="font-medium" style={{ color: ds.text.primary }}>PR投稿リンク</span>
-                            <span style={{ color: ds.text.secondary }}>未提出</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Requirements */}
-                  {campaign.requirements.length > 0 && (
-                    <div>
-                      <p className="font-medium text-dark-text mb-2">要件</p>
-                      <ul className="space-y-1 text-sm text-dark-text-secondary">
-                        {campaign.requirements.map((req, index) => (
-                          <li key={index} className="flex items-start space-x-2">
-                            <span className="text-dark-accent mt-1">•</span>
-                            <span>{req}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Reference Links */}
-                  {campaign.referenceLinks.length > 0 && (
-                    <div>
-                      <div className="space-y-1">
-                        {campaign.referenceLinks.map((link, index) => (
-                          <a
-                            key={index}
-                            href={link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center space-x-2 text-sm text-dark-accent hover:text-dark-accent-hover transition-colors"
-                          >
-                            <span>{link.title}</span>
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="card text-center py-8">
-            <p className="text-dark-text-secondary">
-              現在進行中のプロモーションはありません
-            </p>
-          </div>
-        )}
-      </div>
-
-        {/* Completed Campaigns */}
-        {completedCampaigns.length > 0 && (
-          <div>
-            <h2 className="text-xl sm:text-2xl font-semibold text-dark-text mb-4 sm:mb-6">
-              完了済みプロモーション
-            </h2>
-          <div className="space-y-4">
-            {completedCampaigns.map(campaign => (
-              <CampaignCard key={campaign.id} campaign={campaign} />
-            ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="card text-center py-8">
+              <p className="text-dark-text-secondary">
+                プロモーションはありません
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* Links Section - moved to bottom */}
         {primaryCampaign && (
