@@ -454,27 +454,27 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto mobile-padding">
         <div className="mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-2">
-            <div className="flex-1 min-w-0 flex items-center gap-3">
-              <h1 className="font-bold mb-2" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h1.fontSize, lineHeight: ds.typography.heading.h1.lineHeight }}>
-                管理者ダッシュボード
-              </h1>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="font-bold" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h1.fontSize, lineHeight: ds.typography.heading.h1.lineHeight }}>
+                  管理者ダッシュボード
+                </h1>
+                
+                {/* Refresh Button */}
+                <button
+                  onClick={refreshData}
+                  disabled={isRefreshing}
+                  className="flex items-center justify-center p-1 transition-colors disabled:opacity-50 flex-shrink-0"
+                  style={{ 
+                    color: ds.text.secondary
+                  }}
+                  onMouseEnter={(e) => !isRefreshing && (e.currentTarget.style.color = ds.text.primary)}
+                  onMouseLeave={(e) => !isRefreshing && (e.currentTarget.style.color = ds.text.secondary)}
+                >
+                  <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
               
-              {/* Refresh Button */}
-              <button
-                onClick={refreshData}
-                disabled={isRefreshing}
-                className="flex items-center justify-center p-1 transition-colors disabled:opacity-50 flex-shrink-0"
-                style={{ 
-                  color: ds.text.secondary
-                }}
-                onMouseEnter={(e) => !isRefreshing && (e.currentTarget.style.color = ds.text.primary)}
-                onMouseLeave={(e) => !isRefreshing && (e.currentTarget.style.color = ds.text.secondary)}
-              >
-                <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-            
-            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               <p className="mobile-text" style={{ color: ds.text.secondary }}>
                 全インフルエンサーキャンペーンの概要と最新の活動状況
               </p>

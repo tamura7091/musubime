@@ -6,6 +6,8 @@ import StatusSection from '@/components/StatusSection';
 import OnboardingSurvey from '@/components/OnboardingSurvey';
 import OnboardingSurveyInline from '@/components/OnboardingSurveyInline';
 import { TrendingUp, Clock, CheckCircle, Calendar, ExternalLink, Settings, Bug, AlertCircle, ClipboardList, FileText, FileEdit, Video, Megaphone, CreditCard, Hourglass, XCircle, Copy, ClipboardCheck, RefreshCw } from 'lucide-react';
+import VisibilityToggle from '@/components/VisibilityToggle';
+import { AmountVisibilityProvider } from '@/contexts/AmountVisibilityContext';
 import PreviousStepMessage from '@/components/PreviousStepMessage';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -1020,7 +1022,8 @@ export default function InfluencerDashboard() {
 
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: ds.bg.primary }}>
+    <AmountVisibilityProvider>
+      <div className="min-h-screen" style={{ backgroundColor: ds.bg.primary }}>
       <div className="max-w-7xl mx-auto mobile-padding">
         <div className="mb-6 sm:mb-8">
           {/* Responsive Header Layout */}
@@ -1145,11 +1148,13 @@ export default function InfluencerDashboard() {
                 <CreditCard size={20} style={{ color: ds.button.primary.bg }} />
               </div>
               <div className="min-w-0">
-                <p className="text-xl sm:text-2xl font-bold" style={{ color: ds.text.primary }}>
-                  {activeCampaigns.length > 0
-                    ? formatCurrencySmart(activeCampaigns.reduce((sum, c) => sum + (c.contractedPrice || 0), 0))
-                    : formatCurrencySmart(totalPayoutAllCampaigns)}
-                </p>
+                <VisibilityToggle>
+                  <p className="text-xl sm:text-2xl font-bold" style={{ color: ds.text.primary }}>
+                    {activeCampaigns.length > 0
+                      ? formatCurrencySmart(activeCampaigns.reduce((sum, c) => sum + (c.contractedPrice || 0), 0))
+                      : formatCurrencySmart(totalPayoutAllCampaigns)}
+                  </p>
+                </VisibilityToggle>
                 <p className="text-xs sm:text-sm" style={{ color: ds.text.secondary }}>
                   {activeCampaigns.length > 0 ? '進行中PRの報酬額' : 'PR報酬総額'}
                 </p>
@@ -1759,7 +1764,9 @@ export default function InfluencerDashboard() {
                       {/* Price */}
                       <div className="text-sm font-semibold min-w-[100px]" style={{ color: ds.text.primary }}>
                         <div className="min-w-[100px] whitespace-nowrap">
-                          {formatCurrencySmart(campaign.contractedPrice || 0)}
+                          <VisibilityToggle showToggleButton={false}>
+                            {formatCurrencySmart(campaign.contractedPrice || 0)}
+                          </VisibilityToggle>
                         </div>
                       </div>
 
@@ -2101,6 +2108,7 @@ export default function InfluencerDashboard() {
         )}
       </div>
     </div>
+    </AmountVisibilityProvider>
   );
 }
 

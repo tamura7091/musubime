@@ -49,6 +49,7 @@ const getNextStep = (status: string) => {
 import { Calendar, ExternalLink, ChevronRight, ChevronDown, User } from 'lucide-react';
 import { useState } from 'react';
 import OnboardingSurvey from './OnboardingSurvey';
+import VisibilityToggle from './VisibilityToggle';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
 import { formatAbbreviatedCurrency } from '@/lib/design-system';
 
@@ -162,9 +163,11 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
           {/* Price and Next Step */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-center space-x-2 text-sm">
-              <span className="font-medium" style={{ color: ds.text.primary }}>
-                {formatAbbreviatedCurrency(campaign.contractedPrice || 0, campaign.currency)}
-              </span>
+              <VisibilityToggle showToggleButton={false}>
+                <span className="font-medium" style={{ color: ds.text.primary }}>
+                  {formatAbbreviatedCurrency(campaign.contractedPrice || 0, campaign.currency)}
+                </span>
+              </VisibilityToggle>
             </div>
             <div className="text-sm">
               <p className="font-medium mb-1" style={{ color: ds.text.primary }}>次のステップ：</p>
