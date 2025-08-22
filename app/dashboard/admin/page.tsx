@@ -169,9 +169,11 @@ export default function AdminDashboard() {
   console.log('🔍 ADMIN DASHBOARD DEBUG - Sample campaign:', allCampaigns[0]);
   console.log('🔍 ADMIN DASHBOARD DEBUG - Sample dates:', allCampaigns[0]?.schedules);
   
-  const activeCampaigns = allCampaigns.filter(campaign => 
-    !['completed', 'cancelled'].includes(campaign.status)
-  );
+  const activeCampaigns = allCampaigns.filter(campaign => {
+    const raw = (campaign as any).statusDashboard as string | undefined;
+    const hasRaw = typeof raw === 'string' && raw.trim().length > 0;
+    return hasRaw && !['completed', 'cancelled'].includes(String(campaign.status));
+  });
 
   const totalValue = allCampaigns.reduce((sum, campaign) => {
     const price = campaign.contractedPrice || 0;
@@ -222,6 +224,7 @@ export default function AdminDashboard() {
   const formatDate = (date: Date | undefined) => {
     if (!date || isNaN(date.getTime())) return '未定';
     return new Intl.DateTimeFormat('ja-JP', {
+      year: 'numeric',
       month: 'numeric',
       day: 'numeric'
     }).format(date);

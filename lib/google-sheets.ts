@@ -505,6 +505,8 @@ class GoogleSheetsService {
         title: row['id_campaign'] || 'Untitled Campaign',
         influencerId: row['id_influencer'] || `user_${index}`,
         influencerName: row['name'] || 'Unknown Influencer',
+        // Preserve raw status_dashboard for admin metrics
+        statusDashboard: row['status_dashboard'] || '',
         
         // Status and platform
         status: (() => {

@@ -104,6 +104,8 @@ export interface Campaign {
   title: string;
   platform: Platform | string;
   status: CampaignStatus | string;
+  // Raw status_dashboard value from Google Sheets (unmapped, may be empty)
+  statusDashboard?: string;
   contractedPrice: number | null;
   currency: string;
   schedules: {
