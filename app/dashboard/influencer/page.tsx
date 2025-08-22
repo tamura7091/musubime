@@ -23,10 +23,13 @@ export default function InfluencerDashboard() {
     const full = formatCurrencyFull(amount, currency);
     return full.length <= maxChars ? full : formatAbbreviatedCurrency(amount, currency);
   };
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   // Redirect unauthenticated users or non-influencers
   useEffect(() => {
+    // Wait for auth loading to complete before redirecting
+    if (isAuthLoading) return;
+    
     if (!user) {
       router.replace('/login');
       return;
@@ -34,7 +37,7 @@ export default function InfluencerDashboard() {
     if (user && user.role !== 'influencer') {
       router.replace('/dashboard');
     }
-  }, [user, router]);
+  }, [user, isAuthLoading, router]);
 
   const ds = useDesignSystem();
   const [campaigns, setCampaigns] = useState<any[]>([]);

@@ -5,10 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export default function DashboardPage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
+    // Wait for auth loading to complete before redirecting
+    if (isLoading) return;
+    
     if (!isAuthenticated) {
       router.push('/login');
       return;
@@ -19,7 +22,7 @@ export default function DashboardPage() {
     } else if (user?.role === 'influencer') {
       router.push('/dashboard/influencer');
     }
-  }, [user, isAuthenticated, router]);
+  }, [user, isAuthenticated, isLoading, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-dark-bg">

@@ -7,6 +7,7 @@ import speakAppLogoPng from '@/app/assets/speak app logo.png';
 interface AuthContextType extends AuthState {
   login: (id: string, password: string) => Promise<boolean>;
   logout: () => void;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -16,26 +17,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user: null,
     isAuthenticated: false,
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Check for stored auth state
-    try {
-      const storedUser = localStorage.getItem('auth-user');
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        console.log('🔄 Restoring user session from localStorage:', userData);
-        setAuthState({
-          user: userData,
-          isAuthenticated: true,
-        });
-      } else {
-        console.log('📭 No stored user session found');
+    const initializeAuth = async () => {
+      try {
+        const storedUser = localStorage.getItem('auth-user');
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          console.log('🔄 Restoring user session from localStorage:', userData);
+          setAuthState({
+            user: userData,
+            isAuthenticated: true,
+          });
+        } else {
+          console.log('📭 No stored user session found');
+        }
+      } catch (error) {
+        console.error('❌ Error restoring user session:', error);
+        // Clear corrupted data
+        localStorage.removeItem('auth-user');
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('❌ Error restoring user session:', error);
-      // Clear corrupted data
-      localStorage.removeItem('auth-user');
-    }
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async (id: string, password: string): Promise<boolean> => {
@@ -140,6 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ...authState,
       login,
       logout,
+      isLoading,
     }}>
       {children}
     </AuthContext.Provider>

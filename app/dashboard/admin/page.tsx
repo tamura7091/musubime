@@ -10,7 +10,7 @@ import { formatAbbreviatedCurrency } from '@/lib/design-system';
 
 export default function AdminDashboard() {
   console.log('🎯 AdminDashboard component rendering');
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const ds = useDesignSystem();
   const [searchTerm, setSearchTerm] = useState('');
@@ -100,6 +100,9 @@ export default function AdminDashboard() {
   
   // Redirect unauthenticated users or non-admins
   useEffect(() => {
+    // Wait for auth loading to complete before redirecting
+    if (isAuthLoading) return;
+    
     if (!user) {
       router.replace('/login');
       return;
@@ -107,7 +110,7 @@ export default function AdminDashboard() {
     if (user && user.role !== 'admin') {
       router.replace('/dashboard');
     }
-  }, [user, router]);
+  }, [user, isAuthLoading, router]);
 
   // Handle column sorting
   const handleSort = (field: string) => {

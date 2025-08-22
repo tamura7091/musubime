@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
@@ -12,9 +12,37 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [saveLoginInfo, setSaveLoginInfo] = useState(true); // Default to checked
   const { login } = useAuth();
   const router = useRouter();
   const ds = useDesignSystem();
+
+  // Load saved credentials on component mount
+  useEffect(() => {
+    try {
+      const savedId = localStorage.getItem('speak_saved_id');
+      const savedPassword = localStorage.getItem('speak_saved_password');
+      const savedLoginInfo = localStorage.getItem('speak_save_login_info');
+      
+      if (savedId) {
+        setId(savedId);
+      }
+      if (savedPassword) {
+        setPassword(savedPassword);
+      }
+      if (savedLoginInfo !== null) {
+        setSaveLoginInfo(savedLoginInfo === 'true');
+      }
+      
+      console.log('🔄 Loaded saved login info:', { 
+        hasId: !!savedId, 
+        hasPassword: !!savedPassword,
+        saveLoginInfo: savedLoginInfo === 'true'
+      });
+    } catch (error) {
+      console.log('⚠️ Failed to load saved login info:', error);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,6 +58,23 @@ export default function LoginPage() {
       const success = await login(id, password);
       console.log('🔐 Login result:', success);
       if (success) {
+        // Save or clear login info based on checkbox
+        try {
+          if (saveLoginInfo) {
+            localStorage.setItem('speak_saved_id', id);
+            localStorage.setItem('speak_saved_password', password);
+            localStorage.setItem('speak_save_login_info', 'true');
+            console.log('💾 Login info saved to localStorage');
+          } else {
+            localStorage.removeItem('speak_saved_id');
+            localStorage.removeItem('speak_saved_password');
+            localStorage.setItem('speak_save_login_info', 'false');
+            console.log('🗑️ Login info cleared from localStorage');
+          }
+        } catch (storageError) {
+          console.log('⚠️ Failed to save/clear login info:', storageError);
+        }
+        
         console.log('✅ Login successful, redirecting to dashboard');
         router.push('/dashboard');
       } else {
@@ -112,6 +157,24 @@ export default function LoginPage() {
                 placeholder="パスワードを入力"
                 required
               />
+            </div>
+
+            {/* Save Login Info Checkbox */}
+            <div className="flex items-center">
+              <input
+                id="saveLoginInfo"
+                type="checkbox"
+                checked={saveLoginInfo}
+                onChange={(e) => setSaveLoginInfo(e.target.checked)}
+                className="h-4 w-4 rounded focus:ring-2 focus:ring-offset-0"
+                style={{
+                  accentColor: ds.button.primary.bg,
+                  borderColor: ds.form.input.border
+                }}
+              />
+              <label htmlFor="saveLoginInfo" className="ml-2 text-sm" style={{ color: ds.text.primary }}>
+                ログイン情報を保存
+              </label>
             </div>
 
             {error && (
