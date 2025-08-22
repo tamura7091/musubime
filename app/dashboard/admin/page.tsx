@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, TrendingUp, Clock, AlertCircle, Search, Filter, User, Tag, ChevronUp, ChevronDown, ExternalLink, Check, X } from 'lucide-react';
+import { Users, TrendingUp, Clock, AlertCircle, Search, Filter, User, Tag, ChevronUp, ChevronDown, ExternalLink, Check, X, RefreshCw } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Campaign, Update } from '@/types';
@@ -16,15 +16,51 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [platformFilter, setPlatformFilter] = useState<string>('all');
-  const [sortField, setSortField] = useState<string>('');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [sortField, setSortField] = useState<string>('updatedAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [allCampaigns, setAllCampaigns] = useState<Campaign[]>([]);
   const [updates, setUpdates] = useState<Update[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingActions, setProcessingActions] = useState<Set<string>>(new Set());
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [currentRevisionAction, setCurrentRevisionAction] = useState<{update: Update, action: string} | null>(null);
   const [showAllUpdates, setShowAllUpdates] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   console.log('👤 Current user:', user);
+
+  // Manual refresh function
+  const refreshData = async () => {
+    setIsRefreshing(true);
+    try {
+      console.log('🔄 Manual refresh: Fetching campaigns and updates from API...');
+      
+      // Fetch campaigns
+      const campaignsResponse = await fetch(`/api/campaigns?t=${Date.now()}`);
+      if (campaignsResponse.ok) {
+        const campaigns = await campaignsResponse.json();
+        console.log('✅ Manual refresh: Campaigns loaded:', campaigns.length);
+        setAllCampaigns(campaigns);
+      } else {
+        console.error('❌ Manual refresh: Failed to fetch campaigns:', campaignsResponse.status);
+      }
+      
+      // Fetch updates
+      const updatesResponse = await fetch(`/api/updates?t=${Date.now()}`);
+      if (updatesResponse.ok) {
+        const updates = await updatesResponse.json();
+        console.log('✅ Manual refresh: Updates loaded:', updates.length);
+        setUpdates(updates);
+      } else {
+        console.error('❌ Manual refresh: Failed to fetch updates:', updatesResponse.status);
+      }
+    } catch (error) {
+      console.error('❌ Manual refresh: Error fetching data:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Fetch campaigns and updates from API - must be before early returns
   useEffect(() => {
@@ -107,6 +143,12 @@ export default function AdminDashboard() {
           aValue = a.schedules?.liveDate ? new Date(a.schedules.liveDate).getTime() : 0;
           bValue = b.schedules?.liveDate ? new Date(b.schedules.liveDate).getTime() : 0;
           break;
+        case 'updatedAt':
+          const aDate = a.campaignData?.date_status_updated || a.updatedAt;
+          const bDate = b.campaignData?.date_status_updated || b.updatedAt;
+          aValue = aDate && aDate !== '' && aDate !== 'undefined' ? new Date(aDate).getTime() : 0;
+          bValue = bDate && bDate !== '' && bDate !== 'undefined' ? new Date(bDate).getTime() : 0;
+          break;
         default:
           return 0;
       }
@@ -125,7 +167,22 @@ export default function AdminDashboard() {
       const influencerName = campaign.influencerName || campaign.title || '';
       const matchesSearch = influencerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            campaign.title.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || campaign.status === statusFilter;
+      
+      // Handle special status filters
+      let matchesStatus = true;
+      if (statusFilter === 'ongoing') {
+        // Ongoing: has status_dashboard and not completed/cancelled
+        const raw = (campaign as any).statusDashboard as string | undefined;
+        const hasRaw = typeof raw === 'string' && raw.trim().length > 0;
+        matchesStatus = hasRaw && !['completed', 'cancelled'].includes(campaign.status);
+      } else if (statusFilter === 'action_required') {
+        // Action required: plan_submitted or draft_submitted
+        matchesStatus = ['plan_submitted', 'draft_submitted'].includes(campaign.status);
+      } else if (statusFilter !== 'all') {
+        // Regular status filter
+        matchesStatus = campaign.status === statusFilter;
+      }
+      
       const matchesPlatform = platformFilter === 'all' || campaign.platform === platformFilter;
       
       return matchesSearch && matchesStatus && matchesPlatform;
@@ -292,7 +349,15 @@ export default function AdminDashboard() {
 
   // Handle admin actions on updates
   const handleAdminAction = async (update: Update, action: string) => {
-    // Show confirmation dialog
+    // For revision actions, show feedback modal
+    if (action.includes('revise')) {
+      setCurrentRevisionAction({ update, action });
+      setFeedbackMessage('');
+      setShowFeedbackModal(true);
+      return;
+    }
+    
+    // For approval actions, show confirmation dialog
     const actionText = action.includes('approve') ? '承認' : '修正依頼';
     const submissionText = update.submissionType === 'plan' ? '構成案' : '初稿';
     const influencerName = update.influencerName;
@@ -304,11 +369,16 @@ export default function AdminDashboard() {
       return;
     }
     
+    executeAction(update, action);
+  };
+
+  // Execute the actual admin action
+  const executeAction = async (update: Update, action: string, feedback?: string) => {
     const actionId = `${update.id}_${action}`;
     setProcessingActions(prev => new Set(prev).add(actionId));
     
     try {
-      console.log('🔄 Executing admin action:', { update: update.id, action });
+      console.log('🔄 Executing admin action:', { update: update.id, action, feedback });
       
       const response = await fetch('/api/admin/actions', {
         method: 'POST',
@@ -319,7 +389,8 @@ export default function AdminDashboard() {
           campaignId: update.campaignId,
           influencerId: update.influencerId,
           action: action,
-          submissionType: update.submissionType
+          submissionType: update.submissionType,
+          feedbackMessage: feedback
         }),
       });
 
@@ -349,6 +420,16 @@ export default function AdminDashboard() {
     }
   };
 
+  // Handle feedback modal submission
+  const handleFeedbackSubmit = () => {
+    if (!currentRevisionAction) return;
+    
+    executeAction(currentRevisionAction.update, currentRevisionAction.action, feedbackMessage);
+    setShowFeedbackModal(false);
+    setCurrentRevisionAction(null);
+    setFeedbackMessage('');
+  };
+
   // Get unique statuses and platforms for filters (filter out empty values)
   const uniqueStatuses = Array.from(
     new Set(
@@ -369,12 +450,37 @@ export default function AdminDashboard() {
     <div className="min-h-screen" style={{ backgroundColor: ds.bg.primary }}>
       <div className="max-w-7xl mx-auto mobile-padding">
         <div className="mb-6 sm:mb-8">
-          <h1 className="font-bold mb-2" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h1.fontSize, lineHeight: ds.typography.heading.h1.lineHeight }}>
-            管理者ダッシュボード
-          </h1>
-          <p className="mobile-text" style={{ color: ds.text.secondary }}>
-            全インフルエンサーキャンペーンの概要と最新の活動状況
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-2">
+            <div className="flex-1 min-w-0">
+              <h1 className="font-bold mb-2" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h1.fontSize, lineHeight: ds.typography.heading.h1.lineHeight }}>
+                管理者ダッシュボード
+              </h1>
+              <p className="mobile-text" style={{ color: ds.text.secondary }}>
+                全インフルエンサーキャンペーンの概要と最新の活動状況
+              </p>
+            </div>
+
+            {/* Refresh Button */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              <button
+                onClick={refreshData}
+                disabled={isRefreshing}
+                className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors disabled:opacity-50"
+                style={{ 
+                  backgroundColor: ds.button.secondary.bg,
+                  color: ds.button.secondary.text,
+                  borderColor: ds.border.primary,
+                  borderWidth: '1px',
+                  borderStyle: 'solid'
+                }}
+                onMouseEnter={(e) => !isRefreshing && (e.currentTarget.style.backgroundColor = ds.button.secondary.hover)}
+                onMouseLeave={(e) => !isRefreshing && (e.currentTarget.style.backgroundColor = ds.button.secondary.bg)}
+              >
+                <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">{isRefreshing ? '更新中...' : '更新'}</span>
+              </button>
+            </div>
+          </div>
         </div>
 
 
@@ -674,10 +780,30 @@ export default function AdminDashboard() {
                           borderStyle: 'solid'
                         }}
                       >
-                        <option value="all">全てのステータス</option>
+                        <option value="all">📊 全てのステータス</option>
+                        <option value="ongoing">🟢 進行中</option>
+                        <option value="action_required">🔴 アクション必要</option>
                         {uniqueStatuses.map(status => (
                           <option key={status} value={status}>
-                            {mapStatusToJapanese(status)}
+                            {(() => {
+                              const statusIcons: Record<string, string> = {
+                                'not_started': '⚪',
+                                'meeting_scheduling': '📅',
+                                'meeting_scheduled': '📅',
+                                'plan_creating': '✏️',
+                                'plan_submitted': '📋',
+                                'plan_revising': '✏️',
+                                'draft_creating': '📝',
+                                'draft_submitted': '📄',
+                                'draft_revising': '✏️',
+                                'scheduling': '📱',
+                                'scheduled': '🚀',
+                                'payment_processing': '💰',
+                                'completed': '✅',
+                                'cancelled': '❌'
+                              };
+                              return `${statusIcons[status] || '📊'} ${mapStatusToJapanese(status)}`;
+                            })()}
                           </option>
                         ))}
                       </select>
@@ -698,10 +824,22 @@ export default function AdminDashboard() {
                           borderStyle: 'solid'
                         }}
                       >
-                        <option value="all">全てのプラットフォーム</option>
+                        <option value="all">🌐 全てのプラットフォーム</option>
                         {uniquePlatforms.map(platform => (
                           <option key={platform} value={platform}>
-                            {mapPlatformToJapanese(platform)}
+                            {(() => {
+                              const platformIcons: Record<string, string> = {
+                                'youtube_long': '🎥',
+                                'youtube_short': '📱',
+                                'instagram_reel': '📸',
+                                'tiktok': '🎵',
+                                'x_twitter': '🐦',
+                                'podcast': '🎙️',
+                                'blog': '✍️',
+                                'short_video': '📱'
+                              };
+                              return `${platformIcons[platform] || '🌐'} ${mapPlatformToJapanese(platform)}`;
+                            })()}
                           </option>
                         ))}
                       </select>
@@ -850,6 +988,39 @@ export default function AdminDashboard() {
                                 </div>
                               </div>
                             </th>
+                            <th 
+                              className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[120px] h-16 align-middle cursor-pointer transition-colors sticky -top-px z-10"
+                              style={{ 
+                                color: ds.text.secondary,
+                                backgroundColor: ds.bg.surface + '80'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.bg.surface + '50'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                              onClick={() => handleSort('updatedAt')}
+                            >
+                              <div className="flex items-center justify-between">
+                                更新日
+                                <div className="flex flex-col ml-1">
+                                  <ChevronUp 
+                                    size={12} 
+                                    style={{ color: sortField === 'updatedAt' && sortDirection === 'asc' ? ds.text.accent : ds.text.secondary + '30' }}
+                                  />
+                                  <ChevronDown 
+                                    size={12} 
+                                    style={{ color: sortField === 'updatedAt' && sortDirection === 'desc' ? ds.text.accent : ds.text.secondary + '30' }}
+                                  />
+                                </div>
+                              </div>
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[100px] h-16 align-middle sticky -top-px z-10" style={{ color: ds.text.secondary, backgroundColor: ds.bg.surface + '80' }}>
+                              構成案リンク
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[100px] h-16 align-middle sticky -top-px z-10" style={{ color: ds.text.secondary, backgroundColor: ds.bg.surface + '80' }}>
+                              初稿リンク
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium whitespace-nowrap min-w-[100px] h-16 align-middle sticky -top-px z-10" style={{ color: ds.text.secondary, backgroundColor: ds.bg.surface + '80' }}>
+                              PRリンク
+                            </th>
                           </tr>
                         </thead>
                         <tbody style={{ backgroundColor: ds.bg.primary }}>
@@ -897,9 +1068,26 @@ export default function AdminDashboard() {
                               </td>
                               <td className="py-3 px-4 h-16">
                                 <div className="flex items-center h-full">
-                                  <span className="text-sm truncate" style={{ color: ds.text.secondary }}>
-                                    {mapStatusToJapanese(campaign.status)}
-                                  </span>
+                                  <div className="flex items-center space-x-2">
+                                    {(() => {
+                                      const raw = (campaign as any).statusDashboard as string | undefined;
+                                      const hasRaw = typeof raw === 'string' && raw.trim().length > 0;
+                                      const displayStatus = hasRaw ? campaign.status : 'completed';
+                                      
+                                      return (
+                                        <>
+                                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                            ['plan_submitted', 'draft_submitted'].includes(displayStatus) ? 'bg-red-400' :
+                                            !['completed', 'cancelled'].includes(displayStatus) ? 'bg-green-400' :
+                                            'bg-gray-400'
+                                          }`}></div>
+                                          <span className="text-sm truncate" style={{ color: ds.text.secondary }}>
+                                            {mapStatusToJapanese(displayStatus)}
+                                          </span>
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
                                 </div>
                               </td>
                               <td className="py-3 px-4 h-16">
@@ -928,6 +1116,68 @@ export default function AdminDashboard() {
                                   <span className="text-sm truncate" style={{ color: ds.text.secondary }}>
                                     {parseAndFormatDate(campaign.schedules?.liveDate)}
                                   </span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 h-16">
+                                <div className="flex items-center h-full">
+                                  <span className="text-sm truncate" style={{ color: ds.text.secondary }}>
+                                    {(() => {
+                                      // Check if campaign has campaignData with date_status_updated
+                                      const rawDate = campaign.campaignData?.date_status_updated || campaign.updatedAt;
+                                      if (!rawDate || rawDate === '' || rawDate === 'undefined') {
+                                        return '-';
+                                      }
+                                      return parseAndFormatDate(typeof rawDate === 'string' ? rawDate : rawDate.toISOString());
+                                    })()}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 h-16">
+                                <div className="flex items-center h-full">
+                                  {campaign.campaignData?.url_plan ? (
+                                    <a
+                                      href={campaign.campaignData.url_plan}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm text-blue-500 hover:text-blue-700 underline"
+                                    >
+                                      リンク
+                                    </a>
+                                  ) : (
+                                    <span className="text-sm" style={{ color: ds.text.secondary }}>-</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 h-16">
+                                <div className="flex items-center h-full">
+                                  {campaign.campaignData?.url_draft ? (
+                                    <a
+                                      href={campaign.campaignData.url_draft}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm text-blue-500 hover:text-blue-700 underline"
+                                    >
+                                      リンク
+                                    </a>
+                                  ) : (
+                                    <span className="text-sm" style={{ color: ds.text.secondary }}>-</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 h-16">
+                                <div className="flex items-center h-full">
+                                  {campaign.campaignData?.url_content ? (
+                                    <a
+                                      href={campaign.campaignData.url_content}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm text-blue-500 hover:text-blue-700 underline"
+                                    >
+                                      リンク
+                                    </a>
+                                  ) : (
+                                    <span className="text-sm" style={{ color: ds.text.secondary }}>-</span>
+                                  )}
                                 </div>
                               </td>
                           </tr>
@@ -1016,6 +1266,69 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Feedback Modal */}
+      {showFeedbackModal && currentRevisionAction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="rounded-xl p-6 max-w-md w-full mx-4" style={{ backgroundColor: ds.bg.card }}>
+            <h3 className="text-lg font-semibold mb-4" style={{ color: ds.text.primary }}>
+              修正依頼
+            </h3>
+            <p className="text-sm mb-4" style={{ color: ds.text.secondary }}>
+              {currentRevisionAction.update.influencerName}さんの
+              {currentRevisionAction.update.submissionType === 'plan' ? '構成案' : '初稿'}
+              に対するフィードバックをご入力ください。
+            </p>
+            <textarea
+              value={feedbackMessage}
+              onChange={(e) => setFeedbackMessage(e.target.value)}
+              placeholder="修正点や改善提案をご入力ください..."
+              className="w-full h-32 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 resize-none"
+              style={{
+                backgroundColor: ds.form.input.bg,
+                borderColor: ds.form.input.border,
+                color: ds.text.primary,
+                borderWidth: '1px',
+                borderStyle: 'solid'
+              }}
+            />
+            <div className="flex justify-end space-x-3 mt-4">
+              <button
+                onClick={() => {
+                  setShowFeedbackModal(false);
+                  setCurrentRevisionAction(null);
+                  setFeedbackMessage('');
+                }}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: ds.button.secondary.bg,
+                  color: ds.button.secondary.text,
+                  borderColor: ds.border.primary,
+                  borderWidth: '1px',
+                  borderStyle: 'solid'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.hover}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.bg}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleFeedbackSubmit}
+                disabled={!feedbackMessage.trim()}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                style={{
+                  backgroundColor: ds.button.primary.bg,
+                  color: ds.button.primary.text
+                }}
+                onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
+                onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
+              >
+                修正依頼を送信
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

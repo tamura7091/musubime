@@ -46,7 +46,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: ds.bg.primary }}>
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md px-4">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-6">
             <img 

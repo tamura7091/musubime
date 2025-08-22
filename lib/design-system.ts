@@ -171,6 +171,26 @@ export const typography = {
       fontWeight: 600,
     },
   },
+  text: {
+    // Default body text
+    base: {
+      fontSize: 16,
+      lineHeight: 1.6,
+      fontWeight: 400,
+    },
+    // Subtle/smaller helper text
+    sm: {
+      fontSize: 14,
+      lineHeight: 1.6,
+      fontWeight: 400,
+    },
+    // Larger emphasis text
+    lg: {
+      fontSize: 18,
+      lineHeight: 1.6,
+      fontWeight: 400,
+    },
+  },
 } as const;
 
 // Helper function to get status colors

@@ -143,7 +143,8 @@ class DataService {
           'date_status_updated',
           'url_plan',
           'url_draft',
-          'url_content'
+          'url_content',
+          'message_dashboard'
         ]);
         
         console.log(`📊 Fetched ${rawData.length} rows from Google Sheets for updates`);

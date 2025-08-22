@@ -5,7 +5,7 @@ import CampaignCard from '@/components/CampaignCard';
 import StatusSection from '@/components/StatusSection';
 import OnboardingSurvey from '@/components/OnboardingSurvey';
 import OnboardingSurveyInline from '@/components/OnboardingSurveyInline';
-import { TrendingUp, Clock, CheckCircle, Calendar, ExternalLink, Settings, Bug, AlertCircle, ClipboardList, FileText, FileEdit, Video, Megaphone, CreditCard, Hourglass, XCircle, Copy, ClipboardCheck } from 'lucide-react';
+import { TrendingUp, Clock, CheckCircle, Calendar, ExternalLink, Settings, Bug, AlertCircle, ClipboardList, FileText, FileEdit, Video, Megaphone, CreditCard, Hourglass, XCircle, Copy, ClipboardCheck, RefreshCw } from 'lucide-react';
 import PreviousStepMessage from '@/components/PreviousStepMessage';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -50,11 +50,12 @@ export default function InfluencerDashboard() {
   const [confirmingCompleted, setConfirmingCompleted] = useState<{[key: string]: boolean}>({});
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [copiedPassword, setCopiedPassword] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Manual refresh function
   const refreshData = async () => {
     if (user?.id) {
-      setIsLoading(true);
+      setIsRefreshing(true);
       try {
         console.log('🔄 Manual refresh: Fetching campaigns for user:', user.id);
         const response = await fetch(`/api/campaigns?userId=${encodeURIComponent(user.id)}&t=${Date.now()}`);
@@ -69,7 +70,7 @@ export default function InfluencerDashboard() {
         console.error('❌ Manual refresh: Failed to fetch campaigns:', error);
         setCampaigns([]);
       } finally {
-        setIsLoading(false);
+        setIsRefreshing(false);
       }
     }
   };
@@ -167,6 +168,36 @@ export default function InfluencerDashboard() {
   };
 
   // Get action needed for a campaign based on current step
+  // Helper function to extract and format feedback messages
+  const getLatestFeedbackMessage = (campaign: any): string => {
+    try {
+      const messageDashboard = campaign.campaignData?.message_dashboard;
+      if (!messageDashboard || typeof messageDashboard !== 'string') {
+        return '';
+      }
+
+      const messages = JSON.parse(messageDashboard);
+      if (!Array.isArray(messages) || messages.length === 0) {
+        return '';
+      }
+
+      // Find the latest revision feedback message
+      const revisionFeedback = messages
+        .filter(msg => msg.type === 'revision_feedback')
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        [0];
+
+      if (revisionFeedback && revisionFeedback.content) {
+        return `<br/><br/><div style="background-color: rgba(239, 246, 255, 0.5); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 12px; margin-top: 8px;"><strong>📝 修正ポイント:</strong><br/>${revisionFeedback.content.replace(/\n/g, '<br/>')}</div>`;
+      }
+
+      return '';
+    } catch (error) {
+      console.log('⚠️ Failed to parse feedback message:', error);
+      return '';
+    }
+  };
+
   const getActionNeeded = (campaign: any) => {
     const currentStep = getStepFromStatus(campaign.status as CampaignStatus);
     
@@ -235,9 +266,10 @@ export default function InfluencerDashboard() {
             inputType: 'none'
           };
         } else if (campaign.status === 'plan_revising') {
+          const feedbackMessage = getLatestFeedbackMessage(campaign);
           return {
             title: '構成案の修正',
-            description: 'フィードバックに基づいて構成案を修正し、再提出してください',
+            description: 'フィードバックに基づいて構成案を修正し、再提出してください' + feedbackMessage,
             icon: AlertCircle,
             color: 'blue',
             action: 'plan_revising',
@@ -267,9 +299,10 @@ export default function InfluencerDashboard() {
             inputType: 'none'
           };
         } else if (campaign.status === 'draft_revising') {
+          const feedbackMessage = getLatestFeedbackMessage(campaign);
           return {
             title: '初稿の修正',
-            description: 'フィードバックに基づいて初稿を修正し、再提出してください',
+            description: 'フィードバックに基づいて初稿を修正し、再提出してください' + feedbackMessage,
             icon: AlertCircle,
             color: 'blue',
             action: 'draft_revising',
@@ -975,6 +1008,27 @@ export default function InfluencerDashboard() {
                 お疲れ様です、{user.name}さん
               </h1>
             </div>
+
+            {/* Refresh Button for All Users */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              <button
+                onClick={refreshData}
+                disabled={isRefreshing}
+                className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors disabled:opacity-50"
+                style={{ 
+                  backgroundColor: ds.button.secondary.bg,
+                  color: ds.button.secondary.text,
+                  borderColor: ds.border.primary,
+                  borderWidth: '1px',
+                  borderStyle: 'solid'
+                }}
+                onMouseEnter={(e) => !isRefreshing && (e.currentTarget.style.backgroundColor = ds.button.secondary.hover)}
+                onMouseLeave={(e) => !isRefreshing && (e.currentTarget.style.backgroundColor = ds.button.secondary.bg)}
+              >
+                <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">{isRefreshing ? '更新中...' : '更新'}</span>
+              </button>
+            </div>
             
             {/* Debug Buttons Section - Only for demo accounts */}
             {(user.id === 'actre_vlog_yt' || user.id === 'eigatube_yt') && (
@@ -995,27 +1049,23 @@ export default function InfluencerDashboard() {
                 </button>
                 <button
                   onClick={refreshData}
-                  disabled={isLoading}
+                  disabled={isRefreshing}
                   className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors disabled:opacity-50"
                   style={{ 
                     backgroundColor: ds.button.primary.bg,
                     color: ds.button.primary.text
                   }}
-                  onMouseEnter={(e) => !isLoading && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
-                  onMouseLeave={(e) => !isLoading && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
+                  onMouseEnter={(e) => !isRefreshing && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
+                  onMouseLeave={(e) => !isRefreshing && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
                 >
-                  <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  <span className="hidden sm:inline">{isLoading ? '更新中...' : '更新'}</span>
-                  <span className="sm:hidden">{isLoading ? '更新中' : '更新'}</span>
+                  <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">{isRefreshing ? '更新中...' : '更新'}</span>
+                  <span className="sm:hidden">{isRefreshing ? '更新中' : '更新'}</span>
                 </button>
               </div>
             )}
           </div>
-          {primaryCampaign ? (
-            <PreviousStepMessage status={primaryCampaign.status} />
-          ) : (
+          {!primaryCampaign && (
             <p className="mobile-text" style={{ color: ds.text.secondary }}>
               進捗状況をご確認ください
             </p>
@@ -1163,34 +1213,27 @@ export default function InfluencerDashboard() {
             )}
             
             {/* Status Message */}
-            <div className="mb-4 p-4 rounded-lg" style={{ 
-              backgroundColor: ds.bg.surface,
-              borderColor: ds.border.secondary,
-              borderWidth: '1px',
-              borderStyle: 'solid'
-            }}>
-              <p className="text-sm" style={{ color: ds.text.primary }}>
-                {(() => {
-                  const messages: Record<string, string> = {
-                    not_started: '🎉 Welcome! まずは基本情報のご入力をお願いします。',
-                    meeting_scheduling: '✅ 基本情報のご入力ありがとうございます！打ち合わせのご予約にお進みください。',
-                    meeting_scheduled: '📅 打ち合わせのご予約ありがとうございます！当日のご参加をお願いします。',
-                    plan_creating: '🤝 打ち合わせありがとうございました！構成案の作成をお願いします。',
-                    plan_submitted: '📋 構成案のご提出ありがとうございます！ただいま確認中です。',
-                    plan_revising: '✏️ ご提出ありがとうございます！フィードバックに沿って修正をお願いします。',
-                    draft_creating: '🎊 素敵な構成案をありがとうございます！構成案に沿い、初稿作成にお進みください。',
-                    draft_submitted: '🎬 初稿のご提出ありがとうございます！ただいま確認中です。',
-                    draft_revising: '🔧 初稿修正のご対応をお願いします。',
-                    scheduling: '📱 初稿のご対応ありがとうございます！投稿準備をお願いします。',
-                    scheduled: '🚀 投稿ありがとうございます！送金手続きを進めます。',
-                    payment_processing: '💰 投稿ありがとうございました！送金手続きを開始しました。着金まで少々お待ちください。',
-                    completed: '🎉 ご協力ありがとうございました！プロモーションは完了しました。',
-                    cancelled: '😔 今回はご対応ありがとうございました。',
-                  };
-                  return messages[primaryCampaign.status] || '進捗ありがとうございます！次のステップにお進みください。';
-                })()}
-              </p>
-            </div>
+            <p className="mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.text.base.fontSize, lineHeight: ds.typography.text.base.lineHeight, fontWeight: 600 }}>
+              {(() => {
+                const messages: Record<string, string> = {
+                  not_started: '🎉 Welcome! まずは基本情報のご入力をお願いします。',
+                  meeting_scheduling: '✅ 基本情報のご入力ありがとうございます！打ち合わせのご予約にお進みください。',
+                  meeting_scheduled: '📅 打ち合わせのご予約ありがとうございます！当日のご参加をお願いします。',
+                  plan_creating: '🤝 打ち合わせありがとうございました！構成案の作成をお願いします。',
+                  plan_submitted: '📋 構成案のご提出ありがとうございます！ただいま確認中です。',
+                  plan_revising: '✏️ ご提出ありがとうございます！フィードバックに沿って修正をお願いします。',
+                  draft_creating: '🎊 素敵な構成案をありがとうございます！構成案に沿い、初稿作成にお進みください。',
+                  draft_submitted: '🎬 初稿のご提出ありがとうございます！ただいま確認中です。',
+                  draft_revising: '🔧 初稿修正のご対応をお願いします。',
+                  scheduling: '📱 初稿のご対応ありがとうございます！投稿準備をお願いします。',
+                  scheduled: '🚀 投稿ありがとうございます！送金手続きを進めます。',
+                  payment_processing: '💰 投稿ありがとうございました！送金手続きを開始しました。着金まで少々お待ちください。',
+                  completed: '🎉 ご協力ありがとうございました！プロモーションは完了しました。',
+                  cancelled: '😔 今回はご対応ありがとうございました。',
+                };
+                return messages[primaryCampaign.status] || '進捗ありがとうございます！次のステップにお進みください。';
+              })()}
+            </p>
             
             <div className="rounded-xl p-4 sm:p-6" style={{ 
               backgroundColor: ds.bg.card,

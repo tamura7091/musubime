@@ -19,12 +19,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check for stored auth state
-    const storedUser = localStorage.getItem('auth-user');
-    if (storedUser) {
-      setAuthState({
-        user: JSON.parse(storedUser),
-        isAuthenticated: true,
-      });
+    try {
+      const storedUser = localStorage.getItem('auth-user');
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        console.log('🔄 Restoring user session from localStorage:', userData);
+        setAuthState({
+          user: userData,
+          isAuthenticated: true,
+        });
+      } else {
+        console.log('📭 No stored user session found');
+      }
+    } catch (error) {
+      console.error('❌ Error restoring user session:', error);
+      // Clear corrupted data
+      localStorage.removeItem('auth-user');
     }
   }, []);
 
@@ -48,7 +58,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           user: adminUser,
           isAuthenticated: true,
         });
-        localStorage.setItem('auth-user', JSON.stringify(adminUser));
+        try {
+          localStorage.setItem('auth-user', JSON.stringify(adminUser));
+          console.log('💾 Admin user session saved to localStorage');
+        } catch (error) {
+          console.error('❌ Error saving admin session to localStorage:', error);
+        }
         return true;
       }
 
@@ -75,7 +90,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           user: userData,
           isAuthenticated: true,
         });
-        localStorage.setItem('auth-user', JSON.stringify(userData));
+        try {
+          localStorage.setItem('auth-user', JSON.stringify(userData));
+          console.log('💾 User session saved to localStorage');
+        } catch (error) {
+          console.error('❌ Error saving user session to localStorage:', error);
+        }
         return true;
       } else {
         const errorData = await response.text();
@@ -102,11 +122,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    console.log('🚪 Logging out user');
     setAuthState({
       user: null,
       isAuthenticated: false,
     });
-    localStorage.removeItem('auth-user');
+    try {
+      localStorage.removeItem('auth-user');
+      console.log('🗑️ User session cleared from localStorage');
+    } catch (error) {
+      console.error('❌ Error clearing user session from localStorage:', error);
+    }
   };
 
   return (

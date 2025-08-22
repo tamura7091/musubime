@@ -4,13 +4,14 @@ import { googleSheetsService } from '@/lib/google-sheets';
 export async function POST(request: NextRequest) {
   try {
     console.log('🔄 Admin action API called');
-    const { campaignId, influencerId, action, submissionType } = await request.json();
+    const { campaignId, influencerId, action, submissionType, feedbackMessage } = await request.json();
     
     console.log('📊 Admin action request:', {
       campaignId,
       influencerId,
       action,
-      submissionType
+      submissionType,
+      feedbackMessage
     });
 
     if (!campaignId || !influencerId || !action) {
@@ -44,11 +45,24 @@ export async function POST(request: NextRequest) {
 
     console.log(`📊 Admin action "${action}" -> new status: "${newStatus}"`);
 
+    // Prepare message data for revision actions
+    let messageData: { type: string; content: string; timestamp: string } | undefined;
+    if (action.includes('revise') && feedbackMessage) {
+      messageData = {
+        type: 'revision_feedback',
+        content: feedbackMessage,
+        timestamp: new Date().toISOString()
+      };
+    }
+
     // Update the Google Sheets
     const updateResult = await googleSheetsService.updateCampaignStatus(
       campaignId,
       influencerId,
-      newStatus
+      newStatus,
+      undefined, // submittedUrl
+      undefined, // urlType  
+      messageData
     );
 
     if (updateResult.success) {
@@ -61,13 +75,17 @@ export async function POST(request: NextRequest) {
           actionMessage = '構成案が承認されました。初稿作成に進みます。';
           break;
         case 'revise_plan':
-          actionMessage = '構成案の修正を依頼しました。';
+          actionMessage = feedbackMessage 
+            ? `構成案の修正を依頼しました。フィードバック: ${feedbackMessage}`
+            : '構成案の修正を依頼しました。';
           break;
         case 'approve_draft':
           actionMessage = '初稿が承認されました。投稿準備に進みます。';
           break;
         case 'revise_draft':
-          actionMessage = '初稿の修正を依頼しました。';
+          actionMessage = feedbackMessage 
+            ? `初稿の修正を依頼しました。フィードバック: ${feedbackMessage}`
+            : '初稿の修正を依頼しました。';
           break;
       }
       

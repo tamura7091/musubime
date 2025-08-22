@@ -175,6 +175,8 @@ export interface Campaign {
     noted_influencers?: string;
     trial_login_email_dashboard?: string;
     trial_login_password_dashboard?: string;
+    date_status_updated?: string;
+    message_dashboard?: string;
   };
 }
 

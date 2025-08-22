@@ -72,7 +72,7 @@ class GoogleSheetsService {
     }
   }
 
-  async getSheetData(range: string = (process.env.GOOGLE_SHEETS_RANGE || 'campaigns!A:CZ')): Promise<GoogleSheetsRow[]> {
+  async getSheetData(range: string = (process.env.GOOGLE_SHEETS_RANGE || 'campaigns!A:ZZ')): Promise<GoogleSheetsRow[]> {
     try {
       console.log('🔍 GoogleSheetsService.getSheetData() called');
       console.log('📊 Range:', range);
@@ -111,6 +111,13 @@ class GoogleSheetsService {
       console.log('📊 Total columns fetched:', headers.length);
       console.log('📋 Last 10 headers:', headers.slice(-10)); // Show last 10 headers
       
+      // Check if message_dashboard column exists
+      const messageDashboardIndex = headers.findIndex(h => h === 'message_dashboard');
+      console.log(`📝 message_dashboard column found at index: ${messageDashboardIndex}`);
+      if (messageDashboardIndex !== -1) {
+        console.log(`📝 message_dashboard is at column ${this.columnIndexToLetter(messageDashboardIndex)}`);
+      }
+      
       // Convert rows to objects using headers as keys
       // Skip first 4 rows (rows 2-5) and start from row 5 (index 4)
       const data: GoogleSheetsRow[] = rows.slice(4).map(row => {
@@ -142,7 +149,7 @@ class GoogleSheetsService {
 
       const request: any = {
         spreadsheetId: this.spreadsheetId,
-        range: 'campaigns!A:CZ', // Fetch full range to get all columns including BU, BV, etc.
+        range: 'campaigns!A:ZZ', // Fetch full range to get all columns including BW and beyond
       };
       
       // If using API key instead of service account
@@ -167,6 +174,10 @@ class GoogleSheetsService {
       const headers = rows[0] as string[];
       console.log('📊 Total columns in sheet:', headers.length);
       console.log('📋 All headers:', headers);
+      
+      // Check if message_dashboard column exists
+      const messageDashboardIndex = headers.findIndex(h => h === 'message_dashboard');
+      console.log(`📝 message_dashboard column found at index: ${messageDashboardIndex}`);
       
       // Create a map of requested columns to their indices
       const columnMap: { [key: string]: number } = {};
@@ -556,6 +567,12 @@ class GoogleSheetsService {
           contact_email: row['contact_email'],
           url_channel: row['url_channel'],
           url_content: row['url_content'],
+          date_status_updated: row['date_status_updated'],
+          message_dashboard: (() => {
+            const msgDashboard = row['message_dashboard'];
+            console.log(`📝 Campaign ${row['id_campaign']}: message_dashboard = "${msgDashboard}" (type: ${typeof msgDashboard})`);
+            return msgDashboard;
+          })(),
           group: row['group'],
           followers: row['followers'],
           spend_usd: row['spend_usd'],
@@ -761,7 +778,8 @@ class GoogleSheetsService {
     influencerId: string,
     newStatus: string,
     submittedUrl?: string,
-    urlType?: 'plan' | 'draft' | 'content'
+    urlType?: 'plan' | 'draft' | 'content',
+    messageData?: { type: string; content: string; timestamp: string }
   ): Promise<{ success: boolean; error?: string }> {
     try {
       console.log('🔄 GoogleSheetsService.updateCampaignStatus() called');
@@ -788,7 +806,7 @@ class GoogleSheetsService {
       // First, find the row with the matching campaign ID
       const request: any = {
         spreadsheetId: this.spreadsheetId,
-        range: 'campaigns!A:CZ', // Fetch full range to find the row
+        range: 'campaigns!A:ZZ', // Fetch full range to find the row
       };
       
       if (this.hasApiKey && !this.hasServiceAccount) {
@@ -851,6 +869,42 @@ class GoogleSheetsService {
           values: [[currentDateTime]] // Use full timestamp instead of just date
         });
         console.log(`📅 Updating date_status_updated at ${dateRange} to "${currentDateTime}"`);
+      }
+
+      // Update message_dashboard with JSON data if provided
+      if (messageData) {
+        const messageDashboardIndex = headers.findIndex(header => header === 'message_dashboard');
+        if (messageDashboardIndex !== -1) {
+          // Get existing message_dashboard content
+          const existingContent = rows[campaignRowIndex][messageDashboardIndex] || '';
+          let messagesArray: any[] = [];
+          
+          // Parse existing JSON if it exists
+          if (existingContent && existingContent.trim()) {
+            try {
+              messagesArray = JSON.parse(existingContent);
+              if (!Array.isArray(messagesArray)) {
+                messagesArray = [];
+              }
+            } catch (parseError) {
+              console.log('⚠️ Failed to parse existing message_dashboard JSON, starting fresh');
+              messagesArray = [];
+            }
+          }
+          
+          // Add new message
+          messagesArray.push(messageData);
+          
+          // Convert back to JSON string
+          const updatedJson = JSON.stringify(messagesArray);
+          
+          const messageRange = `campaigns!${this.columnIndexToLetter(messageDashboardIndex)}${campaignRowIndex + 1}`;
+          updates.push({
+            range: messageRange,
+            values: [[updatedJson]]
+          });
+          console.log(`💬 Updating message_dashboard at ${messageRange} with new message:`, messageData);
+        }
       }
 
       // Update URL fields based on type
@@ -975,7 +1029,7 @@ class GoogleSheetsService {
       // Fetch full range to locate row and map columns dynamically
       const request: any = {
         spreadsheetId: this.spreadsheetId,
-        range: 'campaigns!A:CZ',
+        range: 'campaigns!A:ZZ',
       };
       if (this.hasApiKey && !this.hasServiceAccount) {
         request.key = process.env.GOOGLE_SHEETS_API_KEY;
