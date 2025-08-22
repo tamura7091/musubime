@@ -43,7 +43,7 @@ export default function Navigation() {
           <div className="flex items-center">
             <img 
               src={ds.resolvedTheme === 'light' ? speakLogoLight.src : speakLogoDark.src} 
-              alt="Speak Logo" 
+              alt="Musubime Logo" 
               className="h-8 w-auto"
             />
           </div>

@@ -6,22 +6,22 @@ import speakAppLogoPng from '@/app/assets/speak app logo.png'
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title: {
-      default: 'musubime',
-      template: '%s - musubime'
+      default: 'Musubime',
+      template: '%s - Musubime'
     },
     description: 'インフルエンサー施策をスムーズにつなぐ、運用・承認・進行管理のためのワークフロー管理ツール',
-    applicationName: 'musubime',
+    applicationName: 'Musubime',
     metadataBase: new URL('https://musubime.app'),
     openGraph: {
-      title: 'musubime',
+      title: 'Musubime',
       description: 'インフルエンサー施策をスムーズにつなぐ、運用・承認・進行管理のためのワークフロー管理ツール',
-      siteName: 'musubime',
+      siteName: 'Musubime',
       type: 'website',
       locale: 'ja_JP',
     },
     twitter: {
       card: 'summary_large_image',
-      title: 'musubime',
+      title: 'Musubime',
       description: 'インフルエンサー施策をスムーズにつなぐ、運用・承認・進行管理のためのワークフロー管理ツール',
     },
     icons: {

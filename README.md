@@ -1,6 +1,6 @@
-# Speak Influencer Management Platform
+# Musubime
 
-A comprehensive, production-ready web application for managing influencer marketing campaigns with sophisticated workflow automation and real-time collaboration features. Built for Speak, an AI-powered English learning platform, to streamline partnerships with content creators across multiple platforms.
+A comprehensive, production-ready web application for managing influencer marketing campaigns with sophisticated workflow automation and real-time collaboration features. Built as Musubime to streamline partnerships with content creators across multiple platforms.
 
 ## 🎯 Purpose & Vision
 
@@ -51,7 +51,7 @@ Sophisticated state management system that handles:
 - Automated scheduling and publishing coordination
 
 **Premium Account Integration**
-- Automatic provisioning of Speak premium accounts for influencers
+- Automatic provisioning of Musubime-related accounts for influencers
 - Secure credential distribution with copy-to-clipboard functionality
 - Direct app download links and onboarding guidance
 
@@ -170,7 +170,7 @@ scheduling → scheduled → payment_processing → completed
 1. **Clone and Install**
    ```bash
    git clone https://github.com/naokispeak/influencer.git
-   cd speak-influencer-management
+   cd musubime
    npm install
    ```
 
@@ -190,7 +190,7 @@ scheduling → scheduled → payment_processing → completed
    GOOGLE_SHEETS_API_KEY=your_api_key
    
    # Optional: Custom configuration
-   NEXT_PUBLIC_APP_NAME="musubime"
+   NEXT_PUBLIC_APP_NAME="Musubime"
    ```
 
 3. **Google Sheets Setup**
@@ -238,14 +238,14 @@ The platform includes demo accounts for testing:
 - `eigatube_yt` - Multiple campaign scenarios
 
 **Admin Account:**
-- Email: `admin@speak.com` - Full administrative access
+- Email: `admin@musubime.app` - Full administrative access
 
 **Note**: Demo accounts include special debugging features and enhanced logging for development purposes.
 
 ## 📁 Project Structure
 
 ```
-speak-influencer-management/
+musubime/
 ├── app/                          # Next.js 14 App Router
 │   ├── api/                     # API Routes
 │   │   ├── admin/actions/       # Admin workflow actions
@@ -434,5 +434,5 @@ const ds = useDesignSystem();
 
 ## License
 
-Private project for Speak Influencer Management platform.
+Private project for Musubime platform.
 # Test deployment trigger

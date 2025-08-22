@@ -1035,7 +1035,7 @@ export default function InfluencerDashboard() {
                 {user.name}さんのスピークPR情報
               </h1>
               
-              {/* Refresh Button for All Users */}
+              {/* Refresh Button */}
               <button
                 onClick={refreshData}
                 disabled={isRefreshing}
@@ -1066,21 +1066,6 @@ export default function InfluencerDashboard() {
                   <Bug size={14} className="sm:w-4 sm:h-4" />
                   <span className="hidden sm:inline">デバッグ</span>
                   <span className="sm:hidden">デバッグ</span>
-                </button>
-                <button
-                  onClick={refreshData}
-                  disabled={isRefreshing}
-                  className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors disabled:opacity-50"
-                  style={{ 
-                    backgroundColor: ds.button.primary.bg,
-                    color: ds.button.primary.text
-                  }}
-                  onMouseEnter={(e) => !isRefreshing && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
-                  onMouseLeave={(e) => !isRefreshing && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
-                >
-                  <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">{isRefreshing ? '更新中...' : '更新'}</span>
-                  <span className="sm:hidden">{isRefreshing ? '更新中' : '更新'}</span>
                 </button>
               </div>
             )}
