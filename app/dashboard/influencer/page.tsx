@@ -1230,9 +1230,6 @@ export default function InfluencerDashboard() {
         {/* Action Section */}
         {primaryCampaign && (
           <div className="mb-6 sm:mb-8">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
-              次のステップ
-            </h2>
             
             {/* Warning Message for Behind Schedule */}
             {isActionRequiredNow(primaryCampaign) && isCurrentStepBehindSchedule(primaryCampaign) ? (
@@ -1302,12 +1299,15 @@ export default function InfluencerDashboard() {
               </p>
             )}
             
-            <div className="rounded-xl p-4 sm:p-6" style={{ 
+                        <div className="rounded-xl p-4 sm:p-6" style={{
               backgroundColor: ds.bg.card,
               borderColor: ds.border.primary,
               borderWidth: '1px',
               borderStyle: 'solid'
             }}>
+              <h2 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h2.fontSize, lineHeight: ds.typography.heading.h2.lineHeight }}>
+                次のステップ
+              </h2>
               {(() => {
                 const action = getActionNeeded(primaryCampaign);
                 
@@ -1655,18 +1655,31 @@ export default function InfluencerDashboard() {
         {/* Status Section */}
         {primaryCampaign && (
           <div className="mb-6 sm:mb-8">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
-              PRの流れとステータス
-            </h2>
-            <StatusSection campaign={primaryCampaign} />
+            <div className="rounded-xl p-4 sm:p-6" style={{
+              backgroundColor: ds.bg.card,
+              borderColor: ds.border.primary,
+              borderWidth: '1px',
+              borderStyle: 'solid'
+            }}>
+              <h2 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h2.fontSize, lineHeight: ds.typography.heading.h2.lineHeight }}>
+                PRの流れとステータス
+              </h2>
+              <StatusSection campaign={primaryCampaign} />
+            </div>
           </div>
         )}
 
                 {/* All Campaigns */}
         <div className="mb-6 sm:mb-8">
-          <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
-            プロモーション詳細
-          </h2>
+          <div className="rounded-xl p-4 sm:p-6" style={{
+            backgroundColor: ds.bg.card,
+            borderColor: ds.border.primary,
+            borderWidth: '1px',
+            borderStyle: 'solid'
+          }}>
+            <h2 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h2.fontSize, lineHeight: ds.typography.heading.h2.lineHeight }}>
+              プロモーション詳細 ({sortedUserCampaigns.length})
+            </h2>
           {sortedUserCampaigns.length > 0 ? (
             <div className="space-y-4">
               {/* Notion-style Database Table with Horizontal Scroll */}
@@ -1862,26 +1875,27 @@ export default function InfluencerDashboard() {
               </div>
             </div>
           ) : (
-            <div className="card text-center py-8">
-              <p className="text-dark-text-secondary">
+            <div className="text-center py-8">
+              <p style={{ color: ds.text.secondary }}>
                 プロモーションはありません
               </p>
             </div>
           )}
+          </div>
         </div>
 
         {/* Premium Account Section */}
         {primaryCampaign && (
           <div className="mt-6 sm:mt-8">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
-              プレミアムアカウント
-            </h2>
             <div className="rounded-xl p-4 sm:p-6" style={{ 
               backgroundColor: ds.bg.card,
               borderColor: ds.border.primary,
               borderWidth: '1px',
               borderStyle: 'solid'
             }}>
+              <h2 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h2.fontSize, lineHeight: ds.typography.heading.h2.lineHeight }}>
+                プレミアムアカウント
+              </h2>
               <div className="space-y-6">
                 {/* App Download */}
                 <div>
@@ -2061,15 +2075,15 @@ export default function InfluencerDashboard() {
         {/* Links Section - moved to bottom */}
         {primaryCampaign && (
           <div className="mt-6 sm:mt-8">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
-              リンク
-            </h2>
             <div className="rounded-xl p-4 sm:p-6" style={{ 
               backgroundColor: ds.bg.card,
               borderColor: ds.border.primary,
               borderWidth: '1px',
               borderStyle: 'solid'
             }}>
+              <h2 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h2.fontSize, lineHeight: ds.typography.heading.h2.lineHeight }}>
+                リンク
+              </h2>
               <div className="space-y-2 text-sm">
                 {(() => {
                   const url = getGuidelineUrl(primaryCampaign.platform as string);
