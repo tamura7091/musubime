@@ -467,13 +467,13 @@ export default function InfluencerDashboard() {
       case 'meeting_scheduled':
       case 'plan_creating':
       case 'plan_revising':
-        label = '構成案';
+        label = '構成案提出';
         targetDate = campaign?.schedules?.planSubmissionDate;
         break;
       case 'plan_submitted':
       case 'draft_creating':
       case 'draft_revising':
-        label = '初稿';
+        label = '初稿提出';
         targetDate = campaign?.schedules?.draftSubmissionDate;
         break;
       case 'draft_submitted':
@@ -550,6 +550,20 @@ export default function InfluencerDashboard() {
 
   // Get next step info (label and days) for the primary campaign
   const nextStepInfo = primaryCampaign ? getNextStepInfo(primaryCampaign) : null;
+
+  // Check if current step is behind schedule (for warning message)
+  const isCurrentStepBehindSchedule = (campaign: any) => {
+    if (!campaign || campaign.status === 'completed') return false;
+    const nextStepInfo = getNextStepInfo(campaign);
+    return nextStepInfo && nextStepInfo.days !== null && nextStepInfo.days < 0;
+  };
+
+  // Check if current step is due today
+  const isCurrentStepDueToday = (campaign: any) => {
+    if (!campaign) return false;
+    const nextStepInfo = getNextStepInfo(campaign);
+    return nextStepInfo && nextStepInfo.days === 0;
+  };
 
   // Total payout across all campaigns (used when there are no active campaigns)
   const totalPayoutAllCampaigns = (sortedUserCampaigns || []).reduce((sum: number, c: any) => {
@@ -1005,31 +1019,28 @@ export default function InfluencerDashboard() {
         <div className="mb-6 sm:mb-8">
           {/* Responsive Header Layout */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-2">
-            {/* Greeting Section */}
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate" style={{ color: ds.text.primary }}>
-                お疲れ様です、{user.name}さん
+            {/* Greeting Section with Refresh Button */}
+            <div className="flex-1 min-w-0 flex items-center gap-3">
+              <h1 className="font-bold truncate text-2xl sm:text-3xl lg:text-4xl" style={{ 
+                color: ds.text.primary,
+                lineHeight: 1.2,
+                fontWeight: ds.typography.heading.h1.fontWeight
+              }}>
+                {user.name}さんのスピークPR情報
               </h1>
-            </div>
-
-            {/* Refresh Button for All Users */}
-            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              
+              {/* Refresh Button for All Users */}
               <button
                 onClick={refreshData}
                 disabled={isRefreshing}
-                className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors disabled:opacity-50"
+                className="flex items-center justify-center p-1 transition-colors disabled:opacity-50 flex-shrink-0"
                 style={{ 
-                  backgroundColor: ds.button.secondary.bg,
-                  color: ds.button.secondary.text,
-                  borderColor: ds.border.primary,
-                  borderWidth: '1px',
-                  borderStyle: 'solid'
+                  color: ds.text.secondary
                 }}
-                onMouseEnter={(e) => !isRefreshing && (e.currentTarget.style.backgroundColor = ds.button.secondary.hover)}
-                onMouseLeave={(e) => !isRefreshing && (e.currentTarget.style.backgroundColor = ds.button.secondary.bg)}
+                onMouseEnter={(e) => !isRefreshing && (e.currentTarget.style.color = ds.text.primary)}
+                onMouseLeave={(e) => !isRefreshing && (e.currentTarget.style.color = ds.text.secondary)}
               >
-                <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">{isRefreshing ? '更新中...' : '更新'}</span>
+                <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
               </button>
             </div>
             
@@ -1181,8 +1192,20 @@ export default function InfluencerDashboard() {
             borderStyle: 'solid'
           }}>
             <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-lg flex-shrink-0" style={{ backgroundColor: '#22c55e' + '20' }}>
-                <CheckCircle size={20} style={{ color: '#22c55e' }} />
+              <div className="p-2 rounded-lg flex-shrink-0" style={{ 
+                backgroundColor: nextStepInfo && nextStepInfo.days !== null && nextStepInfo.days < 0 
+                  ? '#ef4444' + '20' 
+                  : nextStepInfo && nextStepInfo.days === 0
+                  ? '#eab308' + '20'
+                  : '#22c55e' + '20' 
+              }}>
+                {nextStepInfo && nextStepInfo.days !== null && nextStepInfo.days < 0 ? (
+                  <AlertCircle size={20} style={{ color: '#ef4444' }} />
+                ) : nextStepInfo && nextStepInfo.days === 0 ? (
+                  <Clock size={20} style={{ color: '#eab308' }} />
+                ) : (
+                  <CheckCircle size={20} style={{ color: '#22c55e' }} />
+                )}
               </div>
               <div className="min-w-0">
                 <p className="text-xl sm:text-2xl font-bold" style={{ color: ds.text.primary }}>
@@ -1204,39 +1227,74 @@ export default function InfluencerDashboard() {
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
               次のステップ
             </h2>
-            {getOverdueErrorMessage(primaryCampaign) && (
+            
+            {/* Warning Message for Behind Schedule */}
+            {isCurrentStepBehindSchedule(primaryCampaign) ? (
               <div className="mb-4 p-3 border rounded-lg" style={{ 
-                backgroundColor: '#ef4444' + '10',
-                borderColor: '#ef4444' + '20'
+                backgroundColor: ds.isDark ? '#2d1b1b' : '#fef2f2', // Dark mode: dark red, Light mode: light red
+                borderColor: ds.isDark ? '#7f1d1d' : '#fecaca', // Dark mode: darker red, Light mode: red border
+                borderWidth: '1px',
+                borderStyle: 'solid'
               }}>
-                <p className="text-sm font-medium" style={{ color: '#f87171' }}>
-                  {getOverdueErrorMessage(primaryCampaign)}
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={16} style={{ color: '#ef4444' }} />
+                  <span className="text-sm font-medium" style={{ 
+                    color: ds.isDark ? '#f87171' : '#dc2626' // Dark mode: lighter red, Light mode: dark red
+                  }}>
+                    スケジュールより遅れています
+                  </span>
+                </div>
+                <p className="text-xs mt-1" style={{ 
+                  color: ds.isDark ? '#dc2626' : '#7f1d1d' // Dark mode: medium red, Light mode: darker red
+                }}>
+                  次のステップの期限を過ぎています。可能な限り早めの対応をお願いいたします。
                 </p>
               </div>
+            ) : isCurrentStepDueToday(primaryCampaign) ? (
+              <div className="mb-4 p-3 border rounded-lg" style={{ 
+                backgroundColor: ds.isDark ? '#2d2a1b' : '#fefce8', // Dark mode: dark yellow, Light mode: light yellow
+                borderColor: ds.isDark ? '#a16207' : '#fde68a', // Dark mode: darker yellow, Light mode: yellow border
+                borderWidth: '1px',
+                borderStyle: 'solid'
+              }}>
+                <div className="flex items-center gap-2">
+                  <Clock size={16} style={{ color: '#eab308' }} />
+                  <span className="text-sm font-medium" style={{ 
+                    color: ds.isDark ? '#fbbf24' : '#a16207' // Dark mode: lighter yellow, Light mode: dark yellow
+                  }}>
+                    本日が期限です
+                  </span>
+                </div>
+                <p className="text-xs mt-1" style={{ 
+                  color: ds.isDark ? '#a16207' : '#713f12' // Dark mode: medium yellow, Light mode: darker yellow
+                }}>
+                  次のステップの期限が本日となっております。お時間のあるときにご対応をお願いいたします。
+                </p>
+              </div>
+            ) : (
+              /* Status Message - only show if not behind schedule or due today */
+              <p className="mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.text.base.fontSize, lineHeight: ds.typography.text.base.lineHeight, fontWeight: 600 }}>
+                {(() => {
+                  const messages: Record<string, string> = {
+                    not_started: '🎉 Welcome! まずは基本情報のご入力をお願いします。',
+                    meeting_scheduling: '✅ 基本情報のご入力ありがとうございます！打ち合わせのご予約にお進みください。',
+                    meeting_scheduled: '📅 打ち合わせのご予約ありがとうございます！当日のご参加をお願いします。',
+                    plan_creating: '🤝 打ち合わせありがとうございました！構成案の作成をお願いします。',
+                    plan_submitted: '📋 構成案のご提出ありがとうございます！ただいま確認中です。',
+                    plan_revising: '✏️ ご提出ありがとうございます！フィードバックに沿って修正をお願いします。',
+                    draft_creating: '🎊 素敵な構成案をありがとうございます！構成案に沿い、初稿作成にお進みください。',
+                    draft_submitted: '🎬 初稿のご提出ありがとうございます！ただいま確認中です。',
+                    draft_revising: '🔧 初稿修正のご対応をお願いします。',
+                    scheduling: '📱 初稿のご対応ありがとうございます！投稿準備をお願いします。',
+                    scheduled: '🚀 投稿ありがとうございます！送金手続きを進めます。',
+                    payment_processing: '💰 投稿ありがとうございました！送金手続きを開始しました。着金まで少々お待ちください。',
+                    completed: '🎉 ご協力ありがとうございました！プロモーションは完了しました。',
+                    cancelled: '😔 今回はご対応ありがとうございました。',
+                  };
+                  return messages[primaryCampaign.status] || '進捗ありがとうございます！次のステップにお進みください。';
+                })()}
+              </p>
             )}
-            
-            {/* Status Message */}
-            <p className="mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.text.base.fontSize, lineHeight: ds.typography.text.base.lineHeight, fontWeight: 600 }}>
-              {(() => {
-                const messages: Record<string, string> = {
-                  not_started: '🎉 Welcome! まずは基本情報のご入力をお願いします。',
-                  meeting_scheduling: '✅ 基本情報のご入力ありがとうございます！打ち合わせのご予約にお進みください。',
-                  meeting_scheduled: '📅 打ち合わせのご予約ありがとうございます！当日のご参加をお願いします。',
-                  plan_creating: '🤝 打ち合わせありがとうございました！構成案の作成をお願いします。',
-                  plan_submitted: '📋 構成案のご提出ありがとうございます！ただいま確認中です。',
-                  plan_revising: '✏️ ご提出ありがとうございます！フィードバックに沿って修正をお願いします。',
-                  draft_creating: '🎊 素敵な構成案をありがとうございます！構成案に沿い、初稿作成にお進みください。',
-                  draft_submitted: '🎬 初稿のご提出ありがとうございます！ただいま確認中です。',
-                  draft_revising: '🔧 初稿修正のご対応をお願いします。',
-                  scheduling: '📱 初稿のご対応ありがとうございます！投稿準備をお願いします。',
-                  scheduled: '🚀 投稿ありがとうございます！送金手続きを進めます。',
-                  payment_processing: '💰 投稿ありがとうございました！送金手続きを開始しました。着金まで少々お待ちください。',
-                  completed: '🎉 ご協力ありがとうございました！プロモーションは完了しました。',
-                  cancelled: '😔 今回はご対応ありがとうございました。',
-                };
-                return messages[primaryCampaign.status] || '進捗ありがとうございます！次のステップにお進みください。';
-              })()}
-            </p>
             
             <div className="rounded-xl p-4 sm:p-6" style={{ 
               backgroundColor: ds.bg.card,
