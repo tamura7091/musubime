@@ -147,8 +147,8 @@ export default function AdminDashboard() {
           bValue = b.schedules?.liveDate ? new Date(b.schedules.liveDate).getTime() : 0;
           break;
         case 'updatedAt':
-          const aDate = a.campaignData?.date_status_updated || a.updatedAt;
-          const bDate = b.campaignData?.date_status_updated || b.updatedAt;
+          const aDate = a.campaignData?.date_status_updated;
+          const bDate = b.campaignData?.date_status_updated;
           aValue = aDate && aDate !== '' && aDate !== 'undefined' ? new Date(aDate).getTime() : 0;
           bValue = bDate && bDate !== '' && bDate !== 'undefined' ? new Date(bDate).getTime() : 0;
           break;
@@ -1125,12 +1125,12 @@ export default function AdminDashboard() {
                                 <div className="flex items-center h-full">
                                   <span className="text-sm truncate" style={{ color: ds.text.secondary }}>
                                     {(() => {
-                                      // Check if campaign has campaignData with date_status_updated
-                                      const rawDate = campaign.campaignData?.date_status_updated || campaign.updatedAt;
+                                      // Only use Google Sheets date_status_updated; no fallback
+                                      const rawDate = campaign.campaignData?.date_status_updated;
                                       if (!rawDate || rawDate === '' || rawDate === 'undefined') {
                                         return '-';
                                       }
-                                      return parseAndFormatDate(typeof rawDate === 'string' ? rawDate : rawDate.toISOString());
+                                      return parseAndFormatDate(rawDate);
                                     })()}
                                   </span>
                                 </div>
