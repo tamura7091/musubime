@@ -146,6 +146,22 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
     return daysUntil !== null && daysUntil < 0;
   };
 
+  // Whether influencer action is required right now
+  const isActionRequiredNow = () => {
+    const s = campaign.status as CampaignStatus;
+    const requiring: CampaignStatus[] = [
+      'meeting_scheduling',
+      'meeting_scheduled',
+      'plan_creating',
+      'plan_revising',
+      'draft_creating',
+      'draft_revising',
+      'scheduling',
+      // For 'scheduled' the next action is payment; keep default visuals
+    ];
+    return requiring.includes(s);
+  };
+
   // Check if action is overdue (more than 1 day past due) - legacy function for compatibility
   const isActionOverdue = () => {
     if (!campaign.schedules?.liveDate) return false;
@@ -220,9 +236,9 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
             <div 
               className="absolute top-2 left-4 h-0.5 transition-all duration-500"
               style={{ 
-                backgroundColor: isCurrentStepBehindSchedule() 
+                backgroundColor: (isActionRequiredNow() && isCurrentStepBehindSchedule()) 
                   ? '#ef4444' // Red if behind schedule
-                  : isCurrentStepDueToday() 
+                  : (isActionRequiredNow() && isCurrentStepDueToday())
                   ? '#eab308' // Yellow if due today
                   : ds.button.primary.bg, // Default blue
                 width: `calc(${campaign.status === 'completed' ? 100 : (() => {
@@ -277,51 +293,51 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
                     onMouseLeave={() => setSelectedStep(null)}
                     className="relative w-4 h-4 md:w-6 md:h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 hover:scale-110 z-10"
                     style={{
-                      backgroundColor: isCurrentStepBehindSchedule()
-                        ? '#ef4444' // All circles red if behind schedule
-                        : status === 'completed' 
-                        ? ds.button.primary.bg
-                        : status === 'current'
-                        ? isCurrentStepDueToday()
-                          ? '#eab308' // Yellow if due today
-                          : ds.bg.card
-                        : ds.bg.card,
-                      borderColor: isCurrentStepBehindSchedule()
-                        ? '#ef4444' // All circles red if behind schedule
-                        : status === 'completed' 
-                        ? ds.button.primary.bg
-                        : status === 'current'
-                        ? isCurrentStepDueToday()
-                          ? '#eab308' // Yellow if due today
-                          : ds.button.primary.bg
-                        : ds.border.secondary,
-                      boxShadow: isCurrentStepBehindSchedule()
-                        ? '0 10px 15px -3px #ef444440' // All circles red shadow if behind schedule
-                        : status === 'completed' 
-                        ? `0 10px 15px -3px ${ds.button.primary.bg}40`
-                        : status === 'current'
-                        ? isCurrentStepDueToday()
-                          ? '0 10px 15px -3px #eab30840' // Yellow shadow
-                          : `0 10px 15px -3px ${ds.button.primary.bg}40`
-                        : 'none'
+                      backgroundColor: ((isActionRequiredNow() && isCurrentStepBehindSchedule()) && index <= currentStepIndex)
+                        ? '#ef4444'
+                        : ((isActionRequiredNow() && isCurrentStepDueToday()) && index <= currentStepIndex)
+                        ? '#eab308'
+                        : (status === 'completed' 
+                          ? ds.button.primary.bg
+                          : status === 'current'
+                          ? ds.bg.card
+                          : ds.bg.card),
+                      borderColor: ((isActionRequiredNow() && isCurrentStepBehindSchedule()) && index <= currentStepIndex)
+                        ? '#ef4444'
+                        : ((isActionRequiredNow() && isCurrentStepDueToday()) && index <= currentStepIndex)
+                        ? '#eab308'
+                        : (status === 'completed' 
+                          ? ds.button.primary.bg
+                          : status === 'current'
+                          ? ds.button.primary.bg
+                          : ds.border.secondary),
+                      boxShadow: ((isActionRequiredNow() && isCurrentStepBehindSchedule()) && index <= currentStepIndex)
+                        ? '0 10px 15px -3px #ef444440'
+                        : ((isActionRequiredNow() && isCurrentStepDueToday()) && index <= currentStepIndex)
+                        ? '0 10px 15px -3px #eab30840'
+                        : (status === 'completed' 
+                          ? `0 10px 15px -3px ${ds.button.primary.bg}40`
+                          : status === 'current'
+                          ? `0 10px 15px -3px ${ds.button.primary.bg}40`
+                          : 'none')
                     }}
                     >
-                      {isCurrentStepBehindSchedule() ? (
-                        status === 'completed' ? (
+                      {((isActionRequiredNow() && isCurrentStepBehindSchedule()) && index <= currentStepIndex) ? (
+                        index < currentStepIndex ? (
                           <Check size={10} style={{ color: '#ffffff' }} />
-                        ) : status === 'current' ? (
-                          <AlertCircle size={10} style={{ color: '#ffffff' }} />
                         ) : (
                           <AlertCircle size={10} style={{ color: '#ffffff' }} />
+                        )
+                      ) : (((isActionRequiredNow() && isCurrentStepDueToday()) && index <= currentStepIndex)) ? (
+                        index < currentStepIndex ? (
+                          <Check size={10} style={{ color: '#ffffff' }} />
+                        ) : (
+                          <Clock size={10} style={{ color: '#ffffff' }} />
                         )
                       ) : status === 'completed' ? (
                         <Check size={10} style={{ color: ds.button.primary.text }} />
                       ) : status === 'current' ? (
-                        isCurrentStepDueToday() ? (
-                          <Clock size={10} style={{ color: '#ffffff' }} />
-                        ) : (
-                          <Clock size={10} style={{ color: ds.button.primary.bg }} />
-                        )
+                        <Clock size={10} style={{ color: ds.button.primary.bg }} />
                       ) : null
                       }
                     </button>

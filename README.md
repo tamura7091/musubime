@@ -190,7 +190,7 @@ scheduling → scheduled → payment_processing → completed
    GOOGLE_SHEETS_API_KEY=your_api_key
    
    # Optional: Custom configuration
-   NEXT_PUBLIC_APP_NAME="Speak Influencer Management"
+   NEXT_PUBLIC_APP_NAME="musubime"
    ```
 
 3. **Google Sheets Setup**

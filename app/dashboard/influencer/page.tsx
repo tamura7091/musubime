@@ -565,6 +565,12 @@ export default function InfluencerDashboard() {
     return nextStepInfo && nextStepInfo.days === 0;
   };
 
+  // Determine if action is required now by influencer
+  const isActionRequiredNow = (campaign: any) => {
+    const action = getActionNeeded(campaign);
+    return !!(action && action.action !== 'waiting' && action.action !== 'completed');
+  };
+
   // Total payout across all campaigns (used when there are no active campaigns)
   const totalPayoutAllCampaigns = (sortedUserCampaigns || []).reduce((sum: number, c: any) => {
     const price = typeof c?.contractedPrice === 'number' ? c.contractedPrice : 0;
@@ -1229,7 +1235,7 @@ export default function InfluencerDashboard() {
             </h2>
             
             {/* Warning Message for Behind Schedule */}
-            {isCurrentStepBehindSchedule(primaryCampaign) ? (
+            {isActionRequiredNow(primaryCampaign) && isCurrentStepBehindSchedule(primaryCampaign) ? (
               <div className="mb-4 p-3 border rounded-lg" style={{ 
                 backgroundColor: ds.isDark ? '#2d1b1b' : '#fef2f2', // Dark mode: dark red, Light mode: light red
                 borderColor: ds.isDark ? '#7f1d1d' : '#fecaca', // Dark mode: darker red, Light mode: red border
@@ -1250,7 +1256,7 @@ export default function InfluencerDashboard() {
                   次のステップの期限を過ぎています。可能な限り早めの対応をお願いいたします。
                 </p>
               </div>
-            ) : isCurrentStepDueToday(primaryCampaign) ? (
+            ) : isActionRequiredNow(primaryCampaign) && isCurrentStepDueToday(primaryCampaign) ? (
               <div className="mb-4 p-3 border rounded-lg" style={{ 
                 backgroundColor: ds.isDark ? '#2d2a1b' : '#fefce8', // Dark mode: dark yellow, Light mode: light yellow
                 borderColor: ds.isDark ? '#a16207' : '#fde68a', // Dark mode: darker yellow, Light mode: yellow border
