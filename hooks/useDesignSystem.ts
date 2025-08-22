@@ -1,5 +1,5 @@
 import { useTheme } from '@/contexts/ThemeContext';
-import { colors } from '@/lib/design-system';
+import { colors, typography } from '@/lib/design-system';
 
 export function useDesignSystem() {
   const { resolvedTheme } = useTheme();
@@ -63,6 +63,9 @@ export function useDesignSystem() {
       bg: isDark ? colors.progress.bg : colors.progressLight.bg,
       fill: colors.progress.fill,
     },
+    
+    // Typography
+    typography,
     
     // Status colors
     status: {

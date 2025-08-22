@@ -229,6 +229,14 @@ class DataService {
             case 'scheduled':
               updateMessage = `${influencerName}さんのコンテンツが投稿されました！`;
               updateType = 'status_change';
+              submissionUrl = urlContent;
+              submissionType = 'content';
+              break;
+            case 'payment_processing':
+              updateMessage = `${influencerName}さんのステータスが「送金手続き中」に更新されました`;
+              updateType = 'status_change';
+              submissionUrl = urlContent;
+              submissionType = 'content';
               break;
             case 'completed':
               updateMessage = `${influencerName}さんのプロモーションが完了しました`;

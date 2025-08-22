@@ -149,6 +149,30 @@ export const colors = {
   },
 } as const;
 
+// Typography scale for consistent headings across the app
+export const typography = {
+  heading: {
+    // Primary page title
+    h1: {
+      fontSize: 24,
+      lineHeight: 1.3,
+      fontWeight: 700,
+    },
+    // Section titles
+    h2: {
+      fontSize: 20,
+      lineHeight: 1.35,
+      fontWeight: 600,
+    },
+    // Subsection titles
+    h3: {
+      fontSize: 16,
+      lineHeight: 1.4,
+      fontWeight: 600,
+    },
+  },
+} as const;
+
 // Helper function to get status colors
 export const getStatusColors = (status: string) => {
   switch (status) {

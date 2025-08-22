@@ -3,6 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Users, TrendingUp, Clock, AlertCircle, Search, Filter, User, Tag, ChevronUp, ChevronDown, ExternalLink, Check, X } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Campaign, Update } from '@/types';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
 import { formatAbbreviatedCurrency } from '@/lib/design-system';
@@ -10,6 +11,7 @@ import { formatAbbreviatedCurrency } from '@/lib/design-system';
 export default function AdminDashboard() {
   console.log('🎯 AdminDashboard component rendering');
   const { user } = useAuth();
+  const router = useRouter();
   const ds = useDesignSystem();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -60,6 +62,17 @@ export default function AdminDashboard() {
     fetchData();
   }, []);
   
+  // Redirect unauthenticated users or non-admins
+  useEffect(() => {
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
+    if (user && user.role !== 'admin') {
+      router.replace('/dashboard');
+    }
+  }, [user, router]);
+
   // Handle column sorting
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -121,14 +134,9 @@ export default function AdminDashboard() {
     return sortCampaigns(filtered);
   }, [allCampaigns, searchTerm, statusFilter, platformFilter, sortField, sortDirection]);
   
-  if (!user) {
-    console.log('❌ No user found, should redirect to login');
-    return <div>ログインが必要です</div>;
-  }
-  
-  if (user.role !== 'admin') {
-    console.log('❌ User is not admin:', user.role);
-    return <div>アクセスが拒否されました</div>;
+  if (!user || user.role !== 'admin') {
+    // Redirect handled above; render nothing to avoid flashing placeholder UI
+    return null;
   }
   
   console.log('✅ User is admin, proceeding with dashboard');
@@ -358,7 +366,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen" style={{ backgroundColor: ds.bg.primary }}>
       <div className="max-w-7xl mx-auto mobile-padding">
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: ds.text.primary }}>
+          <h1 className="font-bold mb-2" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h1.fontSize, lineHeight: ds.typography.heading.h1.lineHeight }}>
             管理者ダッシュボード
           </h1>
           <p className="mobile-text" style={{ color: ds.text.secondary }}>
@@ -456,7 +464,7 @@ export default function AdminDashboard() {
               borderWidth: '1px',
               borderStyle: 'solid'
             }}>
-              <h3 className="text-lg font-semibold mb-4" style={{ color: ds.text.primary }}>
+              <h3 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h2.fontSize, lineHeight: ds.typography.heading.h2.lineHeight }}>
                 アップデート
               </h3>
               <div className="space-y-2">
@@ -541,7 +549,28 @@ export default function AdminDashboard() {
                             <span>修正</span>
                           </button>
                         </div>
-                      ) : null}
+                      ) : (
+                        // For non-action updates, still show a link if present (e.g., posted content)
+                        update.submissionUrl ? (
+                          <div className="flex items-center space-x-2 ml-3">
+                            <a
+                              href={update.submissionUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center space-x-1 text-xs px-2 py-1 rounded transition-colors"
+                              style={{ 
+                                backgroundColor: ds.button.secondary.bg,
+                                color: ds.button.secondary.text
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.hover}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.bg}
+                            >
+                              <ExternalLink size={10} />
+                              <span>{update.submissionType === 'content' ? '投稿を見る' : 'リンク'}</span>
+                            </a>
+                          </div>
+                        ) : null
+                      )}
                     </div>
                   </div>
                 ))}
@@ -597,7 +626,7 @@ export default function AdminDashboard() {
               borderWidth: '1px',
               borderStyle: 'solid'
             }}>
-              <h2 className="text-xl font-semibold mb-4" style={{ color: ds.text.primary }}>
+              <h2 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h2.fontSize, lineHeight: ds.typography.heading.h2.lineHeight }}>
                 キャンペーン一覧 ({filteredCampaigns.length})
               </h2>
               
@@ -922,7 +951,7 @@ export default function AdminDashboard() {
           borderWidth: '1px',
           borderStyle: 'solid'
         }}>
-          <h3 className="text-lg font-semibold mb-4" style={{ color: ds.text.primary }}>
+          <h3 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h3.fontSize, lineHeight: ds.typography.heading.h3.lineHeight }}>
             リンク
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
