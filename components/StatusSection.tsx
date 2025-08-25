@@ -227,6 +227,9 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
           borderWidth: '1px',
           borderStyle: 'solid'
         }}>
+        <h3 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h2.fontSize, lineHeight: ds.typography.heading.h2.lineHeight }}>
+          PRの流れとステータス
+        </h3>
         
         {/* Flow visualization */}
         <div className="relative">

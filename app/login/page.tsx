@@ -104,7 +104,7 @@ export default function LoginPage() {
             ようこそ！
           </h1>
           <p style={{ color: ds.text.secondary }}>
-            スピークのインフルエンサーPR管理画面にログインしてください
+            スピークのインフルエンサーPR管理画面にログイン
           </p>
         </div>
 
@@ -117,7 +117,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="id" className="block text-sm font-medium mb-2" style={{ color: ds.text.primary }}>
-                キャンペーンID
+                ID
               </label>
               <input
                 id="id"
@@ -132,7 +132,7 @@ export default function LoginPage() {
                   borderWidth: '1px',
                   borderStyle: 'solid'
                 }}
-                placeholder="キャンペーンIDを入力"
+                placeholder="IDを入力"
                 required
               />
             </div>

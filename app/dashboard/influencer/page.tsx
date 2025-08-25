@@ -1220,9 +1220,6 @@ export default function InfluencerDashboard() {
         {/* Action Section */}
         {primaryCampaign && (
           <div className="mb-6 sm:mb-8">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
-              次のステップ
-            </h2>
             
             {/* Warning Message for Behind Schedule */}
             {isActionRequiredNow(primaryCampaign) && isCurrentStepBehindSchedule(primaryCampaign) ? (
@@ -1298,6 +1295,9 @@ export default function InfluencerDashboard() {
               borderWidth: '1px',
               borderStyle: 'solid'
             }}>
+              <h3 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h2.fontSize, lineHeight: ds.typography.heading.h2.lineHeight }}>
+                次のステップ
+              </h3>
               {(() => {
                 const action = getActionNeeded(primaryCampaign);
                 
@@ -1645,211 +1645,211 @@ export default function InfluencerDashboard() {
         {/* Status Section */}
         {primaryCampaign && (
           <div className="mb-6 sm:mb-8">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
-              PRの流れとステータス
-            </h2>
             <StatusSection campaign={primaryCampaign} />
           </div>
         )}
 
                 {/* All Campaigns */}
         <div className="mb-6 sm:mb-8">
-          <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
-            プロモーション詳細
-          </h2>
           {sortedUserCampaigns.length > 0 ? (
             <div className="space-y-4">
-              {/* Notion-style Database Table with Horizontal Scroll */}
-              <div className="relative">
-                <div className="overflow-x-auto" style={{ 
-                  backgroundColor: ds.bg.card,
+              <div className="rounded-xl p-4 sm:p-6" style={{ 
+                backgroundColor: ds.bg.card,
+                borderColor: ds.border.primary,
+                borderWidth: '1px',
+                borderStyle: 'solid'
+              }}>
+                <h3 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h2.fontSize, lineHeight: ds.typography.heading.h2.lineHeight }}>
+                  プロモーション詳細
+                </h3>
+                <div className="rounded-lg overflow-hidden isolate" style={{ 
                   borderColor: ds.border.primary,
                   borderWidth: '1px',
-                  borderStyle: 'solid',
-                  borderRadius: '8px'
+                  borderStyle: 'solid'
                 }}>
-                  {/* Scroll indicator shadow */}
                   <div 
-                    className="absolute top-0 right-0 w-8 h-full pointer-events-none z-10"
-                    style={{
-                      background: `linear-gradient(to left, ${ds.bg.card}99, transparent)`,
-                      borderTopRightRadius: '8px',
-                      borderBottomRightRadius: '8px'
+                    className="relative max-h-[600px] overflow-y-auto scroll-smooth"
+                    style={{ 
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: 'rgba(156, 163, 175, 0.3) transparent'
                     }}
-                  />
-                <div className="min-w-[1400px]">
-                  {/* Table Header */}
-                  <div className="grid grid-cols-10 gap-6 px-6 py-3 border-b" style={{ borderColor: ds.border.secondary, backgroundColor: ds.bg.surface }}>
-                    <div className="text-xs font-medium whitespace-nowrap min-w-[150px]" style={{ color: ds.text.secondary }}>キャンペーン名</div>
-                    <div className="text-xs font-medium whitespace-nowrap min-w-[120px]" style={{ color: ds.text.secondary }}>プラットフォーム</div>
-                    <div className="text-xs font-medium whitespace-nowrap min-w-[130px]" style={{ color: ds.text.secondary }}>ステータス</div>
-                    <div className="text-xs font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>報酬</div>
-                    <div className="text-xs font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>構成案提出</div>
-                    <div className="text-xs font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>初稿提出</div>
-                    <div className="text-xs font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>PR投稿</div>
-                    <div className="text-xs font-medium whitespace-nowrap min-w-[80px]" style={{ color: ds.text.secondary }}>構成案リンク</div>
-                    <div className="text-xs font-medium whitespace-nowrap min-w-[80px]" style={{ color: ds.text.secondary }}>初稿リンク</div>
-                    <div className="text-xs font-medium whitespace-nowrap min-w-[80px]" style={{ color: ds.text.secondary }}>PR投稿リンク</div>
-                  </div>
-
-                  {/* Table Rows - All Campaigns */}
-                  {sortedUserCampaigns.map(campaign => (
-                    <div key={campaign.id} className="grid grid-cols-10 gap-6 px-6 py-3 border-b hover:bg-opacity-50" 
-                         style={{ borderColor: ds.border.secondary }}
-                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.bg.surface + '50'}
-                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                      
-                      {/* Campaign Name */}
-                      <div className="text-sm font-medium min-w-[150px]" style={{ color: ds.text.primary }}>
-                        <div className="min-w-[150px] max-w-[200px]">
-                          <span className="block truncate" title={campaign.title}>
-                            {campaign.title}
-                          </span>
+                  >
+                    <div className="overflow-x-auto">
+                      <div className="min-w-[1400px]">
+                        {/* Table Header */}
+                        <div className="grid grid-cols-10 gap-6 px-6 py-3 border-b sticky top-0 z-10" style={{ borderColor: ds.border.secondary, backgroundColor: ds.bg.surface + '80' }}>
+                          <div className="text-sm font-medium whitespace-nowrap min-w-[150px]" style={{ color: ds.text.secondary }}>キャンペーン名</div>
+                          <div className="text-sm font-medium whitespace-nowrap min-w-[120px]" style={{ color: ds.text.secondary }}>プラットフォーム</div>
+                          <div className="text-sm font-medium whitespace-nowrap min-w-[130px]" style={{ color: ds.text.secondary }}>ステータス</div>
+                          <div className="text-sm font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>報酬</div>
+                          <div className="text-sm font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>構成案提出</div>
+                          <div className="text-sm font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>初稿提出</div>
+                          <div className="text-sm font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>PR投稿</div>
+                          <div className="text-sm font-medium whitespace-nowrap min-w-[80px]" style={{ color: ds.text.secondary }}>構成案リンク</div>
+                          <div className="text-sm font-medium whitespace-nowrap min-w-[80px]" style={{ color: ds.text.secondary }}>初稿リンク</div>
+                          <div className="text-sm font-medium whitespace-nowrap min-w-[80px]" style={{ color: ds.text.secondary }}>PR投稿リンク</div>
                         </div>
-                      </div>
 
-                      {/* Platform */}
-                      <div className="text-sm flex items-center space-x-2 min-w-[120px]" style={{ color: ds.text.primary }}>
-                        <div className="min-w-[120px] flex items-center space-x-2">
-                          <span className="text-base flex-shrink-0">
-                            {campaign.platform === 'youtube_long' && '🎥'}
-                            {campaign.platform === 'youtube_short' && '📱'}
-                            {campaign.platform === 'instagram_reel' && '📸'}
-                            {campaign.platform === 'tiktok' && '🎵'}
-                            {campaign.platform === 'x_twitter' && '🐦'}
-                            {campaign.platform === 'podcast' && '🎙️'}
-                            {campaign.platform === 'blog' && '✍️'}
-                          </span>
-                          <span className="text-xs whitespace-nowrap" style={{ color: ds.text.secondary }}>
-                            {campaign.platform === 'youtube_long' && 'YouTube長編'}
-                            {campaign.platform === 'youtube_short' && 'YouTubeショート'}
-                            {campaign.platform === 'instagram_reel' && 'Instagramリール'}
-                            {campaign.platform === 'tiktok' && 'TikTok'}
-                            {campaign.platform === 'x_twitter' && 'X (Twitter)'}
-                            {campaign.platform === 'podcast' && 'ポッドキャスト'}
-                            {campaign.platform === 'blog' && 'ブログ'}
-                          </span>
-                        </div>
-                      </div>
+                        {/* Table Rows - All Campaigns */}
+                        {sortedUserCampaigns.map(campaign => (
+                          <div key={campaign.id} className="grid grid-cols-10 gap-6 px-6 py-3 border-b hover:bg-opacity-50" 
+                               style={{ borderColor: ds.border.secondary }}
+                               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.bg.surface + '50'}
+                               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                            
+                            {/* Campaign Name */}
+                            <div className="text-sm font-medium min-w-[150px]" style={{ color: ds.text.primary }}>
+                              <div className="min-w-[150px] max-w-[200px]">
+                                <span className="block truncate" title={campaign.title}>
+                                  {campaign.title}
+                                </span>
+                              </div>
+                            </div>
 
-                      {/* Status */}
-                      <div className="text-sm min-w-[130px]">
-                        <div className="min-w-[130px]">
-                          <span 
-                            className="px-2 py-1 rounded text-xs font-medium whitespace-nowrap inline-block"
-                            style={{
-                              backgroundColor: ds.status[campaign.status as keyof typeof ds.status]?.bg || ds.status.not_started.bg,
-                              color: ds.status[campaign.status as keyof typeof ds.status]?.text || ds.status.not_started.text
-                            }}
-                          >
-                            {campaign.status === 'not_started' && '未開始'}
-                            {campaign.status === 'meeting_scheduling' && '打ち合わせ予約中'}
-                            {campaign.status === 'meeting_scheduled' && '打ち合わせ予定'}
-                            {campaign.status === 'contract_pending' && '契約書待ち'}
-                            {campaign.status === 'plan_creating' && '構成案作成中'}
-                            {campaign.status === 'plan_submitted' && '構成案提出済み'}
-                            {campaign.status === 'plan_revising' && '構成案修正中'}
-                            {campaign.status === 'draft_creating' && '初稿作成中'}
-                            {campaign.status === 'draft_submitted' && '初稿提出済み'}
-                            {campaign.status === 'draft_revising' && '初稿修正中'}
-                            {campaign.status === 'scheduling' && '投稿準備中'}
-                            {campaign.status === 'scheduled' && '投稿済み'}
-                            {campaign.status === 'payment_processing' && '送金手続き中'}
-                            {campaign.status === 'completed' && '完了'}
-                            {campaign.status === 'cancelled' && 'キャンセル'}
-                          </span>
-                        </div>
-                      </div>
+                            {/* Platform */}
+                            <div className="text-sm flex items-center space-x-2 min-w-[120px]" style={{ color: ds.text.primary }}>
+                              <div className="min-w-[120px] flex items-center space-x-2">
+                                <span className="text-base flex-shrink-0">
+                                  {campaign.platform === 'youtube_long' && '🎥'}
+                                  {campaign.platform === 'youtube_short' && '📱'}
+                                  {campaign.platform === 'instagram_reel' && '📸'}
+                                  {campaign.platform === 'tiktok' && '🎵'}
+                                  {campaign.platform === 'x_twitter' && '🐦'}
+                                  {campaign.platform === 'podcast' && '🎙️'}
+                                  {campaign.platform === 'blog' && '✍️'}
+                                </span>
+                                <span className="text-xs whitespace-nowrap" style={{ color: ds.text.secondary }}>
+                                  {campaign.platform === 'youtube_long' && 'YouTube長編'}
+                                  {campaign.platform === 'youtube_short' && 'YouTubeショート'}
+                                  {campaign.platform === 'instagram_reel' && 'Instagramリール'}
+                                  {campaign.platform === 'tiktok' && 'TikTok'}
+                                  {campaign.platform === 'x_twitter' && 'X (Twitter)'}
+                                  {campaign.platform === 'podcast' && 'ポッドキャスト'}
+                                  {campaign.platform === 'blog' && 'ブログ'}
+                                </span>
+                              </div>
+                            </div>
 
-                      {/* Price */}
-                      <div className="text-sm font-semibold min-w-[100px]" style={{ color: ds.text.primary }}>
-                        <div className="min-w-[100px] whitespace-nowrap">
-                          <VisibilityToggle showToggleButton={false}>
-                            {formatCurrencySmart(campaign.contractedPrice || 0)}
-                          </VisibilityToggle>
-                        </div>
-                      </div>
+                            {/* Status */}
+                            <div className="text-sm min-w-[130px]">
+                              <div className="min-w-[130px]">
+                                <span 
+                                  className="px-2 py-1 rounded text-xs font-medium whitespace-nowrap inline-block"
+                                  style={{
+                                    backgroundColor: ds.status[campaign.status as keyof typeof ds.status]?.bg || ds.status.not_started.bg,
+                                    color: ds.status[campaign.status as keyof typeof ds.status]?.text || ds.status.not_started.text
+                                  }}
+                                >
+                                  {campaign.status === 'not_started' && '未開始'}
+                                  {campaign.status === 'meeting_scheduling' && '打ち合わせ予約中'}
+                                  {campaign.status === 'meeting_scheduled' && '打ち合わせ予定'}
+                                  {campaign.status === 'contract_pending' && '契約書待ち'}
+                                  {campaign.status === 'plan_creating' && '構成案作成中'}
+                                  {campaign.status === 'plan_submitted' && '構成案提出済み'}
+                                  {campaign.status === 'plan_revising' && '構成案修正中'}
+                                  {campaign.status === 'draft_creating' && '初稿作成中'}
+                                  {campaign.status === 'draft_submitted' && '初稿提出済み'}
+                                  {campaign.status === 'draft_revising' && '初稿修正中'}
+                                  {campaign.status === 'scheduling' && '投稿準備中'}
+                                  {campaign.status === 'scheduled' && '投稿済み'}
+                                  {campaign.status === 'payment_processing' && '送金手続き中'}
+                                  {campaign.status === 'completed' && '完了'}
+                                  {campaign.status === 'cancelled' && 'キャンセル'}
+                                </span>
+                              </div>
+                            </div>
 
-                      {/* Plan Submission Date */}
-                      <div className="text-sm min-w-[100px]" style={{ color: ds.text.primary }}>
-                        <div className="min-w-[100px] whitespace-nowrap">
-                          {formatDate(campaign.schedules?.planSubmissionDate)}
-                        </div>
-                      </div>
+                            {/* Price */}
+                            <div className="text-sm font-semibold min-w-[100px]" style={{ color: ds.text.primary }}>
+                              <div className="min-w-[100px] whitespace-nowrap">
+                                <VisibilityToggle showToggleButton={false}>
+                                  {formatCurrencySmart(campaign.contractedPrice || 0)}
+                                </VisibilityToggle>
+                              </div>
+                            </div>
 
-                      {/* Draft Submission Date */}
-                      <div className="text-sm min-w-[100px]" style={{ color: ds.text.primary }}>
-                        <div className="min-w-[100px] whitespace-nowrap">
-                          {formatDate(campaign.schedules?.draftSubmissionDate)}
-                        </div>
-                      </div>
+                            {/* Plan Submission Date */}
+                            <div className="text-sm min-w-[100px]" style={{ color: ds.text.primary }}>
+                              <div className="min-w-[100px] whitespace-nowrap">
+                                {formatDate(campaign.schedules?.planSubmissionDate)}
+                              </div>
+                            </div>
 
-                      {/* PR Launch Date */}
-                      <div className="text-sm min-w-[100px]" style={{ color: ds.text.primary }}>
-                        <div className="min-w-[100px] whitespace-nowrap">
-                          {formatDate(campaign.schedules?.liveDate)}
-                        </div>
-                      </div>
+                            {/* Draft Submission Date */}
+                            <div className="text-sm min-w-[100px]" style={{ color: ds.text.primary }}>
+                              <div className="min-w-[100px] whitespace-nowrap">
+                                {formatDate(campaign.schedules?.draftSubmissionDate)}
+                              </div>
+                            </div>
 
-                      {/* Plan Link */}
-                      <div className="text-sm">
-                        <div className="min-w-[60px] text-center">
-                          {campaign.campaignData?.url_plan && campaign.campaignData.url_plan.trim() !== '' ? (
-                            <a
-                              href={getAbsoluteUrl(campaign.campaignData.url_plan)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center hover:underline"
-                              style={{ color: ds.text.accent }}
-                            >
-                              <ExternalLink size={12} />
-                            </a>
-                          ) : (
-                            <span style={{ color: ds.text.secondary }}>-</span>
-                          )}
-                        </div>
-                      </div>
+                            {/* PR Launch Date */}
+                            <div className="text-sm min-w-[100px]" style={{ color: ds.text.primary }}>
+                              <div className="min-w-[100px] whitespace-nowrap">
+                                {formatDate(campaign.schedules?.liveDate)}
+                              </div>
+                            </div>
 
-                      {/* Draft Link */}
-                      <div className="text-sm">
-                        <div className="min-w-[60px] text-center">
-                          {campaign.campaignData?.url_draft && campaign.campaignData.url_draft.trim() !== '' ? (
-                            <a
-                              href={getAbsoluteUrl(campaign.campaignData.url_draft)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center hover:underline"
-                              style={{ color: ds.text.accent }}
-                            >
-                              <ExternalLink size={12} />
-                            </a>
-                          ) : (
-                            <span style={{ color: ds.text.secondary }}>-</span>
-                          )}
-                        </div>
-                      </div>
+                            {/* Plan Link */}
+                            <div className="text-sm">
+                              <div className="min-w-[60px] text-center">
+                                {campaign.campaignData?.url_plan && campaign.campaignData.url_plan.trim() !== '' ? (
+                                  <a
+                                    href={getAbsoluteUrl(campaign.campaignData.url_plan)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center hover:underline"
+                                    style={{ color: ds.text.accent }}
+                                  >
+                                    <ExternalLink size={12} />
+                                  </a>
+                                ) : (
+                                  <span style={{ color: ds.text.secondary }}>-</span>
+                                )}
+                              </div>
+                            </div>
 
-                      {/* PR Content Link */}
-                      <div className="text-sm">
-                        <div className="min-w-[60px] text-center">
-                          {campaign.campaignData?.url_content && campaign.campaignData.url_content.trim() !== '' ? (
-                            <a
-                              href={getAbsoluteUrl(campaign.campaignData.url_content)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center hover:underline"
-                              style={{ color: ds.text.accent }}
-                            >
-                              <ExternalLink size={12} />
-                            </a>
-                          ) : (
-                            <span style={{ color: ds.text.secondary }}>-</span>
-                          )}
-                        </div>
+                            {/* Draft Link */}
+                            <div className="text-sm">
+                              <div className="min-w-[60px] text-center">
+                                {campaign.campaignData?.url_draft && campaign.campaignData.url_draft.trim() !== '' ? (
+                                  <a
+                                    href={getAbsoluteUrl(campaign.campaignData.url_draft)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center hover:underline"
+                                    style={{ color: ds.text.accent }}
+                                  >
+                                    <ExternalLink size={12} />
+                                  </a>
+                                ) : (
+                                  <span style={{ color: ds.text.secondary }}>-</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* PR Content Link */}
+                            <div className="text-sm">
+                              <div className="min-w-[60px] text-center">
+                                {campaign.campaignData?.url_content && campaign.campaignData.url_content.trim() !== '' ? (
+                                  <a
+                                    href={getAbsoluteUrl(campaign.campaignData.url_content)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center hover:underline"
+                                    style={{ color: ds.text.accent }}
+                                  >
+                                    <ExternalLink size={12} />
+                                  </a>
+                                ) : (
+                                  <span style={{ color: ds.text.secondary }}>-</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1865,15 +1865,15 @@ export default function InfluencerDashboard() {
         {/* Premium Account Section */}
         {primaryCampaign && (
           <div className="mt-6 sm:mt-8">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
-              プレミアムアカウント
-            </h2>
             <div className="rounded-xl p-4 sm:p-6" style={{ 
               backgroundColor: ds.bg.card,
               borderColor: ds.border.primary,
               borderWidth: '1px',
               borderStyle: 'solid'
             }}>
+              <h3 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h3.fontSize, lineHeight: ds.typography.heading.h3.lineHeight }}>
+                プレミアムアカウント
+              </h3>
               <div className="space-y-6">
                 {/* App Download */}
                 <div>
@@ -1932,18 +1932,22 @@ export default function InfluencerDashboard() {
                   {!primaryCampaign.campaignData?.trial_login_email_dashboard || !primaryCampaign.campaignData?.trial_login_password_dashboard ? (
                     /* Error State */
                     <div className="p-4 rounded-lg" style={{ 
-                      backgroundColor: '#fef2f2',
-                      borderColor: '#fecaca',
+                      backgroundColor: ds.isDark ? '#2d1b1b' : '#fef2f2', // Dark mode: dark red, Light mode: light red
+                      borderColor: ds.isDark ? '#7f1d1d' : '#fecaca', // Dark mode: darker red, Light mode: red border
                       borderWidth: '1px',
                       borderStyle: 'solid'
                     }}>
                       <div className="flex items-center gap-2 mb-2">
                         <AlertCircle size={16} style={{ color: '#ef4444' }} />
-                        <span className="text-sm font-medium" style={{ color: '#dc2626' }}>
+                        <span className="text-sm font-medium" style={{ 
+                          color: ds.isDark ? '#f87171' : '#dc2626' // Dark mode: lighter red, Light mode: dark red
+                        }}>
                           取得に失敗しました
                         </span>
                       </div>
-                      <p className="text-xs mb-3" style={{ color: '#7f1d1d' }}>
+                      <p className="text-xs mb-3" style={{ 
+                        color: ds.isDark ? '#dc2626' : '#7f1d1d' // Dark mode: medium red, Light mode: darker red
+                      }}>
                         ログイン情報を取得できませんでした。サポートにお問い合わせください。
                       </p>
                       <button
@@ -2053,15 +2057,15 @@ export default function InfluencerDashboard() {
         {/* Links Section - moved to bottom */}
         {primaryCampaign && (
           <div className="mt-6 sm:mt-8">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6" style={{ color: ds.text.primary }}>
-              リンク
-            </h2>
             <div className="rounded-xl p-4 sm:p-6" style={{ 
               backgroundColor: ds.bg.card,
               borderColor: ds.border.primary,
               borderWidth: '1px',
               borderStyle: 'solid'
             }}>
+              <h3 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h3.fontSize, lineHeight: ds.typography.heading.h3.lineHeight }}>
+                リンク
+              </h3>
               <div className="space-y-2 text-sm">
                 {(() => {
                   const url = getGuidelineUrl(primaryCampaign.platform as string);
