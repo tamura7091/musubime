@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dataService } from '@/lib/data-service';
 import { getStepFromStatus } from '@/types';
+import { retrieveInfo, truncateTokens } from '@/lib/rag';
 
 interface ChatMessage {
   id: string;
@@ -19,7 +20,7 @@ interface ChatRequest {
 
 // Platform context for AI responses
 const PLATFORM_CONTEXT = `
-あなたはMusubime（ムスビメ）のAIアシスタントです。Musubimeは、インフルエンサーマーケティングキャンペーンの管理・運用・承認・進行管理を行うワークフロー管理プラットフォームです。
+あなたはMusubime（ムスビメ）のAIアシスタントです。Musubimeは、インフルエンサーマーケティングキャンペーンの管理・運用・承認・進行管理を行うワークフロー管理プラットフォームです。AI英会話アプリ「スピーク」のインフルエンサーマーケティングように作成されました。
 
 ## プラットフォームの概要
 Musubimeは、ブランドマネージャーとコンテンツクリエイター間の橋渡しをし、キャンペーン全体のライフサイクルを通じて透明性、説明責任、シームレスなワークフロー管理を提供します。
@@ -31,7 +32,7 @@ Musubimeは、ブランドマネージャーとコンテンツクリエイター
 4. **承認ワークフロー**: コンテンツがブランド基準を満たすための組み込み承認フロー
 5. **進捗の可視化**: キャンペーンの進捗と次のステップの明確な可視性
 
-## キャンペーンのステータス
+## キャンペーンのステータス：英語のkeyについては言及せず、日本語で回答してください
 - **not_started**: 未開始
 - **meeting_scheduling**: 打ち合わせ予約中
 - **meeting_scheduled**: 打ち合わせ予約済み
@@ -292,6 +293,9 @@ export async function POST(request: NextRequest) {
     let userContext = '';
     let campaignsContext: any[] = [];
     let totals = { activeTotal: 0, allTotal: 0 };
+    let masterWho = 'Musubime AI Assistant';
+    let masterPlatform: string | undefined = undefined;
+    let masterStep: string | undefined = undefined;
     if (userId && userRole) {
       try {
         // Get user's campaigns for context
@@ -388,6 +392,8 @@ export async function POST(request: NextRequest) {
 - プラットフォーム: ${current.platform}
 - 契約金額: ${typeof current.contractedPrice === 'number' ? `¥${current.contractedPrice.toLocaleString()}` : '未設定'}
           `;
+          masterPlatform = String(current.platform || '').trim() || undefined;
+          masterStep = String(current.step || '').trim() || undefined;
         }
       } catch (error) {
         console.error('Error fetching user context:', error);
@@ -401,7 +407,28 @@ export async function POST(request: NextRequest) {
 
     if (apiKey) {
       try {
+        // Retrieve docs context from info.txt based on the user message
+        let docsContext = '';
+        try {
+          const docs = await retrieveInfo(message, 5);
+          const compact = docs
+            .map((d, i) => `---
+[docs ${i + 1}] (${d.meta.source}:${d.meta.startLine}-${d.meta.endLine})
+${truncateTokens(d.text, 400)}
+`)
+            .join('\n');
+          docsContext = compact;
+        } catch (e) {
+          // Non-fatal: continue without docs
+          console.warn('Docs retrieval failed:', e);
+        }
+
         const systemPrompt = `${PLATFORM_CONTEXT.replace('{userId}', userId || '不明').replace('{userRole}', userRole || '不明')}
+MASTER CONTEXT:
+- あなたは: ${masterWho}
+- 対象プラットフォーム: ${masterPlatform || '不明'}
+- 現在のステップ: ${masterStep || '不明'}
+
 ログイン中のユーザー名: ${userName || '不明'}
 ${userContext}
 
@@ -411,12 +438,16 @@ ${JSON.stringify(campaignsContext)}
 // 報酬サマリー（JPY）:
 ${JSON.stringify(totals)}
 
+// Docs context (抽出された該当箇所のみ):
+${docsContext}
+
 出力ポリシー:
 - すべて日本語で回答してください
 - 回答はMarkdownで整形してください（見出し、箇条書きなど）
 - 金額は日本円で ¥1,234 の形式にフォーマットしてください
 - 回答は上記のコンテキスト（キャンペーンJSONとサマリー）を最優先で使用してください
 - コンテキストに無い情報は推測せず、「手元のデータでは不明です」と明示してください
+- MASTER CONTEXTのプラットフォーム・ステップに厳密に合わせ、他プラットフォームの情報を混在させないでください（ユーザーが明示した場合を除く）
 - パスワードなどの秘匿情報は表示しないでください`;
 
         // Build messages for chat completion
