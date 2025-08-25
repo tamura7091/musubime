@@ -16,6 +16,7 @@ interface ChatRequest {
   userRole?: 'influencer' | 'admin';
   userName?: string;
   conversationHistory?: ChatMessage[];
+  source?: 'typed' | 'chip';
 }
 
 // Platform context for AI responses
@@ -280,7 +281,7 @@ YouTubeに関して他にご質問はありますか？`;
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, userId, userRole, userName, conversationHistory }: ChatRequest = await request.json();
+    const { message, userId, userRole, userName, conversationHistory, source }: ChatRequest = await request.json();
 
     if (!message?.trim()) {
       return NextResponse.json(
@@ -487,8 +488,16 @@ ${docsContext}
       }
     }
 
-    // Fallback if no OpenAI or empty response
+    // Fallback handling
     if (!finalResponse) {
+      // If the message is typed by the user, avoid canned fallback and signal unavailable
+      if (source === 'typed') {
+        return NextResponse.json(
+          { error: 'LLM unavailable', response: '' },
+          { status: 503 }
+        );
+      }
+      // Otherwise allow contextual canned response (e.g., quick chips)
       const fallback = generateContextualResponse(message, userId, userRole);
       finalResponse = userContext && fallback.includes('申し訳ございませんが')
         ? fallback.replace('申し訳ございませんが、その件について詳細を確認いたします。', `${userContext}\n\n申し訳ございませんが、その件について詳細を確認いたします。`)

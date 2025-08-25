@@ -890,6 +890,7 @@ export default function ChatBot({ className }: ChatBotProps) {
           userId: user?.id,
           userRole: user?.role,
           userName: user?.name,
+          source: 'typed',
           conversationHistory: messages.slice(-5), // Send last 5 messages for context
         }),
       });
