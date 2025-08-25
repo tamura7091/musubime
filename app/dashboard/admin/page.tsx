@@ -194,6 +194,18 @@ export default function AdminDashboard() {
     return sortCampaigns(filtered);
   }, [allCampaigns, searchTerm, statusFilter, platformFilter, sortField, sortDirection]);
   
+  // Show auth loading state to avoid blank screen while resolving session
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: ds.bg.primary }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: ds.border.primary }}></div>
+          <p style={{ color: ds.text.secondary }}>サインイン状態を確認中...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user || user.role !== 'admin') {
     // Redirect handled above; render nothing to avoid flashing placeholder UI
     return null;

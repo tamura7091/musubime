@@ -90,6 +90,13 @@ Sophisticated state management system that handles:
 - Deadline reminders and overdue alerts
 - Admin action requirements with direct action buttons
 
+**AI-Powered Support**
+- Floating chatbot icon available on all pages
+- Intelligent responses based on user role and campaign context
+- Real-time access to platform information and Google Sheets data
+- Comprehensive FAQ coverage and troubleshooting assistance
+- Japanese language support with professional, friendly tone
+
 ## Design
 
 - **Dark theme** inspired by GitHub's interface

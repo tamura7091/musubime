@@ -1,6 +1,8 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { ThemeProvider } from '@/contexts/ThemeContext'
+import { AuthProvider } from '@/contexts/AuthContext'
+import ChatBot from '@/components/ChatBot'
 import speakAppLogoPng from '@/app/assets/speak app logo.png'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -40,9 +42,12 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body>
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            {children}
+            <ChatBot />
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   )
