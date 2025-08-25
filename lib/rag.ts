@@ -59,7 +59,11 @@ async function embedBatch(texts: string[]): Promise<number[][]> {
   if (!apiKey) {
     // Fallback: simple TF vector using top terms for rough scoring
     return texts.map(t => {
-      const tokens = t.toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
+      // Use a simpler regex for compatibility with older JS targets (no Unicode property escapes)
+      // Includes latin letters/numbers, Hiragana/Katakana, and CJK Unified Ideographs
+      const tokens = t
+        .toLowerCase()
+        .match(/[a-z0-9\u3040-\u30ff\u3400-\u9fff]+/g) || [];
       const counts: Record<string, number> = {};
       tokens.forEach(tok => (counts[tok] = (counts[tok] || 0) + 1));
       const top = Object.entries(counts)
