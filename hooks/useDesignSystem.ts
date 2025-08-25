@@ -14,7 +14,7 @@ export function useDesignSystem() {
     bg: {
       primary: isDark ? colors.dark.bg : colors.light.bg,
       card: isDark ? colors.dark.card : colors.light.card,
-      surface: isDark ? '#262626' : '#ffffff',
+      surface: isDark ? '#262626' : '#f8fafc',
     },
     
     // Border colors

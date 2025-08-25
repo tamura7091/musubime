@@ -82,6 +82,11 @@ Musubimeは、ブランドマネージャーとコンテンツクリエイター
 現在のユーザー情報:
 - ユーザーID: {userId}
 - 役割: {userRole}
+
+## コンテキストJSONの利用方法
+- 提供される\`campaignsContext\`には、各キャンペーンのステータス・スケジュール・提出URL・提出状況・分析情報・支払い状況などが含まれます。
+- これらの情報を元に、次のステップや不足している提出物、期日のリマインド、支払い手続きの案内などを具体的に提示してください。
+- アカウントの秘密情報（パスワード等）は出力しないでください。必要な場合は「ダッシュボードの該当セクションを確認してください」と案内してください。
 `;
 
 // Common FAQ responses
@@ -300,6 +305,12 @@ export async function POST(request: NextRequest) {
 - 最新キャンペーンステータス: ${activeCampaigns[0]?.status || '該当なし'}
         `;
         
+        // Helper to coerce various truthy strings to boolean
+        const toBool = (v: any) => {
+          const s = String(v ?? '').trim().toLowerCase();
+          return s === 'true' || s === '1' || s === 'yes' || s === 'y' || s === '済' || s === 'submitted';
+        };
+
         // Build structured, mapped campaign context (limited to 10)
         const extractLatestRevisionFeedback = (messageDashboard?: string): string => {
           if (!messageDashboard || typeof messageDashboard !== 'string') return '';
@@ -325,10 +336,41 @@ export async function POST(request: NextRequest) {
             platform: c.platform,
             contractedPrice: c.contractedPrice,
             schedules: c.schedules,
+            createdAt: c.createdAt,
+            updatedAt: c.updatedAt,
             urls: {
               plan: c.campaignData?.url_plan,
               draft: c.campaignData?.url_draft,
               content: c.campaignData?.url_content,
+              mainForm: c.campaignData?.url_main_form,
+              payoutForm: c.campaignData?.url_payout_form,
+            },
+            submissionStatus: {
+              contractFormSubmitted: toBool(c.campaignData?.contract_form_submitted),
+              planSubmitted: toBool(c.campaignData?.plan_submitted),
+              draftSubmitted: toBool(c.campaignData?.draft_submitted),
+              liveVideoSubmitted: toBool(c.campaignData?.live_video_submitted),
+              payoutFormSubmitted: toBool(c.campaignData?.payout_form_submitted),
+            },
+            payout: {
+              payoutDone: toBool(c.campaignData?.payout_done),
+              payoutFormLink: c.campaignData?.payout_form_link,
+            },
+            analytics: {
+              followers: c.campaignData?.followers,
+              impressionsEstimated: c.campaignData?.imp_est,
+              impressionsActual: c.campaignData?.imp_actual,
+            },
+            financial: {
+              currency: c.currency,
+              contractedPrice: c.contractedPrice,
+              spendJpyTaxed: c.campaignData?.spend_jpy_taxed,
+            },
+            meta: {
+              group: c.campaignData?.group,
+              genre: c.campaignData?.genre,
+              tier: c.campaignData?.tier,
+              platformTier: c.campaignData?.platform_tier,
             },
             latestFeedback: extractLatestRevisionFeedback(c.campaignData?.message_dashboard),
           }));
@@ -374,7 +416,8 @@ ${JSON.stringify(totals)}
 - 回答はMarkdownで整形してください（見出し、箇条書きなど）
 - 金額は日本円で ¥1,234 の形式にフォーマットしてください
 - 回答は上記のコンテキスト（キャンペーンJSONとサマリー）を最優先で使用してください
-- コンテキストに無い情報は推測せず、「手元のデータでは不明です」と明示してください`;
+- コンテキストに無い情報は推測せず、「手元のデータでは不明です」と明示してください
+- パスワードなどの秘匿情報は表示しないでください`;
 
         // Build messages for chat completion
         const history = (conversationHistory || []).slice(-6).map(m => ({

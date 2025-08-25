@@ -13,7 +13,9 @@ export default function VisibilityToggle({ children, className = '', showToggleB
   const { isVisible, toggleVisibility } = useAmountVisibility();
   const ds = useDesignSystem();
 
-  const displayContent = isVisible ? children : '¥*****';
+  const displayContent = isVisible ? children : (
+    <span style={{ color: ds.text.secondary }}>¥*****</span>
+  );
 
   if (!showToggleButton) {
     return <span className={className}>{displayContent}</span>;
@@ -26,18 +28,16 @@ export default function VisibilityToggle({ children, className = '', showToggleB
         onClick={toggleVisibility}
         className="p-1 rounded transition-colors"
         style={{
-          backgroundColor: isVisible ? ds.button.secondary.bg : ds.button.primary.bg,
-          color: isVisible ? ds.button.secondary.text : ds.button.primary.text
+          backgroundColor: 'transparent',
+          color: ds.text.secondary
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = isVisible 
-            ? ds.button.secondary.hover 
-            : ds.button.primary.hover;
+          e.currentTarget.style.color = ds.text.primary;
+          e.currentTarget.style.backgroundColor = ds.bg.surface + '50';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = isVisible 
-            ? ds.button.secondary.bg 
-            : ds.button.primary.bg;
+          e.currentTarget.style.color = ds.text.secondary;
+          e.currentTarget.style.backgroundColor = 'transparent';
         }}
         title={isVisible ? '金額を隠す' : '金額を表示'}
       >

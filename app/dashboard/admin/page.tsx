@@ -64,13 +64,20 @@ export default function AdminDashboard() {
 
   // Fetch campaigns and updates from API - must be before early returns
   useEffect(() => {
+    // Only fetch after auth has resolved and user is confirmed admin
+    if (isAuthLoading) return;
+    if (!user || user.role !== 'admin') return;
+
     const fetchData = async () => {
       try {
-        console.log('📊 Fetching campaigns and updates from API...');
+        console.log('📊 Fetching campaigns and updates from API (admin confirmed)...');
         setLoading(true);
-        
-        // Fetch campaigns
-        const campaignsResponse = await fetch('/api/campaigns');
+
+        const [campaignsResponse, updatesResponse] = await Promise.all([
+          fetch('/api/campaigns'),
+          fetch('/api/updates')
+        ]);
+
         if (campaignsResponse.ok) {
           const campaigns = await campaignsResponse.json();
           console.log('✅ Campaigns loaded:', campaigns.length);
@@ -78,9 +85,7 @@ export default function AdminDashboard() {
         } else {
           console.error('❌ Failed to fetch campaigns:', campaignsResponse.status);
         }
-        
-        // Fetch updates
-        const updatesResponse = await fetch('/api/updates');
+
         if (updatesResponse.ok) {
           const updates = await updatesResponse.json();
           console.log('✅ Updates loaded:', updates.length);
@@ -96,7 +101,7 @@ export default function AdminDashboard() {
     };
 
     fetchData();
-  }, []);
+  }, [user?.role, isAuthLoading]);
   
   // Redirect unauthenticated users or non-admins
   useEffect(() => {
@@ -207,8 +212,15 @@ export default function AdminDashboard() {
   }
 
   if (!user || user.role !== 'admin') {
-    // Redirect handled above; render nothing to avoid flashing placeholder UI
-    return null;
+    // Show a lightweight loader while redirecting to prevent a blank screen
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: ds.bg.primary }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: ds.border.primary }}></div>
+          <p style={{ color: ds.text.secondary }}>ダッシュボードへ移動しています...</p>
+        </div>
+      </div>
+    );
   }
   
   console.log('✅ User is admin, proceeding with dashboard');
