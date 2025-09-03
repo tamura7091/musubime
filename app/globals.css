@@ -65,7 +65,23 @@
     -ms-overflow-style: none;  /* Internet Explorer 10+ */
     scrollbar-width: none;  /* Firefox */
   }
+  
   .scrollbar-hide::-webkit-scrollbar {
     display: none;  /* Safari and Chrome */
+  }
+  
+  /* Mobile chat optimizations */
+  .mobile-chat-container {
+    /* Prevent scrolling conflicts on mobile */
+    touch-action: manipulation;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  .mobile-chat-messages {
+    /* Smooth scrolling for messages */
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
   }
 }

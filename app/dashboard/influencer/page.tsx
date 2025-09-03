@@ -398,7 +398,7 @@ export default function InfluencerDashboard() {
 
   // Calculate progress percentage based on completed steps
   const calculateProgress = (campaign: any) => {
-    const stepOrder = ['meeting', 'plan_creation', 'draft_creation', 'scheduling', 'payment'];
+    const stepOrder = ['contract', 'meeting', 'plan_creation', 'draft_creation', 'scheduling', 'payment'];
     const currentStep = getStepFromStatus(campaign.status as CampaignStatus);
     const currentIndex = stepOrder.indexOf(currentStep);
     
@@ -479,9 +479,10 @@ export default function InfluencerDashboard() {
       case 'not_started':
       case 'meeting_scheduling':
       case 'meeting_scheduled':
+      case 'contract_pending':
       case 'plan_creating':
       case 'plan_revising':
-        label = '構成案提出';
+        label = status === 'contract_pending' ? 'オンライン契約' : '構成案提出';
         targetDate = campaign?.schedules?.planSubmissionDate;
         break;
       case 'plan_submitted':
@@ -627,7 +628,7 @@ export default function InfluencerDashboard() {
         let newStatus: string;
         
         if (status === 'completed') {
-          newStatus = 'plan_creating'; // Advance to plan creation step
+          newStatus = 'plan_creating'; // After meeting completed, go to plan creation (contract is first step now)
         } else if (status === 'scheduled') {
           newStatus = 'meeting_scheduled';
         } else {
@@ -786,7 +787,7 @@ export default function InfluencerDashboard() {
   // Function to advance to next step when current step is completed
   const advanceToNextStep = async (campaignId: string, currentStatus: string) => {
     const currentStep = getStepFromStatus(currentStatus as CampaignStatus);
-    const stepOrder = ['meeting', 'plan_creation', 'draft_creation', 'scheduling', 'payment'];
+    const stepOrder = ['contract', 'meeting', 'plan_creation', 'draft_creation', 'scheduling', 'payment'];
     const currentStepIndex = stepOrder.indexOf(currentStep);
     
     if (currentStepIndex < stepOrder.length - 1) {
@@ -797,6 +798,9 @@ export default function InfluencerDashboard() {
       switch (nextStep) {
         case 'plan_creation':
           nextStatus = 'plan_creating';
+          break;
+        case 'contract':
+          nextStatus = 'contract_pending';
           break;
         case 'draft_creation':
           nextStatus = 'draft_creating';

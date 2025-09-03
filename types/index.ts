@@ -13,6 +13,7 @@ export type CampaignStatus =
   | 'not_started'           // 未開始
   | 'meeting_scheduling'    // 打ち合わせ予約中
   | 'meeting_scheduled'     // 打ち合わせ予約済み
+  | 'contract_pending'      // 契約書待ち
   | 'plan_creating'         // 構成案作成中
   | 'plan_submitted'        // 構成案提出済み
   | 'plan_revising'         // 構成案修正中
@@ -28,6 +29,7 @@ export type CampaignStatus =
 export type CampaignStep = 
   | 'not_started'           // 未開始
   | 'meeting'               // 打ち合わせ
+  | 'contract'              // オンライン契約
   | 'plan_creation'         // 構成案作成
   | 'draft_creation'        // 初稿作成
   | 'scheduling'            // スケジュール
@@ -42,6 +44,8 @@ export const getStepFromStatus = (status: CampaignStatus): CampaignStep => {
     case 'meeting_scheduling':
     case 'meeting_scheduled':
       return 'meeting';
+    case 'contract_pending':
+      return 'contract';
     case 'plan_creating':
     case 'plan_submitted':
     case 'plan_revising':
@@ -66,6 +70,7 @@ export const getStepFromStatus = (status: CampaignStatus): CampaignStep => {
 // Get step order for progress calculation
 export const getStepOrder = (): CampaignStep[] => [
   'not_started',
+  'contract',
   'meeting',
   'plan_creation', 
   'draft_creation',
@@ -78,6 +83,7 @@ export const getStepLabel = (step: CampaignStep): string => {
   switch (step) {
     case 'not_started': return '未開始';
     case 'meeting': return '打ち合わせ';
+    case 'contract': return 'オンライン契約';
     case 'plan_creation': return '構成案作成';
     case 'draft_creation': return '初稿作成';
     case 'scheduling': return 'スケジュール';

@@ -32,6 +32,7 @@ const getNextStep = (status: string) => {
     not_started: 'プロモーション開始の準備をしています',
     meeting_scheduling: '打ち合わせの予約をお待ちください',
     meeting_scheduled: '打ち合わせにご参加ください',
+    contract_pending: 'オンライン契約の署名を完了してください',
     plan_creating: '構成案の作成を開始してください',
     plan_submitted: '構成案の確認をお待ちください',
     plan_revising: '修正版構成案をご提出ください',

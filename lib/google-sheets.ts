@@ -1076,6 +1076,7 @@ class GoogleSheetsService {
         'date_plan',
         'date_draft',
         'repurposable',
+        'contract_name_dashboard',
         'status_dashboard',
         'date_status_updated'
       ];

@@ -21,6 +21,11 @@ type StepInfo = {
 
 const campaignSteps: StepInfo[] = [
   {
+    id: 'contract',
+    title: 'オンライン契約',
+    description: 'Docusignで契約書にオンライン署名を完了してください。',
+  },
+  {
     id: 'meeting',
     title: '打ち合わせ',
     description: '30分のオンラインミーティングでキャンペーンの詳細を確認します。',
@@ -114,6 +119,7 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
       case 'not_started':
       case 'meeting_scheduling':
       case 'meeting_scheduled':
+      case 'contract_pending':
       case 'plan_creating':
       case 'plan_revising':
         return campaign?.schedules?.planSubmissionDate;
@@ -249,12 +255,13 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
                   const currentStepIndex = campaignSteps.findIndex(step => step.id === currentStep);
                   const totalSteps = campaignSteps.length;
                   
-                  // Super simple: count completed steps and divide by 5
+                  // Count completed steps and divide by total steps - 1
                   let completedSteps = 0;
                   for (let i = 0; i < currentStepIndex; i++) {
                     completedSteps++;
                   }
-                  const progress = (completedSteps / 5) * 100;
+                  const denominator = Math.max(1, campaignSteps.length - 1);
+                  const progress = (completedSteps / denominator) * 100;
                   
                   console.log('🔍 Progress debug:', {
                     currentStepIndex,
@@ -277,7 +284,7 @@ export default function StatusSection({ campaign }: StatusSectionProps) {
             ></div>
 
             {/* Steps */}
-            <div className="relative grid grid-cols-5 gap-0 px-4">
+            <div className="relative grid grid-cols-6 gap-0 px-4">
               {campaignSteps.map((step, index) => {
                 const status = getStepStatus(index);
                 

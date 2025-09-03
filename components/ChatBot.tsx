@@ -938,10 +938,10 @@ export default function ChatBot({ className }: ChatBotProps) {
 
   if (!isOpen) {
     return (
-      <div className={`fixed bottom-6 right-6 z-50 ${className || ''}`}>
+      <div className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[60] ${className || ''}`}>
         <button
           onClick={() => setIsOpen(true)}
-          className="group relative w-14 h-14 rounded-full shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl"
+          className="group relative w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl"
           style={{
             backgroundColor: ds.button.primary.bg,
             color: ds.button.primary.text,
@@ -953,7 +953,7 @@ export default function ChatBot({ className }: ChatBotProps) {
             e.currentTarget.style.backgroundColor = ds.button.primary.bg;
           }}
         >
-          <MessageCircle className="w-6 h-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+          <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
           
           {/* Pulse animation */}
           <div 
@@ -980,9 +980,9 @@ export default function ChatBot({ className }: ChatBotProps) {
   }
 
   return (
-    <div className={`fixed bottom-6 right-6 z-50 ${className || ''}`}>
+    <div className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[60] ${className || ''}`}>
       <div 
-        className="w-96 h-[32rem] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        className="w-[calc(100vw-2rem)] max-w-sm sm:w-96 h-[70vh] max-h-[32rem] sm:h-[32rem] rounded-2xl shadow-2xl flex flex-col overflow-hidden mobile-chat-container"
         style={{
           backgroundColor: ds.bg.card,
           borderColor: ds.border.primary,
@@ -992,18 +992,18 @@ export default function ChatBot({ className }: ChatBotProps) {
       >
         {/* Header */}
         <div 
-          className="flex items-center justify-between p-4 border-b"
+          className="flex items-center justify-between p-3 sm:p-4 border-b"
           style={{
             backgroundColor: ds.bg.surface,
             borderColor: ds.border.secondary,
           }}
         >
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             <div 
-              className="w-8 h-8 rounded-full flex items-center justify-center"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center"
               style={{ backgroundColor: ds.button.primary.bg }}
             >
-              <Bot className="w-5 h-5" style={{ color: ds.button.primary.text }} />
+              <Bot className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: ds.button.primary.text }} />
             </div>
             <div>
               <h3 className="font-semibold text-sm" style={{ color: ds.text.primary }}>
@@ -1032,7 +1032,7 @@ export default function ChatBot({ className }: ChatBotProps) {
 
 
         {/* Messages */}
-        <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 mobile-chat-messages">
           {messages.map((message) => (
             <div
               key={message.id}
@@ -1055,9 +1055,9 @@ export default function ChatBot({ className }: ChatBotProps) {
                 )}
               </div>
               
-              <div className={`flex-1 max-w-[80%] ${message.sender === 'user' ? 'text-right' : ''}`}>
+              <div className={`flex-1 max-w-[85%] sm:max-w-[80%] ${message.sender === 'user' ? 'text-right' : ''}`}>
                 <div
-                  className={`inline-block px-3 py-2 rounded-2xl text-sm ${
+                  className={`inline-block px-3 py-2 rounded-2xl text-sm leading-relaxed ${
                     message.sender === 'user' 
                       ? 'rounded-br-md' 
                       : 'rounded-bl-md'
@@ -1106,13 +1106,13 @@ export default function ChatBot({ className }: ChatBotProps) {
 
         {/* Quick prompt chips (above input area, hidden during AI response) */}
         {!isLoading && !isTyping && (
-          <div className="px-4 py-2">
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-              {getRelevantQuestions(inputValue).map((question) => (
+          <div className="px-3 sm:px-4 py-2">
+            <div className="flex gap-1.5 sm:gap-2 overflow-x-auto scrollbar-hide">
+              {getRelevantQuestions(inputValue).slice(0, 6).map((question) => (
                 <button
                   key={question.label}
                   onClick={() => handleQuickChipClick(question.label)}
-                  className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs transition-colors"
+                  className="flex-shrink-0 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs transition-colors whitespace-nowrap"
                   style={{ 
                     backgroundColor: ds.bg.card, 
                     color: ds.text.primary, 
@@ -1138,7 +1138,7 @@ export default function ChatBot({ className }: ChatBotProps) {
 
         {/* Input */}
         <div 
-          className="p-4 border-t"
+          className="p-3 sm:p-4 border-t"
           style={{ borderColor: ds.border.secondary }}
         >
           <div className="flex items-end space-x-2">
@@ -1147,7 +1147,7 @@ export default function ChatBot({ className }: ChatBotProps) {
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="メッセージを入力..."
-              className="flex-1 resize-none rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 max-h-20"
+              className="flex-1 resize-none rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 max-h-20 min-h-[2.5rem]"
               style={{
                 backgroundColor: ds.form.input.bg,
                 borderColor: ds.form.input.border,
@@ -1161,7 +1161,7 @@ export default function ChatBot({ className }: ChatBotProps) {
             <button
               onClick={handleSendMessage}
               disabled={!inputValue.trim() || isLoading}
-              className="p-2 rounded-lg transition-colors disabled:opacity-50"
+              className="p-2 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
               style={{
                 backgroundColor: ds.button.primary.bg,
                 color: ds.button.primary.text,
