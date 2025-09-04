@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "clsx": "^2.0.0",
-    "docusign-esign": "^8.4.0",
     "googleapis": "^156.0.0",
     "lucide-react": "^0.294.0",
     "next": "14.0.4",
