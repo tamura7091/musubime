@@ -56,8 +56,6 @@ export default function InfluencerDashboard() {
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [copiedPassword, setCopiedPassword] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [hasUsedPremiumCreds, setHasUsedPremiumCreds] = useState(false);
-  const [premiumReminderDismissed, setPremiumReminderDismissed] = useState(false);
 
   // Manual refresh function
   const refreshData = async () => {
@@ -108,17 +106,6 @@ export default function InfluencerDashboard() {
 
     fetchCampaigns();
   }, [user?.id]);
-
-  const markPremiumCredsUsed = () => {
-    try {
-      if (!primaryCampaign?.id) return;
-      const usedKey = `premiumCredsUsed:${primaryCampaign.id}`;
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(usedKey, '1');
-      }
-      setHasUsedPremiumCreds(true);
-    } catch {}
-  };
   
   // Show auth loading state to avoid blank screen while resolving session
   if (isAuthLoading) {
@@ -588,19 +575,6 @@ export default function InfluencerDashboard() {
 
   // Get the most active campaign for status display
   const primaryCampaign = activeCampaigns[0] || userCampaigns[0];
-
-  // Initialize premium reminder state after primaryCampaign is known
-  useEffect(() => {
-    try {
-      if (!primaryCampaign?.id) return;
-      const usedKey = `premiumCredsUsed:${primaryCampaign.id}`;
-      const dismissedKey = `premiumReminderDismissed:${primaryCampaign.id}`;
-      const used = typeof window !== 'undefined' ? window.localStorage.getItem(usedKey) : null;
-      const dismissed = typeof window !== 'undefined' ? window.localStorage.getItem(dismissedKey) : null;
-      setHasUsedPremiumCreds(!!used);
-      setPremiumReminderDismissed(!!dismissed);
-    } catch {}
-  }, [primaryCampaign?.id]);
 
   // Get days left for the primary campaign
   const daysUntilLive = primaryCampaign ? getDaysUntilLive(primaryCampaign) : null;
@@ -1705,43 +1679,6 @@ export default function InfluencerDashboard() {
           </div>
         )}
 
-        {/* Premium Usage Reminder - show under header, before stats */}
-        {primaryCampaign && !hasUsedPremiumCreds && !premiumReminderDismissed && (
-          <div className="mb-4 sm:mb-6">
-            <div className="rounded-lg p-3 sm:p-4 flex items-start gap-3" style={{
-              backgroundColor: ds.isDark ? '#1f2937' : '#ecfeff',
-              borderColor: ds.isDark ? '#334155' : '#a5f3fc',
-              borderWidth: '1px',
-              borderStyle: 'solid'
-            }}>
-              <div className="flex-shrink-0 mt-0.5">
-                <AlertCircle size={18} style={{ color: ds.text.accent }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm" style={{ color: ds.text.primary }}>
-                  スピークアプリのご利用をお忘れなく。プレミアムアカウントのメール／パスワード横のコピーアイコンをクリックして、ログインしてください。
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  try {
-                    if (primaryCampaign?.id && typeof window !== 'undefined') {
-                      window.localStorage.setItem(`premiumReminderDismissed:${primaryCampaign.id}`, '1');
-                    }
-                  } catch {}
-                  setPremiumReminderDismissed(true);
-                }}
-                className="flex-shrink-0 p-1 rounded hover:opacity-80"
-                aria-label="dismiss premium reminder"
-                title="閉じる"
-                style={{ color: ds.text.secondary }}
-              >
-                <XCircle size={16} />
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Status Section */}
         {primaryCampaign && (
           <div className="mb-6 sm:mb-8">
@@ -2091,7 +2028,6 @@ export default function InfluencerDashboard() {
                               navigator.clipboard.writeText(primaryCampaign.campaignData!.trial_login_email_dashboard!);
                               setCopiedEmail(true);
                               setTimeout(() => setCopiedEmail(false), 2000);
-                              markPremiumCredsUsed();
                             }}
                             className="p-2 rounded-lg transition-colors"
                             style={{
@@ -2130,7 +2066,6 @@ export default function InfluencerDashboard() {
                               navigator.clipboard.writeText(primaryCampaign.campaignData!.trial_login_password_dashboard!);
                               setCopiedPassword(true);
                               setTimeout(() => setCopiedPassword(false), 2000);
-                              markPremiumCredsUsed();
                             }}
                             className="p-2 rounded-lg transition-colors"
                             style={{
