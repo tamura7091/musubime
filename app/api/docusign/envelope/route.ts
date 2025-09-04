@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const runtime = 'nodejs';
 
 // Lazy import to avoid SSR issues if module is missing in some environments
 async function getDocusign() {
