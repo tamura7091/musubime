@@ -56,6 +56,8 @@ export default function InfluencerDashboard() {
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [copiedPassword, setCopiedPassword] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasUsedPremiumCreds, setHasUsedPremiumCreds] = useState(false);
+  const [premiumReminderDismissed, setPremiumReminderDismissed] = useState(false);
 
   // Manual refresh function
   const refreshData = async () => {
@@ -106,6 +108,17 @@ export default function InfluencerDashboard() {
 
     fetchCampaigns();
   }, [user?.id]);
+
+  const markPremiumCredsUsed = () => {
+    try {
+      if (!primaryCampaign?.id) return;
+      const usedKey = `premiumCredsUsed:${primaryCampaign.id}`;
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(usedKey, '1');
+      }
+      setHasUsedPremiumCreds(true);
+    } catch {}
+  };
   
   // Show auth loading state to avoid blank screen while resolving session
   if (isAuthLoading) {
@@ -250,10 +263,11 @@ export default function InfluencerDashboard() {
             inputType: 'meeting_complete'
           };
         } else if (campaign.meetingStatus === 'completed') {
-          // Show plan creation action instead
+          // Show plan creation action instead (include deadline when available)
+          const planDue = formatMonthDay(campaign?.schedules?.planSubmissionDate);
           return {
             title: '構成案の作成',
-            description: 'プロモーションの構成案を作成しリンクを共有してください',
+            description: `プロモーションの構成案を作成しリンクを共有してください${planDue ? `。${planDue}までに構成案の提出をお願いします。` : ''}`,
             icon: AlertCircle,
             color: 'blue',
             action: 'plan',
@@ -265,9 +279,10 @@ export default function InfluencerDashboard() {
       case 'plan_creation':
         // Show different actions based on current status within the step
         if (campaign.status === 'plan_creating') {
+          const planDue = formatMonthDay(campaign?.schedules?.planSubmissionDate);
           return {
             title: '構成案の作成',
-            description: 'プロモーションの構成案を作成しリンクを共有してください',
+            description: `プロモーションの構成案を作成しリンクを共有してください${planDue ? `。${planDue}までに構成案の提出をお願いします。` : ''}`,
             icon: AlertCircle,
             color: 'blue',
             action: 'plan',
@@ -528,6 +543,20 @@ export default function InfluencerDashboard() {
     }
   };
 
+  // Format month/day (MM/DD) for concise deadline display
+  const formatMonthDay = (date: Date | string | undefined | null): string | null => {
+    if (!date) return null;
+    try {
+      const d = new Date(date as any);
+      if (isNaN(d.getTime())) return null;
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${mm}/${dd}`;
+    } catch {
+      return null;
+    }
+  };
+
   // Ensure URL is absolute to avoid being treated as a relative path by the browser
   const getAbsoluteUrl = (url: string | undefined | null) => {
     if (!url) return '';
@@ -559,6 +588,19 @@ export default function InfluencerDashboard() {
 
   // Get the most active campaign for status display
   const primaryCampaign = activeCampaigns[0] || userCampaigns[0];
+
+  // Initialize premium reminder state after primaryCampaign is known
+  useEffect(() => {
+    try {
+      if (!primaryCampaign?.id) return;
+      const usedKey = `premiumCredsUsed:${primaryCampaign.id}`;
+      const dismissedKey = `premiumReminderDismissed:${primaryCampaign.id}`;
+      const used = typeof window !== 'undefined' ? window.localStorage.getItem(usedKey) : null;
+      const dismissed = typeof window !== 'undefined' ? window.localStorage.getItem(dismissedKey) : null;
+      setHasUsedPremiumCreds(!!used);
+      setPremiumReminderDismissed(!!dismissed);
+    } catch {}
+  }, [primaryCampaign?.id]);
 
   // Get days left for the primary campaign
   const daysUntilLive = primaryCampaign ? getDaysUntilLive(primaryCampaign) : null;
@@ -1167,12 +1209,16 @@ export default function InfluencerDashboard() {
                 <VisibilityToggle>
                   <p className="text-xl sm:text-2xl font-bold" style={{ color: ds.text.primary }}>
                     {activeCampaigns.length > 0
-                      ? formatCurrencySmart(activeCampaigns.reduce((sum, c) => sum + (c.contractedPrice || 0), 0))
+                      ? (() => {
+                          const subtotal = activeCampaigns.reduce((sum: number, c: any) => sum + (c.contractedPrice || 0), 0);
+                          const taxed = Math.round(subtotal * 1.1);
+                          return formatCurrencySmart(taxed);
+                        })()
                       : formatCurrencySmart(totalPayoutAllCampaigns)}
                   </p>
                 </VisibilityToggle>
                 <p className="text-xs sm:text-sm" style={{ color: ds.text.secondary }}>
-                  {activeCampaigns.length > 0 ? '進行中PRの報酬額' : 'PR報酬総額'}
+                  {activeCampaigns.length > 0 ? '進行中PRの報酬額（税込）' : 'PR報酬総額'}
                 </p>
               </div>
             </div>
@@ -1284,11 +1330,12 @@ export default function InfluencerDashboard() {
               /* Status Message - only show if not behind schedule or due today */
               <p className="mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.text.base.fontSize, lineHeight: ds.typography.text.base.lineHeight, fontWeight: 600 }}>
                 {(() => {
+                  const planDueForMsg = formatMonthDay(primaryCampaign?.schedules?.planSubmissionDate);
                   const messages: Record<string, string> = {
                     not_started: '🎉 Welcome! まずは基本情報のご入力をお願いします。',
                     meeting_scheduling: '✅ 基本情報のご入力ありがとうございます！打ち合わせのご予約にお進みください。',
                     meeting_scheduled: '📅 打ち合わせのご予約ありがとうございます！当日のご参加をお願いします。',
-                    plan_creating: '🤝 打ち合わせありがとうございました！構成案の作成をお願いします。',
+                    plan_creating: `🤝 打ち合わせありがとうございました！構成案の作成をお願いします。${planDueForMsg ? `${planDueForMsg}までに構成案の提出をお願いします。` : ''}`,
                     plan_submitted: '📋 構成案のご提出ありがとうございます！ただいま確認中です。',
                     plan_revising: '✏️ ご提出ありがとうございます！フィードバックに沿って修正をお願いします。',
                     draft_creating: '🎊 素敵な構成案をありがとうございます！構成案に沿い、初稿作成にお進みください。',
@@ -1658,6 +1705,43 @@ export default function InfluencerDashboard() {
           </div>
         )}
 
+        {/* Premium Usage Reminder - show under header, before stats */}
+        {primaryCampaign && !hasUsedPremiumCreds && !premiumReminderDismissed && (
+          <div className="mb-4 sm:mb-6">
+            <div className="rounded-lg p-3 sm:p-4 flex items-start gap-3" style={{
+              backgroundColor: ds.isDark ? '#1f2937' : '#ecfeff',
+              borderColor: ds.isDark ? '#334155' : '#a5f3fc',
+              borderWidth: '1px',
+              borderStyle: 'solid'
+            }}>
+              <div className="flex-shrink-0 mt-0.5">
+                <AlertCircle size={18} style={{ color: ds.text.accent }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm" style={{ color: ds.text.primary }}>
+                  スピークアプリのご利用をお忘れなく。プレミアムアカウントのメール／パスワード横のコピーアイコンをクリックして、ログインしてください。
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  try {
+                    if (primaryCampaign?.id && typeof window !== 'undefined') {
+                      window.localStorage.setItem(`premiumReminderDismissed:${primaryCampaign.id}`, '1');
+                    }
+                  } catch {}
+                  setPremiumReminderDismissed(true);
+                }}
+                className="flex-shrink-0 p-1 rounded hover:opacity-80"
+                aria-label="dismiss premium reminder"
+                title="閉じる"
+                style={{ color: ds.text.secondary }}
+              >
+                <XCircle size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Status Section */}
         {primaryCampaign && (
           <div className="mb-6 sm:mb-8">
@@ -2007,6 +2091,7 @@ export default function InfluencerDashboard() {
                               navigator.clipboard.writeText(primaryCampaign.campaignData!.trial_login_email_dashboard!);
                               setCopiedEmail(true);
                               setTimeout(() => setCopiedEmail(false), 2000);
+                              markPremiumCredsUsed();
                             }}
                             className="p-2 rounded-lg transition-colors"
                             style={{
@@ -2045,6 +2130,7 @@ export default function InfluencerDashboard() {
                               navigator.clipboard.writeText(primaryCampaign.campaignData!.trial_login_password_dashboard!);
                               setCopiedPassword(true);
                               setTimeout(() => setCopiedPassword(false), 2000);
+                              markPremiumCredsUsed();
                             }}
                             className="p-2 rounded-lg transition-colors"
                             style={{
