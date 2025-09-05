@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Check, Calendar } from 'lucide-react';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
-import DatePicker from './DatePicker'
+import DatePicker from './DatePicker';
+import Modal from './Modal';
 
 interface OnboardingSurveyInlineProps {
   campaignId: string;
@@ -27,6 +28,8 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showDateConfirmation, setShowDateConfirmation] = useState(false);
+  const [pendingDateValue, setPendingDateValue] = useState<string>('');
   const [surveyData, setSurveyData] = useState<SurveyData>({
     platform: '',
     contractName: '',
@@ -50,34 +53,40 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
       title: '契約書用の名前',
       field: 'contractName',
       type: 'text',
-      placeholder: '個人名または法人名を入力してください'
+      placeholder: '個人名または法人名を入力してください',
+      description: '契約される個人名または法人名をご記入ください'
     },
     {
       title: '連絡可能なメールアドレス',
       field: 'email',
       type: 'email',
-      placeholder: 'example@email.com'
+      placeholder: 'example@email.com',
+      description: 'こちらのメールアドレスにオンライン契約をお送りします'
     },
     {
       title: 'メールで同意した報酬額（税別）',
       field: 'price',
       type: 'text',
-      placeholder: '50000'
+      placeholder: '50000',
+      description: '税抜きで記入してください。'
     },
     {
       title: 'PRアップロード日',
       field: 'uploadDate',
-      type: 'date'
+      type: 'date',
+      description: '1月キャンペーンのPRをされるかたは1/1~1/4のみを選択してください。（一部例外を除く）'
     },
     {
       title: '構成案の提出日',
       field: 'planSubmissionDate',
-      type: 'date'
+      type: 'date',
+      description: '構成案とはテンプレートに沿って作成された書面上のコンテンツプランを指します。'
     },
     {
       title: '初稿提出日',
       field: 'draftSubmissionDate',
-      type: 'date'
+      type: 'date',
+      description: '初稿とは書類上の構成案ではなく編集済みのコンテンツを指します。'
     },
     {
       title: '二次利用の可否',
@@ -100,6 +109,17 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
       setSurveyData(prev => ({ ...prev, price: withCommas }));
       return;
     }
+
+    if (field === 'uploadDate' && value) {
+      // Check if the selected date is one of the allowed dates for 2026 campaign
+      const allowedDates = ['2026-01-01', '2026-01-02', '2026-01-03'];
+      if (!allowedDates.includes(value)) {
+        setPendingDateValue(value);
+        setShowDateConfirmation(true);
+        return;
+      }
+    }
+
     setSurveyData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -107,6 +127,17 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     }
+  };
+
+  const handleDateConfirmation = () => {
+    setSurveyData(prev => ({ ...prev, uploadDate: pendingDateValue }));
+    setShowDateConfirmation(false);
+    setPendingDateValue('');
+  };
+
+  const handleDateCancellation = () => {
+    setShowDateConfirmation(false);
+    setPendingDateValue('');
   };
 
   const handlePrevious = () => {
@@ -152,6 +183,16 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
   const currentStepData = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
   const canProceed = surveyData[currentStepData.field as keyof SurveyData] !== '';
+
+  const handleEnterKey = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (isLastStep) {
+      if (canProceed && !isSubmitting) handleSubmit();
+    } else {
+      if (canProceed) handleNext();
+    }
+  };
 
   return (
     <div
@@ -204,6 +245,7 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
           <select
             value={surveyData[currentStepData.field as keyof SurveyData] as string}
             onChange={(e) => handleInputChange(currentStepData.field as keyof SurveyData, e.target.value)}
+            onKeyDown={handleEnterKey}
             style={{
               backgroundColor: ds.form.input.bg,
               borderColor: ds.form.input.border,
@@ -227,10 +269,12 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
             ))}
           </select>
         ) : currentStepData.type === 'date' ? (
-          <DatePicker
-            value={surveyData[currentStepData.field as keyof SurveyData] as string}
-            onChange={(val) => handleInputChange(currentStepData.field as keyof SurveyData, val)}
-          />
+          <div onKeyDown={handleEnterKey}>
+            <DatePicker
+              value={surveyData[currentStepData.field as keyof SurveyData] as string}
+              onChange={(val) => handleInputChange(currentStepData.field as keyof SurveyData, val)}
+            />
+          </div>
         ) : (
           <div>
             <input
@@ -238,6 +282,7 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
               placeholder={currentStepData.placeholder}
               value={surveyData[currentStepData.field as keyof SurveyData] as string}
               onChange={(e) => handleInputChange(currentStepData.field as keyof SurveyData, e.target.value)}
+              onKeyDown={handleEnterKey}
               style={{
                 backgroundColor: ds.form.input.bg,
                 borderColor: ds.form.input.border,
@@ -347,6 +392,54 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
           </button>
         )}
       </div>
+
+      {/* Date Confirmation Modal */}
+      <Modal
+        isOpen={showDateConfirmation}
+        onClose={handleDateCancellation}
+        title="日付確認"
+      >
+        <div className="space-y-4">
+          <p className="text-sm" style={{ color: ds.text.secondary }}>
+            2026年1月キャンペーンでのPRをされる方は1/1~1/3をご選択ください。メール等で例外の日付を同意している場合や該当しない場合はOKを押してください
+          </p>
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={handleDateCancellation}
+              className="px-4 py-2 text-sm border rounded-lg transition-colors"
+              style={{
+                borderColor: ds.border.primary,
+                color: ds.text.secondary,
+                backgroundColor: 'transparent'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = ds.button.secondary.hover;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              キャンセル
+            </button>
+            <button
+              onClick={handleDateConfirmation}
+              className="px-4 py-2 text-sm rounded-lg transition-colors"
+              style={{
+                backgroundColor: ds.button.primary.bg,
+                color: ds.button.primary.text
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = ds.button.primary.hover;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = ds.button.primary.bg;
+              }}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

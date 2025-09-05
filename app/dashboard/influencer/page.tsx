@@ -205,7 +205,7 @@ export default function InfluencerDashboard() {
         [0];
 
       if (revisionFeedback && revisionFeedback.content) {
-        return `<br/><br/><div style="background-color: rgba(239, 246, 255, 0.5); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 12px; margin-top: 8px;"><strong>📝 修正ポイント:</strong><br/>${revisionFeedback.content.replace(/\n/g, '<br/>')}</div>`;
+        return `<br/><br/><strong>📝 修正ポイント:</strong><br/>${revisionFeedback.content.replace(/\n/g, '<br/>')}`;
       }
 
       return '';
@@ -353,7 +353,17 @@ export default function InfluencerDashboard() {
         break;
 
       case 'payment':
-        if (campaign.status === 'payment_processing') {
+        if (campaign.status === 'scheduled') {
+          // After posting is complete, prompt user to proceed to payout
+          return {
+            title: '投稿完了 → 送金手続き',
+            description: 'コンテンツの投稿ありがとうございます。続けて送金手続きを進めてください。',
+            icon: CreditCard,
+            color: 'blue',
+            action: 'payment',
+            inputType: 'payment'
+          };
+        } else if (campaign.status === 'payment_processing') {
           return {
             title: '送金手続き中です',
             description: 'ご提出いただいた内容を確認し送金手続きに移行します。着金が確認でき次第以下のボタンよりお知らせください。',

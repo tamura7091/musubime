@@ -331,6 +331,8 @@ class GoogleSheetsService {
       'date_live',
       'date_deal_closed',
       'date_status_updated',
+      // Include feedback JSON so dashboards can show revision requests
+      'message_dashboard',
       // URLs needed for dashboard submission links
       'url_plan',
       'url_draft',

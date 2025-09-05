@@ -30,6 +30,15 @@ export default function AdminDashboard() {
   
   console.log('👤 Current user:', user);
 
+  // Ensure external links open correctly even if protocol is omitted
+  const getAbsoluteUrl = (url: string | undefined | null) => {
+    if (!url) return '';
+    const trimmed = url.trim();
+    if (!trimmed) return '';
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed.replace(/^\/+/, '')}`;
+  };
+
   // Manual refresh function
   const refreshData = async () => {
     setIsRefreshing(true);
@@ -628,7 +637,7 @@ export default function AdminDashboard() {
                           {/* Review Link */}
                           {update.submissionUrl && (
                             <a
-                              href={update.submissionUrl}
+                              href={getAbsoluteUrl(update.submissionUrl)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center space-x-1 text-xs px-2 py-1 rounded transition-colors"
@@ -686,7 +695,7 @@ export default function AdminDashboard() {
                         update.submissionUrl ? (
                           <div className="flex items-center space-x-2 ml-3">
                             <a
-                              href={update.submissionUrl}
+                              href={getAbsoluteUrl(update.submissionUrl)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center space-x-1 text-xs px-2 py-1 rounded transition-colors"

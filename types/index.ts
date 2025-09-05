@@ -55,8 +55,10 @@ export const getStepFromStatus = (status: CampaignStatus): CampaignStep => {
     case 'draft_revising':
       return 'draft_creation';
     case 'scheduling':
-    case 'scheduled':
       return 'scheduling';
+    case 'scheduled':
+      // After content is posted, move to payment step in the flow
+      return 'payment';
     case 'payment_processing':
     case 'completed':
       return 'payment';

@@ -84,4 +84,32 @@
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
   }
+  
+  /* Date Picker Calendar Icon Styling */
+  .date-picker-input::-webkit-calendar-picker-indicator {
+    filter: invert(0);
+    cursor: pointer;
+    opacity: 0.8;
+  }
+
+  .dark .date-picker-input::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 1;
+  }
+
+  .date-picker-input::-webkit-datetime-edit-fields-wrapper {
+    color: inherit;
+  }
+
+  /* React Day Picker mobile tweaks */
+  .rdp-root .rdp { width: 100%; }
+  .rdp-root .rdp-caption_label { font-size: 1rem; }
+  .rdp-root .rdp-nav_button { width: 2rem; height: 2rem; }
+  .rdp-root .rdp-table { width: 100%; table-layout: fixed; }
+  .rdp-root .rdp-cell { padding: 0.2rem; }
+  .rdp-root .rdp-day { width: 2.2rem; height: 2.2rem; border-radius: 9999px; }
+  @media (max-width: 640px) {
+    .rdp-root .rdp-day { width: 2.4rem; height: 2.4rem; }
+    .rdp-root .rdp-caption_label { font-size: 1.125rem; }
+  }
 }

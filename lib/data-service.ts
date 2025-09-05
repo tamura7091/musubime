@@ -231,9 +231,11 @@ class DataService {
               break;
             case 'scheduled':
               updateMessage = `${influencerName}さんのコンテンツが投稿されました！`;
-              updateType = 'status_change';
+              updateType = 'submission';
               submissionUrl = urlContent;
               submissionType = 'content';
+              requiresAdminAction = true; // require admin to review posted content
+              actionType = undefined; // no approve/revise buttons, just a red dot and link
               break;
             case 'payment_processing':
               updateMessage = `${influencerName}さんのステータスが「送金手続き中」に更新されました`;

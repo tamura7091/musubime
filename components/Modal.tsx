@@ -2,6 +2,7 @@
 
 import { X } from 'lucide-react';
 import { useEffect } from 'react';
+import { useDesignSystem } from '@/hooks/useDesignSystem';
 
 interface ModalProps {
   isOpen: boolean;
@@ -11,6 +12,8 @@ interface ModalProps {
 }
 
 export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
+  const ds = useDesignSystem();
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -26,33 +29,43 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* Background overlay */}
-        <div 
-          className="fixed inset-0 transition-opacity bg-black bg-opacity-75"
-          onClick={onClose}
-        />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Background overlay */}
+      <div
+        className="absolute inset-0 bg-black bg-opacity-50 transition-opacity"
+        onClick={onClose}
+      />
 
-        {/* Modal panel */}
-        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-dark-surface border border-dark-border rounded-xl shadow-xl">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-dark-text">
-              {title}
-            </h3>
-            <button
-              onClick={onClose}
-              className="p-1 text-dark-text-secondary hover:text-dark-text transition-colors rounded-lg"
-            >
-              <X size={20} />
-            </button>
-          </div>
+      {/* Modal panel */}
+      <div
+        className="relative w-full max-w-md mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 transform transition-all"
+        style={{
+          backgroundColor: ds.bg.card,
+          borderColor: ds.border.primary,
+          maxHeight: '90vh',
+          overflowY: 'auto'
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <h3
+            className="text-lg font-semibold"
+            style={{ color: ds.text.primary }}
+          >
+            {title}
+          </h3>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            style={{ color: ds.text.secondary }}
+          >
+            <X size={20} />
+          </button>
+        </div>
 
-          {/* Content */}
-          <div className="text-dark-text">
-            {children}
-          </div>
+        {/* Content */}
+        <div className="p-4" style={{ color: ds.text.primary }}>
+          {children}
         </div>
       </div>
     </div>
