@@ -410,7 +410,9 @@ export default function ChatBot({ className }: ChatBotProps) {
   const buildQuickAnswer = (label: string): string => {
     const primary = pickPrimaryCampaign(campaigns);
     if (!primary) {
-      return '現在のキャンペーン情報を取得できませんでした。ダッシュボードを更新してください。';
+      return user?.role === 'admin'
+        ? 'キャンペーン一覧を取得できませんでした。管理画面を更新するか、フィルター条件をご確認ください。'
+        : '現在のキャンペーン情報を取得できませんでした。ダッシュボードを更新してください。';
     }
 
     const status = String(primary.status) as CampaignStatus | string;
