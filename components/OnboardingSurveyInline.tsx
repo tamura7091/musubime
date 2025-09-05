@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Check, Calendar } from 'lucide-react';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
+import DatePicker from './DatePicker'
 
 interface OnboardingSurveyInlineProps {
   campaignId: string;
@@ -58,7 +59,7 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
       placeholder: 'example@email.com'
     },
     {
-      title: '報酬額（税別）',
+      title: 'メールで同意した報酬額（税別）',
       field: 'price',
       type: 'text',
       placeholder: '50000'
@@ -226,24 +227,9 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
             ))}
           </select>
         ) : currentStepData.type === 'date' ? (
-          <input
-            type="date"
+          <DatePicker
             value={surveyData[currentStepData.field as keyof SurveyData] as string}
-            onChange={(e) => handleInputChange(currentStepData.field as keyof SurveyData, e.target.value)}
-            style={{
-              backgroundColor: ds.form.input.bg,
-              borderColor: ds.form.input.border,
-              color: ds.text.primary,
-            }}
-            className="w-full p-3 rounded-lg focus:ring-2 focus:border-transparent"
-            onFocus={(e) => {
-              e.target.style.borderColor = ds.form.input.focus.ring;
-              e.target.style.boxShadow = `0 0 0 2px ${ds.form.input.focus.ring}`;
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = ds.form.input.border;
-              e.target.style.boxShadow = 'none';
-            }}
+            onChange={(val) => handleInputChange(currentStepData.field as keyof SurveyData, val)}
           />
         ) : (
           <div>

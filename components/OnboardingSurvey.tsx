@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import DatePicker from './DatePicker'
 
 interface OnboardingSurveyProps {
   campaignId: string;
@@ -190,11 +191,9 @@ export default function OnboardingSurvey({ campaignId, onComplete, onCancel }: O
               ))}
             </select>
           ) : currentStepData.type === 'date' ? (
-            <input
-              type="date"
+            <DatePicker
               value={surveyData[currentStepData.field as keyof SurveyData] as string}
-              onChange={(e) => handleInputChange(currentStepData.field as keyof SurveyData, e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onChange={(val) => handleInputChange(currentStepData.field as keyof SurveyData, val)}
             />
           ) : (
             <input
