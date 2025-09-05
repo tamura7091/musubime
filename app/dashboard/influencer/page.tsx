@@ -531,7 +531,7 @@ export default function InfluencerDashboard() {
   };
 
   // Format month/day (MM/DD) for concise deadline display
-  const formatMonthDay = (date: Date | string | undefined | null): string | null => {
+  function formatMonthDay(date: Date | string | undefined | null): string | null {
     if (!date) return null;
     try {
       const d = new Date(date as any);
@@ -542,7 +542,7 @@ export default function InfluencerDashboard() {
     } catch {
       return null;
     }
-  };
+  }
 
   // Ensure URL is absolute to avoid being treated as a relative path by the browser
   const getAbsoluteUrl = (url: string | undefined | null) => {
