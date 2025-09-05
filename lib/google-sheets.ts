@@ -521,13 +521,13 @@ class GoogleSheetsService {
         
         // Status and platform
         status: (() => {
-          // Only use status_dashboard column, no fallbacks
+          // Only use status_dashboard column; treat empty as not_started
           const rawStatus = row['status_dashboard'];
           console.log(`🔍 Campaign ${row['id_campaign']}: status_dashboard raw value = "${rawStatus}" (type: ${typeof rawStatus})`);
           
           if (!rawStatus || rawStatus === 'undefined' || rawStatus === '' || rawStatus === undefined) {
-            console.log(`⚠️ Campaign ${row['id_campaign']}: status_dashboard is empty/undefined, using default`);
-            return 'meeting_scheduling'; // Default status
+            console.log(`⚠️ Campaign ${row['id_campaign']}: status_dashboard is empty/undefined, using default not_started`);
+            return 'not_started';
           }
           
           const mappedStatus = this.mapStatus(rawStatus);

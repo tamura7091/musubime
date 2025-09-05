@@ -933,8 +933,8 @@ export default function ChatBot({ className }: ChatBotProps) {
     });
   };
 
-  // Don't show chatbot if user is not logged in
-  if (!user) {
+  // Don't show chatbot for unauthenticated users or admin role
+  if (!user || user.role === 'admin') {
     return null;
   }
 
