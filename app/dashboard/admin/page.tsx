@@ -39,6 +39,31 @@ export default function AdminDashboard() {
     return `https://${trimmed.replace(/^\/+/, '')}`;
   };
 
+  // Fetch helper with timeout to avoid hanging spinners
+  const fetchWithTimeout = async (
+    input: RequestInfo | URL,
+    init?: RequestInit & { timeoutMs?: number }
+  ) => {
+    const { timeoutMs = 15000, ...rest } = init || {};
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(input, {
+        cache: 'no-store',
+        ...rest,
+        signal: controller.signal,
+      });
+      return res;
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        console.error('⌛ Fetch timed out:', input.toString());
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
   // Manual refresh function
   const refreshData = async () => {
     setIsRefreshing(true);
@@ -46,7 +71,7 @@ export default function AdminDashboard() {
       console.log('🔄 Manual refresh: Fetching campaigns and updates from API...');
       
       // Fetch campaigns
-      const campaignsResponse = await fetch(`/api/campaigns?t=${Date.now()}`);
+      const campaignsResponse = await fetchWithTimeout(`/api/campaigns?t=${Date.now()}`);
       if (campaignsResponse.ok) {
         const campaigns = await campaignsResponse.json();
         console.log('✅ Manual refresh: Campaigns loaded:', campaigns.length);
@@ -56,7 +81,7 @@ export default function AdminDashboard() {
       }
       
       // Fetch updates
-      const updatesResponse = await fetch(`/api/updates?t=${Date.now()}`);
+      const updatesResponse = await fetchWithTimeout(`/api/updates?t=${Date.now()}`);
       if (updatesResponse.ok) {
         const updates = await updatesResponse.json();
         console.log('✅ Manual refresh: Updates loaded:', updates.length);
@@ -82,9 +107,10 @@ export default function AdminDashboard() {
         console.log('📊 Fetching campaigns and updates from API (admin confirmed)...');
         setLoading(true);
 
+        const ts = Date.now();
         const [campaignsResponse, updatesResponse] = await Promise.all([
-          fetch('/api/campaigns'),
-          fetch('/api/updates')
+          fetchWithTimeout(`/api/campaigns?t=${ts}`),
+          fetchWithTimeout(`/api/updates?t=${ts}`)
         ]);
 
         if (campaignsResponse.ok) {
@@ -299,7 +325,17 @@ export default function AdminDashboard() {
   });
 
 
-  const displayedUpdates = showAllUpdates ? updates : updates.slice(0, 5);
+  const sortedUpdates = [...updates].sort((a, b) => {
+    // Sort by requiresAdminAction first (true items come first)
+    if (a.requiresAdminAction && !b.requiresAdminAction) return -1;
+    if (!a.requiresAdminAction && b.requiresAdminAction) return 1;
+
+    // If both have the same action status, sort by timestamp (newest first)
+    const aTime = new Date(a.timestamp).getTime();
+    const bTime = new Date(b.timestamp).getTime();
+    return bTime - aTime;
+  });
+  const displayedUpdates = showAllUpdates ? sortedUpdates : sortedUpdates.slice(0, 5);
   const hasMoreUpdates = updates.length > 5;
 
   const formatTimeAgo = (date: Date | string) => {
