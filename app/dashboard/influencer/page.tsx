@@ -215,6 +215,40 @@ export default function InfluencerDashboard() {
     }
   };
 
+  // Derive meeting status from campaign when meetingStatus is missing
+  const getEffectiveMeetingStatus = (
+    campaign: any
+  ): 'not_scheduled' | 'scheduled' | 'completed' => {
+    if (campaign.meetingStatus === 'not_scheduled' || campaign.meetingStatus === 'scheduled' || campaign.meetingStatus === 'completed') {
+      return campaign.meetingStatus;
+    }
+
+    // Fallback mapping from overall campaign.status
+    const status = campaign.status as CampaignStatus;
+    if (status === 'meeting_scheduling' || status === 'not_started' || status === 'contract_pending') {
+      return 'not_scheduled';
+    }
+    if (status === 'meeting_scheduled') {
+      return 'scheduled';
+    }
+    // Any step after meeting implies meeting completed
+    if ([
+      'plan_creating',
+      'plan_submitted',
+      'plan_revising',
+      'draft_creating',
+      'draft_submitted',
+      'draft_revising',
+      'scheduling',
+      'scheduled',
+      'payment_processing',
+      'completed'
+    ].includes(status)) {
+      return 'completed';
+    }
+    return 'not_scheduled';
+  };
+
   const getActionNeeded = (campaign: any) => {
     const currentStep = getStepFromStatus(campaign.status as CampaignStatus);
     
@@ -230,8 +264,10 @@ export default function InfluencerDashboard() {
         };
 
       case 'meeting':
-        // Show different actions based on meeting status
-        if (!campaign.meetingStatus || campaign.meetingStatus === 'not_scheduled') {
+        // Show different actions based on meeting status (with fallback)
+        {
+          const meetingStatus = getEffectiveMeetingStatus(campaign);
+          if (meetingStatus === 'not_scheduled') {
           return {
             title: '打ち合わせの予約',
             description: '<a href="https://calendly.com/speak-naoki/30min-1" target="_blank" style="color: #60a5fa; text-decoration: underline;">こちらから</a>打ち合わせを予約し「予約完了」ボタンをクリックしてください',
@@ -240,7 +276,7 @@ export default function InfluencerDashboard() {
             action: 'meeting_schedule',
             inputType: 'meeting_schedule'
           };
-        } else if (campaign.meetingStatus === 'scheduled') {
+          } else if (meetingStatus === 'scheduled') {
           return {
             title: '打ち合わせへの参加',
             description: '予約済みの打ち合わせに参加し、完了後に「打ち合わせ完了」ボタンをクリックしてください',
@@ -249,7 +285,7 @@ export default function InfluencerDashboard() {
             action: 'meeting_complete',
             inputType: 'meeting_complete'
           };
-        } else if (campaign.meetingStatus === 'completed') {
+          } else if (meetingStatus === 'completed') {
           // Show plan creation action instead (include deadline when available)
           const planDue = formatMonthDay(campaign?.schedules?.planSubmissionDate);
           return {
@@ -260,6 +296,7 @@ export default function InfluencerDashboard() {
             action: 'plan',
             inputType: 'url'
           };
+          }
         }
         break;
 
