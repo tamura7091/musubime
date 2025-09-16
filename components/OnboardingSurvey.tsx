@@ -27,6 +27,7 @@ export default function OnboardingSurvey({ campaignId, onComplete, onCancel }: O
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDateConfirmation, setShowDateConfirmation] = useState(false);
   const [pendingDateValue, setPendingDateValue] = useState<string>('');
+  const [emailError, setEmailError] = useState<string>('');
   const [surveyData, setSurveyData] = useState<SurveyData>({
     platform: '',
     contractName: '',
@@ -81,16 +82,16 @@ export default function OnboardingSurvey({ campaignId, onComplete, onCancel }: O
       description: '1月キャンペーンのPRをされるかたは1/1~1/4のみを選択してください。（一部例外を除く）'
     },
     {
-      title: '構成案の提出日',
-      field: 'planSubmissionDate',
-      type: 'date',
-      description: '構成案とはテンプレートに沿って作成された書面上のコンテンツプランを指します。'
-    },
-    {
       title: '初稿提出日',
       field: 'draftSubmissionDate',
       type: 'date',
       description: '初稿とは書類上の構成案ではなく編集済みのコンテンツを指します。'
+    },
+    {
+      title: '構成案の提出日',
+      field: 'planSubmissionDate',
+      type: 'date',
+      description: '構成案とはテンプレートに沿って作成された書面上のコンテンツプランを指します。'
     },
     {
       title: '二次利用の可否',
@@ -112,6 +113,15 @@ export default function OnboardingSurvey({ campaignId, onComplete, onCancel }: O
         setPendingDateValue(value);
         setShowDateConfirmation(true);
         return;
+      }
+    }
+
+    // Email validation
+    if (field === 'email') {
+      if (value && !isValidEmail(value)) {
+        setEmailError('正しいメールアドレス形式で入力してください');
+      } else {
+        setEmailError('');
       }
     }
 
@@ -179,7 +189,7 @@ export default function OnboardingSurvey({ campaignId, onComplete, onCancel }: O
   const currentStepData = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
   const currentValue = surveyData[currentStepData.field as keyof SurveyData];
-  const canProceed = currentValue !== '' && (currentStepData.field !== 'email' || isValidEmail(currentValue));
+  const canProceed = currentValue !== '' && (currentStepData.field !== 'email' || (isValidEmail(currentValue) && !emailError));
 
   const handleEnterKey = (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter') return;
@@ -247,14 +257,21 @@ export default function OnboardingSurvey({ campaignId, onComplete, onCancel }: O
               />
             </div>
           ) : (
-            <input
-              type={currentStepData.type}
-              placeholder={currentStepData.placeholder}
-              value={surveyData[currentStepData.field as keyof SurveyData] as string}
-              onChange={(e) => handleInputChange(currentStepData.field as keyof SurveyData, e.target.value)}
-              onKeyDown={handleEnterKey}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <>
+              <input
+                type={currentStepData.type}
+                placeholder={currentStepData.placeholder}
+                value={surveyData[currentStepData.field as keyof SurveyData] as string}
+                onChange={(e) => handleInputChange(currentStepData.field as keyof SurveyData, e.target.value)}
+                onKeyDown={handleEnterKey}
+                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  currentStepData.field === 'email' && emailError ? 'border-red-500' : 'border-gray-300'
+                }`}
+              />
+              {currentStepData.field === 'email' && emailError && (
+                <p className="text-red-500 text-sm mt-1">{emailError}</p>
+              )}
+            </>
           )}
         </div>
 

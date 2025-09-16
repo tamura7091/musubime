@@ -30,6 +30,7 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showDateConfirmation, setShowDateConfirmation] = useState(false);
   const [pendingDateValue, setPendingDateValue] = useState<string>('');
+  const [emailError, setEmailError] = useState<string>('');
   const [surveyData, setSurveyData] = useState<SurveyData>({
     platform: '',
     contractName: '',
@@ -77,16 +78,16 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
       description: '1月キャンペーンのPRをされるかたは1/1~1/4のみを選択してください。（一部例外を除く）'
     },
     {
-      title: '構成案の提出日',
-      field: 'planSubmissionDate',
-      type: 'date',
-      description: '構成案とはテンプレートに沿って作成された書面上のコンテンツプランを指します。'
-    },
-    {
       title: '初稿提出日',
       field: 'draftSubmissionDate',
       type: 'date',
       description: '初稿とは書類上の構成案ではなく編集済みのコンテンツを指します。'
+    },
+    {
+      title: '構成案の提出日',
+      field: 'planSubmissionDate',
+      type: 'date',
+      description: '構成案とはテンプレートに沿って作成された書面上のコンテンツプランを指します。'
     },
     {
       title: '二次利用の可否',
@@ -117,6 +118,15 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
         setPendingDateValue(value);
         setShowDateConfirmation(true);
         return;
+      }
+    }
+
+    // Email validation
+    if (field === 'email') {
+      if (value && !isValidEmail(value)) {
+        setEmailError('正しいメールアドレス形式で入力してください');
+      } else {
+        setEmailError('');
       }
     }
 
@@ -189,7 +199,7 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
   const currentStepData = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
   const currentValue = surveyData[currentStepData.field as keyof SurveyData];
-  const canProceed = currentValue !== '' && (currentStepData.field !== 'email' || isValidEmail(currentValue));
+  const canProceed = currentValue !== '' && (currentStepData.field !== 'email' || (isValidEmail(currentValue) && !emailError));
 
   const handleEnterKey = (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter') return;
@@ -292,7 +302,7 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
               onKeyDown={handleEnterKey}
               style={{
                 backgroundColor: ds.form.input.bg,
-                borderColor: ds.form.input.border,
+                borderColor: currentStepData.field === 'email' && emailError ? '#ef4444' : ds.form.input.border,
                 color: ds.text.primary,
               }}
               className="w-full p-3 rounded-lg focus:ring-2 focus:border-transparent"
@@ -301,7 +311,7 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
                 e.target.style.boxShadow = `0 0 0 2px ${ds.form.input.focus.ring}`;
               }}
               onBlur={(e) => {
-                e.target.style.borderColor = ds.form.input.border;
+                e.target.style.borderColor = currentStepData.field === 'email' && emailError ? '#ef4444' : ds.form.input.border;
                 e.target.style.boxShadow = 'none';
               }}
             />
@@ -314,6 +324,9 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
                   return `税込 (10%): ¥${taxIncluded.toLocaleString('ja-JP')}`;
                 })()}
               </div>
+            )}
+            {currentStepData.field === 'email' && emailError && (
+              <p className="text-red-500 text-sm mt-1">{emailError}</p>
             )}
           </div>
         )}
