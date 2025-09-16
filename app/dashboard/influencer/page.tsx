@@ -279,7 +279,7 @@ export default function InfluencerDashboard() {
           } else if (meetingStatus === 'scheduled') {
           return {
             title: '打ち合わせへの参加',
-            description: '予約済みの打ち合わせに参加し、完了後に「打ち合わせ完了」ボタンをクリックしてください',
+            description: '予約済みの打ち合わせに参加し、完了後に「打ち合わせ完了」ボタンをクリックしてください（打ち合わせのリスケジュールは<a href="https://calendly.com/speak-naoki/30min-1" target="_blank" style="color: #60a5fa; text-decoration: underline;">こちら</a>）',
             icon: Calendar,
             color: 'blue',
             action: 'meeting_complete',

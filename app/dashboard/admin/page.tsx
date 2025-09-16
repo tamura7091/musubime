@@ -691,8 +691,10 @@ export default function AdminDashboard() {
                           
                           {/* Action Buttons */}
                           <button
-                            onClick={() => handleAdminAction(update, update.actionType!)}
-                            disabled={processingActions.has(`${update.id}_${update.actionType}`)}
+                            onClick={() => handleAdminAction(update,
+                              update.submissionType === 'plan' ? 'approve_plan' : 'approve_draft'
+                            )}
+                            disabled={processingActions.has(`${update.id}_${update.submissionType === 'plan' ? 'approve_plan' : 'approve_draft'}`)}
                             className="inline-flex items-center space-x-1 text-xs px-2 py-1 rounded transition-colors disabled:opacity-50"
                             style={{ 
                               backgroundColor: '#10b981',
