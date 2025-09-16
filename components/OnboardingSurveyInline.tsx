@@ -180,9 +180,16 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
     }
   };
 
+  // Email validation function
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const currentStepData = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
-  const canProceed = surveyData[currentStepData.field as keyof SurveyData] !== '';
+  const currentValue = surveyData[currentStepData.field as keyof SurveyData];
+  const canProceed = currentValue !== '' && (currentStepData.field !== 'email' || isValidEmail(currentValue));
 
   const handleEnterKey = (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter') return;
