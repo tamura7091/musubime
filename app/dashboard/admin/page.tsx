@@ -1,12 +1,14 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, TrendingUp, Clock, AlertCircle, Search, Filter, User, Tag, ChevronUp, ChevronDown, ExternalLink, Check, X, RefreshCw } from 'lucide-react';
+import { Users, TrendingUp, Clock, AlertCircle, Search, Filter, User, Tag, ChevronUp, ChevronDown, ExternalLink, Check, X, RefreshCw, Mail, Settings } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Campaign, Update } from '@/types';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
 import { formatAbbreviatedCurrency } from '@/lib/design-system';
+import CommsPanel from '@/components/CommsPanel';
+import { SettingsPanel } from '@/components/Settings';
 
 export default function AdminDashboard() {
   console.log('🎯 AdminDashboard component rendering');
@@ -27,6 +29,7 @@ export default function AdminDashboard() {
   const [currentRevisionAction, setCurrentRevisionAction] = useState<{update: Update, action: string} | null>(null);
   const [showAllUpdates, setShowAllUpdates] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'comms' | 'settings'>('dashboard');
   
   console.log('👤 Current user:', user);
 
@@ -378,21 +381,43 @@ export default function AdminDashboard() {
   // Map platform codes to Japanese names
   const mapPlatformToJapanese = (platform: string): string => {
     const platformMap: { [key: string]: string } = {
-      'youtube_long': 'YouTube長編',
-      'youtube_short': 'YouTubeショート',
-      'short_video': 'ショート動画', // Generic short video
-      'instagram_reel': 'Instagramリール',
-      'tiktok': 'TikTok',
-      'x_twitter': 'X (Twitter)',
-      'podcast': 'ポッドキャスト',
-      'blog': 'ブログ',
-      // Also handle the raw codes from Google Sheets
-      'yt': 'YouTube長編',
-      'sv': 'ショート動画',
-      'ig': 'Instagramリール',
-      'tt': 'TikTok',
+      // YouTube platforms
+      'yt': 'YouTube横動画',
+      'youtube_long': 'YouTube横動画',
+      'yts': 'YouTube Shorts',
+      'youtube_short': 'YouTube Shorts',
+
+      // Social media platforms
       'tw': 'X (Twitter)',
-      'pc': 'ポッドキャスト'
+      'x_twitter': 'X (Twitter)',
+      'twitter': 'X (Twitter)',
+
+      'ig': 'Instagram',
+      'instagram': 'Instagram',
+
+      'tt': 'TikTok',
+      'tiktok': 'TikTok',
+
+      // Short video platforms
+      'igr': 'Instagram Reels',
+      'instagram_reel': 'Instagram Reels',
+      'instagram_reels': 'Instagram Reels',
+
+      'sv': 'ショート動画',
+      'short_video': 'ショート動画',
+      'short_videos': 'ショート動画',
+
+      // Audio platforms
+      'pc': 'Podcasts',
+      'podcast': 'Podcasts',
+      'podcasts': 'Podcasts',
+
+      'vc': 'Voicy',
+      'voicy': 'Voicy',
+
+      // Content platforms
+      'bl': 'Blog',
+      'blog': 'Blog',
     };
     return platformMap[platform] || platform;
   };
@@ -529,6 +554,21 @@ export default function AdminDashboard() {
                   管理者ダッシュボード
                 </h1>
                 
+                {/* Settings Button */}
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className={`flex items-center justify-center p-1 transition-colors flex-shrink-0 ${
+                    activeTab === 'settings' ? 'shadow-sm' : ''
+                  }`}
+                  style={{ 
+                    color: activeTab === 'settings' ? ds.button.primary.bg : ds.text.secondary
+                  }}
+                  onMouseEnter={(e) => activeTab !== 'settings' && (e.currentTarget.style.color = ds.text.primary)}
+                  onMouseLeave={(e) => activeTab !== 'settings' && (e.currentTarget.style.color = ds.text.secondary)}
+                >
+                  <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+                
                 {/* Refresh Button */}
                 <button
                   onClick={refreshData}
@@ -551,9 +591,39 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Tab Navigation */}
+        <div className="flex space-x-1 mb-6">
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              activeTab === 'dashboard' ? 'shadow-sm' : ''
+            }`}
+            style={{
+              backgroundColor: activeTab === 'dashboard' ? ds.button.primary.bg : ds.button.secondary.bg,
+              color: activeTab === 'dashboard' ? ds.button.primary.text : ds.button.secondary.text
+            }}
+          >
+            <Users className="w-4 h-4" />
+            <span>ダッシュボード</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('comms')}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              activeTab === 'comms' ? 'shadow-sm' : ''
+            }`}
+            style={{
+              backgroundColor: activeTab === 'comms' ? ds.button.primary.bg : ds.button.secondary.bg,
+              color: activeTab === 'comms' ? ds.button.primary.text : ds.button.secondary.text
+            }}
+          >
+            <Mail className="w-4 h-4" />
+            <span>連絡</span>
+          </button>
+        </div>
 
-
-        {/* Stats Overview */}
+        {activeTab === 'dashboard' ? (
+          <div>
+            {/* Stats Overview */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <div className="rounded-xl p-4 sm:p-6" style={{ 
             backgroundColor: ds.bg.card,
@@ -899,14 +969,43 @@ export default function AdminDashboard() {
                           <option key={platform} value={platform}>
                             {(() => {
                               const platformIcons: Record<string, string> = {
+                                // YouTube platforms
+                                'yt': '🎥',
                                 'youtube_long': '🎥',
+                                'yts': '📱',
                                 'youtube_short': '📱',
-                                'instagram_reel': '📸',
-                                'tiktok': '🎵',
+
+                                // Social media platforms
+                                'tw': '🐦',
                                 'x_twitter': '🐦',
+                                'twitter': '🐦',
+
+                                'ig': '📸',
+                                'instagram': '📸',
+
+                                'tt': '🎵',
+                                'tiktok': '🎵',
+
+                                // Short video platforms
+                                'igr': '📹',
+                                'instagram_reel': '📹',
+                                'instagram_reels': '📹',
+
+                                'sv': '📱',
+                                'short_video': '📱',
+                                'short_videos': '📱',
+
+                                // Audio platforms
+                                'pc': '🎙️',
                                 'podcast': '🎙️',
+                                'podcasts': '🎙️',
+
+                                'vc': '🎧',
+                                'voicy': '🎧',
+
+                                // Content platforms
+                                'bl': '✍️',
                                 'blog': '✍️',
-                                'short_video': '📱'
                               };
                               return `${platformIcons[platform] || '🌐'} ${mapPlatformToJapanese(platform)}`;
                             })()}
@@ -1132,7 +1231,7 @@ export default function AdminDashboard() {
                               <td className="py-3 px-4 h-16">
                                 <div className="flex items-center h-full">
                                   <span className="text-sm truncate" style={{ color: ds.text.secondary }}>
-                                    {mapPlatformToJapanese(campaign.platform)}
+                                    {campaign.platform && campaign.platform.trim() ? mapPlatformToJapanese(campaign.platform) : '未設定'}
                                   </span>
                                 </div>
                               </td>
@@ -1335,6 +1434,14 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+          </div>
+        ) : activeTab === 'comms' ? (
+          /* 連絡 Tab */
+          <CommsPanel />
+        ) : (
+          /* Settings Tab */
+          <SettingsPanel />
+        )}
       </div>
 
       {/* Feedback Modal */}

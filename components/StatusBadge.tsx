@@ -23,23 +23,23 @@ const getStatusLabel = (status: CampaignStatus | string): string => {
 
 const getStatusColor = (status: CampaignStatus | string): string => {
   const map: Record<string, string> = {
-    not_started: 'bg-gray-400/20 text-gray-500 border-gray-400/30',
-    meeting_scheduling: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    meeting_scheduled: 'bg-blue-600/20 text-blue-300 border-blue-600/30',
-    contract_pending: 'bg-sky-500/20 text-sky-400 border-sky-500/30',
-    plan_creating: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    plan_submitted: 'bg-orange-600/20 text-orange-300 border-orange-600/30',
-    plan_revising: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    draft_creating: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-    draft_submitted: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
-    draft_revising: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
-    scheduling: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-    scheduled: 'bg-green-600/20 text-green-300 border-green-600/30',
-    payment_processing: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
-    completed: 'bg-gray-500/20 text-gray-500 border-gray-500/30',
-    cancelled: 'bg-red-500/20 text-red-400 border-red-500/30',
+    not_started: 'bg-gray-400/20 text-gray-600 border-gray-400/30',
+    meeting_scheduling: 'bg-blue-500/20 text-blue-600 border-blue-500/30',
+    meeting_scheduled: 'bg-blue-600/20 text-blue-600 border-blue-600/30',
+    contract_pending: 'bg-sky-500/20 text-sky-600 border-sky-500/30',
+    plan_creating: 'bg-orange-500/20 text-orange-600 border-orange-500/30',
+    plan_submitted: 'bg-orange-600/20 text-orange-600 border-orange-600/30',
+    plan_revising: 'bg-orange-500/20 text-orange-600 border-orange-500/30',
+    draft_creating: 'bg-purple-500/20 text-purple-600 border-purple-500/30',
+    draft_submitted: 'bg-indigo-500/20 text-indigo-600 border-indigo-500/30',
+    draft_revising: 'bg-indigo-500/20 text-indigo-600 border-indigo-500/30',
+    scheduling: 'bg-emerald-500/20 text-emerald-600 border-emerald-500/30',
+    scheduled: 'bg-green-600/20 text-green-600 border-green-600/30',
+    payment_processing: 'bg-cyan-500/20 text-cyan-600 border-cyan-500/30',
+    completed: 'bg-gray-500/20 text-gray-600 border-gray-500/30',
+    cancelled: 'bg-red-500/20 text-red-600 border-red-500/30',
   };
-  return map[status as string] || 'bg-gray-500/20 text-gray-500 border-gray-500/30';
+  return map[status as string] || 'bg-gray-500/20 text-gray-600 border-gray-500/30';
 };
 
 interface StatusBadgeProps {

@@ -45,13 +45,16 @@ export default function OnboardingSurvey({ campaignId, onComplete, onCancel }: O
       field: 'platform',
       type: 'select',
       options: [
-        { value: 'youtube_long', label: 'YouTube長編' },
-        { value: 'youtube_short', label: 'YouTubeショート' },
-        { value: 'instagram_reel', label: 'Instagramリール' },
-        { value: 'tiktok', label: 'TikTok' },
-        { value: 'x_twitter', label: 'X (Twitter)' },
-        { value: 'podcast', label: 'ポッドキャスト' },
-        { value: 'blog', label: 'ブログ' }
+        { value: 'yt', label: 'YouTube横動画' },
+        { value: 'tw', label: 'X (Twitter)' },
+        { value: 'ig', label: 'Instagram' },
+        { value: 'tt', label: 'TikTok' },
+        { value: 'pc', label: 'Podcasts' },
+        { value: 'bl', label: 'Blog' },
+        { value: 'yts', label: 'YouTube Shorts' },
+        { value: 'igr', label: 'Instagram Reels' },
+        { value: 'vc', label: 'Voicy' },
+        { value: 'sv', label: 'ショート動画' }
       ]
     },
     {

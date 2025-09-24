@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { googleSheetsService } from '@/lib/google-sheets';
+import { triggerZapier } from '@/lib/zapier';
 
 export async function POST(request: NextRequest) {
   try {
@@ -89,6 +90,18 @@ export async function POST(request: NextRequest) {
           break;
       }
       
+      // Fire Zapier email on revision requests
+      if (action === 'revise_plan' || action === 'revise_draft') {
+        // We don't have influencer email here; Zap can route by id/name if needed
+        await triggerZapier('revision_request', {
+          influencer: { id: influencerId },
+          platform_label: undefined,
+          item_type: action === 'revise_plan' ? '構成案' : '初稿',
+          feedback_bullets: feedbackMessage,
+          dashboard_url: 'https://musubime.app',
+        });
+      }
+
       return NextResponse.json({
         success: true,
         message: actionMessage,

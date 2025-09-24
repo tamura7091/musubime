@@ -140,16 +140,17 @@ class GoogleSheetsService {
   }
 
   // Fetch only specific columns by header names
-  async getSpecificColumns(columnNames: string[], influencerId?: string): Promise<GoogleSheetsRow[]> {
+  async getSpecificColumns(columnNames: string[], influencerId?: string, sheetName: string = 'campaigns'): Promise<GoogleSheetsRow[]> {
     try {
       console.log('🔍 GoogleSheetsService.getSpecificColumns() called');
       console.log('📋 Requested columns:', columnNames);
+      console.log('📊 Sheet name:', sheetName);
       
       this.assertConfigured();
 
       const request: any = {
         spreadsheetId: this.spreadsheetId,
-        range: 'campaigns!A:ZZ', // Fetch full range to get all columns including BW and beyond
+        range: `${sheetName}!A:ZZ`, // Use dynamic sheet name
       };
       
       // If using API key instead of service account
@@ -194,8 +195,9 @@ class GoogleSheetsService {
       console.log('📋 Column mapping:', columnMap);
       
       // Convert rows to objects using only the requested columns
-      // Skip first 4 rows (rows 2-5) and start from row 5 (index 4)
-      let filteredRows = rows.slice(4);
+      // Start index may vary by sheet; many sheets have 4 header rows, but 'selected' starts earlier
+      const startIndex = sheetName === 'selected' ? 1 : 4; // include from row 2 for 'selected', row 5 for others
+      let filteredRows = rows.slice(startIndex);
       
       // Filter by influencer if specified
       if (influencerId) {
@@ -635,29 +637,51 @@ class GoogleSheetsService {
   // Map platform values from Google Sheets to our enum
   private mapPlatform(platform: string): string {
     console.log(`🔍 Mapping platform: "${platform}" (type: ${typeof platform})`);
-    
+
     const platformMap: { [key: string]: string } = {
-      'yt': 'youtube_long',
-      'youtube': 'youtube_long',
-      'youtube_long': 'youtube_long',
-      'sv': 'short_video', // Generic short video (could be TikTok, Instagram Reels, etc.)
-      'youtube_short': 'youtube_short',
-      'short': 'youtube_short',
-      'ig': 'instagram_reel',
-      'instagram': 'instagram_reel',
-      'instagram_reel': 'instagram_reel',
-      'tt': 'tiktok',
-      'tiktok': 'tiktok',
-      'tw': 'x_twitter',
-      'x': 'x_twitter',
-      'twitter': 'x_twitter',
-      'x_twitter': 'x_twitter',
-      'pc': 'podcast',
-      'podcast': 'podcast',
-      'blog': 'blog',
+      // YouTube platforms
+      'yt': 'yt',
+      'youtube': 'yt',
+      'youtube_long': 'yt',
+      'yts': 'yts',
+      'youtube_short': 'yts',
+      'youtube_shorts': 'yts',
+
+      // Social media platforms
+      'tw': 'tw',
+      'twitter': 'tw',
+      'x': 'tw',
+      'x_twitter': 'tw',
+
+      'ig': 'ig',
+      'instagram': 'ig',
+
+      'tt': 'tt',
+      'tiktok': 'tt',
+
+      // Short video platforms
+      'igr': 'igr',
+      'instagram_reel': 'igr',
+      'instagram_reels': 'igr',
+
+      'sv': 'sv',
+      'short_video': 'sv',
+      'short_videos': 'sv',
+
+      // Audio platforms
+      'pc': 'pc',
+      'podcast': 'pc',
+      'podcasts': 'pc',
+
+      'vc': 'vc',
+      'voicy': 'vc',
+
+      // Content platforms
+      'bl': 'bl',
+      'blog': 'bl',
     };
-    
-    const mappedPlatform = platformMap[platform.toLowerCase()] || 'youtube_long';
+
+    const mappedPlatform = platformMap[platform.toLowerCase()] || 'yt';
     console.log(`📊 Platform mapping: "${platform}" -> "${mappedPlatform}"`);
     return mappedPlatform;
   }
@@ -1123,6 +1147,112 @@ class GoogleSheetsService {
 
     } catch (error: any) {
       console.error('❌ Error updating campaign onboarding:', error?.message || error);
+      return { success: false, error: error?.message || 'Unknown error' };
+    }
+  }
+
+  // Update selected influencer outreach status
+  async updateSelectedInfluencerStatus(
+    influencerId: string,
+    dateOutreach: string,
+    status: string = 'Reached out'
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('📝 GoogleSheetsService.updateSelectedInfluencerStatus() called');
+      console.log('🎯 Influencer ID:', influencerId);
+      console.log('📅 Date outreach:', dateOutreach);
+      console.log('📊 Status:', status);
+
+      // Ensure write access is possible
+      if (!this.hasServiceAccount) {
+        console.log('⚠️ No Service Account configured - cannot write to Google Sheets');
+        return {
+          success: false,
+          error: 'Google Sheets write access requires Service Account credentials. Please configure GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY.'
+        };
+      }
+
+      this.assertConfigured();
+
+      // Fetch full range from "selected" sheet to locate row and map columns
+      const request: any = {
+        spreadsheetId: this.spreadsheetId,
+        range: 'selected!A:ZZ', // Use "selected" sheet instead of "campaigns"
+      };
+      if (this.hasApiKey && !this.hasServiceAccount) {
+        request.key = process.env.GOOGLE_SHEETS_API_KEY;
+      }
+
+      const response = await this.sheets.spreadsheets.values.get(request);
+      const rows = response.data.values;
+      if (!rows || rows.length === 0) {
+        return { success: false, error: 'No data found in selected sheet' };
+      }
+
+      const headers = rows[0] as string[];
+      console.log('📋 Headers in selected sheet:', headers);
+
+      // Find row index for influencer; assuming data starts at row 2 (index 1)
+      const idInfluencerIndex = headers.findIndex(h => h === 'id_influencer');
+      if (idInfluencerIndex === -1) {
+        return { success: false, error: 'id_influencer column not found in selected sheet' };
+      }
+
+      let sheetRowIndex = -1;
+      for (let i = 1; i < rows.length; i++) { // Start from row 2 (index 1)
+        if (rows[i][idInfluencerIndex] === influencerId) {
+          sheetRowIndex = i;
+          break;
+        }
+      }
+
+      if (sheetRowIndex === -1) {
+        console.error('❌ Influencer not found in selected sheet:', influencerId);
+        return { success: false, error: `Influencer with ID ${influencerId} not found in selected sheet` };
+      }
+
+      console.log('📋 Found influencer at sheet row:', sheetRowIndex + 1);
+
+      // Build updates for date_outreach and status columns
+      const updates: Array<{ range: string; values: any[][] }> = [];
+      const targetRowNumber = sheetRowIndex + 1; // 1-based
+
+      // Update date_outreach column (G)
+      const dateOutreachIndex = headers.findIndex(h => h === 'date_outreach');
+      if (dateOutreachIndex !== -1) {
+        const dateRange = `selected!${this.columnIndexToLetter(dateOutreachIndex)}${targetRowNumber}`;
+        updates.push({ range: dateRange, values: [[dateOutreach]] });
+        console.log(`📅 Queued date_outreach update at ${dateRange} = "${dateOutreach}"`);
+      }
+
+      // Update status column (F)
+      const statusIndex = headers.findIndex(h => h === 'status');
+      if (statusIndex !== -1) {
+        const statusRange = `selected!${this.columnIndexToLetter(statusIndex)}${targetRowNumber}`;
+        updates.push({ range: statusRange, values: [[status]] });
+        console.log(`📊 Queued status update at ${statusRange} = "${status}"`);
+      }
+
+      if (updates.length === 0) {
+        console.error('❌ No valid columns found to update');
+        return { success: false, error: 'No valid columns found to update (date_outreach or status)' };
+      }
+
+      const batchUpdateRequest = {
+        spreadsheetId: this.spreadsheetId,
+        requestBody: {
+          valueInputOption: 'RAW',
+          data: updates
+        }
+      };
+
+      console.log('📡 Executing selected sheet batch update with', updates.length, 'updates');
+      await this.sheets.spreadsheets.values.batchUpdate(batchUpdateRequest);
+      console.log('✅ Selected influencer status update completed successfully');
+      return { success: true };
+
+    } catch (error: any) {
+      console.error('❌ Error updating selected influencer status:', error?.message || error);
       return { success: false, error: error?.message || 'Unknown error' };
     }
   }

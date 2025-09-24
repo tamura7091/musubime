@@ -76,58 +76,58 @@ export function useDesignSystem() {
       },
       meeting_scheduling: {
         bg: colors.status.blue.bg,
-        text: colors.status.blue[400],
+        text: isDark ? colors.status.blue[400] : colors.status.blue[600],
         border: colors.status.blue.border,
       },
       meeting_scheduled: {
         bg: colors.status.blue.bg.replace('0.2', '0.3'),
-        text: colors.status.blue[300],
+        text: isDark ? colors.status.blue[300] : colors.status.blue[600],
         border: colors.status.blue.border.replace('0.3', '0.4'),
       },
       plan_creating: {
         bg: colors.status.orange.bg,
-        text: colors.status.orange[400],
+        text: isDark ? colors.status.orange[400] : colors.status.orange[600],
         border: colors.status.orange.border,
       },
       plan_submitted: {
         bg: colors.status.orange.bg.replace('0.2', '0.3'),
-        text: colors.status.orange[300],
+        text: isDark ? colors.status.orange[300] : colors.status.orange[600],
         border: colors.status.orange.border.replace('0.3', '0.4'),
       },
       
       plan_revising: {
         bg: colors.status.orange.bg,
-        text: colors.status.orange[400],
+        text: isDark ? colors.status.orange[400] : colors.status.orange[600],
         border: colors.status.orange.border,
       },
       draft_creating: {
         bg: colors.status.purple.bg,
-        text: colors.status.purple[400],
+        text: isDark ? colors.status.purple[400] : colors.status.purple[600],
         border: colors.status.purple.border,
       },
       draft_submitted: {
         bg: colors.status.indigo.bg,
-        text: colors.status.indigo[400],
+        text: isDark ? colors.status.indigo[400] : colors.status.indigo[600],
         border: colors.status.indigo.border,
       },
       draft_revising: {
         bg: colors.status.indigo.bg,
-        text: colors.status.indigo[400],
+        text: isDark ? colors.status.indigo[400] : colors.status.indigo[600],
         border: colors.status.indigo.border,
       },
       scheduling: {
         bg: colors.status.emerald.bg,
-        text: colors.status.emerald[400],
+        text: isDark ? colors.status.emerald[400] : colors.status.emerald[600],
         border: colors.status.emerald.border,
       },
       scheduled: {
         bg: colors.status.green.bg,
-        text: colors.status.green[300],
+        text: isDark ? colors.status.green[300] : colors.status.green[600],
         border: colors.status.green.border,
       },
       payment_processing: {
         bg: colors.status.cyan.bg,
-        text: colors.status.cyan[400],
+        text: isDark ? colors.status.cyan[400] : colors.status.cyan[600],
         border: colors.status.cyan.border,
       },
       completed: {
@@ -152,58 +152,58 @@ export function useDesignSystem() {
         },
         meeting_scheduling: {
           bg: colors.status.blue.bg,
-          text: colors.status.blue[400],
+            text: isDark ? colors.status.blue[400] : colors.status.blue[600],
           border: colors.status.blue.border,
         },
         meeting_scheduled: {
           bg: colors.status.blue.bg.replace('0.2', '0.3'),
-          text: colors.status.blue[300],
+            text: isDark ? colors.status.blue[300] : colors.status.blue[600],
           border: colors.status.blue.border.replace('0.3', '0.4'),
         },
         plan_creating: {
           bg: colors.status.orange.bg,
-          text: colors.status.orange[400],
+            text: isDark ? colors.status.orange[400] : colors.status.orange[600],
           border: colors.status.orange.border,
         },
         plan_submitted: {
           bg: colors.status.orange.bg.replace('0.2', '0.3'),
-          text: colors.status.orange[300],
+            text: isDark ? colors.status.orange[300] : colors.status.orange[600],
           border: colors.status.orange.border.replace('0.3', '0.4'),
         },
         
         plan_revising: {
           bg: colors.status.orange.bg,
-          text: colors.status.orange[400],
+            text: isDark ? colors.status.orange[400] : colors.status.orange[600],
           border: colors.status.orange.border,
         },
         draft_creating: {
           bg: colors.status.purple.bg,
-          text: colors.status.purple[400],
+            text: isDark ? colors.status.purple[400] : colors.status.purple[600],
           border: colors.status.purple.border,
         },
         draft_submitted: {
-          bg: colors.status.indigo.bg,
-          text: colors.status.indigo[400],
+            bg: colors.status.indigo.bg,
+            text: isDark ? colors.status.indigo[400] : colors.status.indigo[600],
           border: colors.status.indigo.border,
         },
         draft_revising: {
-          bg: colors.status.indigo.bg,
-          text: colors.status.indigo[400],
+            bg: colors.status.indigo.bg,
+            text: isDark ? colors.status.indigo[400] : colors.status.indigo[600],
           border: colors.status.indigo.border,
         },
         scheduling: {
           bg: colors.status.emerald.bg,
-          text: colors.status.emerald[400],
+            text: isDark ? colors.status.emerald[400] : colors.status.emerald[600],
           border: colors.status.emerald.border,
         },
         scheduled: {
           bg: colors.status.green.bg,
-          text: colors.status.green[300],
+            text: isDark ? colors.status.green[300] : colors.status.green[600],
           border: colors.status.green.border,
         },
         payment_processing: {
           bg: colors.status.cyan.bg,
-          text: colors.status.cyan[400],
+            text: isDark ? colors.status.cyan[400] : colors.status.cyan[600],
           border: colors.status.cyan.border,
         },
         completed: {

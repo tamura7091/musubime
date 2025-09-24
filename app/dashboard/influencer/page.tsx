@@ -1793,24 +1793,50 @@ export default function InfluencerDashboard() {
                             {/* Platform */}
                             <div className="text-sm flex items-center space-x-2 min-w-[120px]" style={{ color: ds.text.primary }}>
                               <div className="min-w-[120px] flex items-center space-x-2">
-                                <span className="text-base flex-shrink-0">
-                                  {campaign.platform === 'youtube_long' && '🎥'}
-                                  {campaign.platform === 'youtube_short' && '📱'}
-                                  {campaign.platform === 'instagram_reel' && '📸'}
-                                  {campaign.platform === 'tiktok' && '🎵'}
-                                  {campaign.platform === 'x_twitter' && '🐦'}
-                                  {campaign.platform === 'podcast' && '🎙️'}
-                                  {campaign.platform === 'blog' && '✍️'}
-                                </span>
-                                <span className="text-xs whitespace-nowrap" style={{ color: ds.text.secondary }}>
-                                  {campaign.platform === 'youtube_long' && 'YouTube長編'}
-                                  {campaign.platform === 'youtube_short' && 'YouTubeショート'}
-                                  {campaign.platform === 'instagram_reel' && 'Instagramリール'}
-                                  {campaign.platform === 'tiktok' && 'TikTok'}
-                                  {campaign.platform === 'x_twitter' && 'X (Twitter)'}
-                                  {campaign.platform === 'podcast' && 'ポッドキャスト'}
-                                  {campaign.platform === 'blog' && 'ブログ'}
-                                </span>
+                                {(() => {
+                                  const raw = (campaign.platform || '').toString().trim();
+                                  const normalized = raw.toLowerCase();
+                                  const codeMap: Record<string, string> = {
+                                    // YouTube
+                                    'yt': 'yt', 'youtube': 'yt', 'youtube_long': 'yt',
+                                    'yts': 'yts', 'youtube_short': 'yts', 'youtube_shorts': 'yts',
+                                    // Twitter/X
+                                    'tw': 'tw', 'x': 'tw', 'twitter': 'tw', 'x_twitter': 'tw',
+                                    // Instagram
+                                    'ig': 'ig', 'instagram': 'ig',
+                                    // TikTok
+                                    'tt': 'tt', 'tiktok': 'tt',
+                                    // Instagram Reels
+                                    'igr': 'igr', 'instagram_reel': 'igr', 'instagram_reels': 'igr',
+                                    // Short Videos (generic)
+                                    'sv': 'sv', 'short_video': 'sv', 'short_videos': 'sv',
+                                    // Podcasts
+                                    'pc': 'pc', 'podcast': 'pc', 'podcasts': 'pc',
+                                    // Voicy
+                                    'vc': 'vc', 'voicy': 'vc',
+                                    // Blogs
+                                    'bl': 'bl', 'blog': 'bl',
+                                  };
+                                  const code = codeMap[normalized];
+
+                                  const icons: Record<string, string> = {
+                                    yt: '🎥', yts: '📱', tw: '🐦', ig: '📸', tt: '🎵', pc: '🎙️', bl: '✍️', igr: '📹', sv: '📱', vc: '🎧'
+                                  };
+
+                                  const labels: Record<string, string> = {
+                                    yt: 'YouTube横動画', yts: 'YouTube Shorts', tw: 'X (Twitter)', ig: 'Instagram', tt: 'TikTok', pc: 'Podcasts', bl: 'Blog', igr: 'Instagram Reels', sv: 'ショート動画', vc: 'Voicy'
+                                  };
+
+                                  const icon = code ? icons[code] : undefined;
+                                  const label = code ? labels[code] : (raw || '未設定');
+
+                                  return (
+                                    <>
+                                      <span className="text-base flex-shrink-0">{icon || '🌐'}</span>
+                                      <span className="text-xs whitespace-nowrap" style={{ color: ds.text.secondary }}>{label}</span>
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
 
