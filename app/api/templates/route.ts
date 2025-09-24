@@ -257,7 +257,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper function to match template rules against influencer data
-export function findMatchingTemplate(
+function findMatchingTemplate(
   influencerData: {
     platform: string;
     outreachType: string;
