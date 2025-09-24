@@ -1323,3 +1323,123 @@ class GoogleSheetsService {
 
 // Export singleton instance
 export const googleSheetsService = new GoogleSheetsService();
+
+// Extend the service with template persistence helpers
+export interface TemplateRuleSheetFormat {
+  id: number;
+  name: string;
+  conditions: Array<{ field: string; operator: string; value: string }>;
+  subject: string;
+  body: string;
+}
+
+declare module './google-sheets' {}
+
+// Monkey-patch methods onto the prototype to avoid disrupting existing exports
+(GoogleSheetsService as any).prototype.getTemplates = async function(): Promise<TemplateRuleSheetFormat[]> {
+  try {
+    console.log('🔍 GoogleSheetsService.getTemplates() called');
+    this.assertConfigured();
+
+    const request: any = {
+      spreadsheetId: this.spreadsheetId,
+      range: 'templates!A:ZZ',
+    };
+
+    if (this.hasApiKey && !this.hasServiceAccount) {
+      request.key = process.env.GOOGLE_SHEETS_API_KEY;
+      console.log('🔑 Using API Key authentication for templates read');
+    } else if (this.hasServiceAccount) {
+      console.log('🔑 Using Service Account authentication for templates read');
+    }
+
+    const response = await this.sheets.spreadsheets.values.get(request);
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) {
+      console.log('ℹ️ No template rows found');
+      return [];
+    }
+
+    const headers = rows[0] as string[];
+    const idIndex = headers.findIndex(h => h === 'id');
+    const nameIndex = headers.findIndex(h => h === 'name');
+    const conditionsIndex = headers.findIndex(h => h === 'conditions_json');
+    const subjectIndex = headers.findIndex(h => h === 'subject');
+    const bodyIndex = headers.findIndex(h => h === 'body');
+
+    const dataRows = rows.slice(1);
+    const templates: TemplateRuleSheetFormat[] = dataRows.map((row: any[], index: number) => {
+      let parsedConditions: Array<{ field: string; operator: string; value: string }> = [];
+      const raw = row[conditionsIndex] || '[]';
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) parsedConditions = parsed;
+      } catch (e) {
+        console.log('⚠️ Failed to parse conditions_json, defaulting to []');
+      }
+
+      const idValue = row[idIndex];
+      const idNumber = Number.isFinite(Number(idValue)) ? Number(idValue) : Date.now() + index;
+
+      return {
+        id: idNumber,
+        name: row[nameIndex] || `template_${index}`,
+        conditions: parsedConditions,
+        subject: row[subjectIndex] || '',
+        body: row[bodyIndex] || ''
+      };
+    });
+
+    console.log('✅ Loaded templates from sheet:', templates.length);
+    return templates;
+  } catch (error: any) {
+    if (error?.code === 'GOOGLE_SHEETS_NOT_CONFIGURED') {
+      throw error;
+    }
+    console.error('❌ Error loading templates from Google Sheets:', error?.message || error);
+    throw error;
+  }
+};
+
+(GoogleSheetsService as any).prototype.saveTemplates = async function(templates: TemplateRuleSheetFormat[]): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('💾 GoogleSheetsService.saveTemplates() called with', templates.length, 'templates');
+
+    if (!this.hasServiceAccount) {
+      console.log('⚠️ No Service Account configured - cannot write templates to Google Sheets');
+      return { success: false, error: 'Write access requires GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY.' };
+    }
+
+    this.assertConfigured();
+
+    // Prepare values with header
+    const header = ['id', 'name', 'conditions_json', 'subject', 'body'];
+    const values = [header, ...templates.map(t => [
+      String(t.id),
+      t.name,
+      JSON.stringify(t.conditions || []),
+      t.subject,
+      t.body
+    ])];
+
+    // Clear existing range
+    await this.sheets.spreadsheets.values.clear({
+      spreadsheetId: this.spreadsheetId,
+      range: 'templates!A:ZZ'
+    });
+
+    // Write new values
+    await this.sheets.spreadsheets.values.update({
+      spreadsheetId: this.spreadsheetId,
+      range: 'templates!A1',
+      valueInputOption: 'RAW',
+      requestBody: { values }
+    });
+
+    console.log('✅ Templates saved to Google Sheets');
+    return { success: true };
+  } catch (error: any) {
+    console.error('❌ Error saving templates to Google Sheets:', error?.message || error);
+    return { success: false, error: error?.message || 'Unknown error' };
+  }
+};

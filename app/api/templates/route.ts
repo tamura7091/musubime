@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { googleSheetsService } from '@/lib/google-sheets';
 
 export interface TemplateRule {
   id: number;
@@ -213,10 +214,22 @@ Speakeasy Labs, Inc.
 
 export async function GET() {
   try {
-    return NextResponse.json({
-      success: true,
-      templates: templateRules
-    });
+    // Try loading from Google Sheets for production persistence
+    try {
+      const templates = await (googleSheetsService as any).getTemplates();
+      if (templates && Array.isArray(templates) && templates.length > 0) {
+        // Also update in-memory cache for this runtime
+        templateRules = templates;
+        return NextResponse.json({ success: true, templates });
+      }
+    } catch (e: any) {
+      if (e?.code !== 'GOOGLE_SHEETS_NOT_CONFIGURED') {
+        console.log('⚠️ Falling back to in-memory templates. Reason:', e?.message || e);
+      }
+    }
+
+    // Fallback to in-memory defaults
+    return NextResponse.json({ success: true, templates: templateRules });
   } catch (error: any) {
     console.error('❌ Error fetching templates:', error);
     return NextResponse.json({
@@ -232,10 +245,25 @@ export async function POST(request: NextRequest) {
     const { action, templates } = body;
 
     if (action === 'save') {
-      // Save templates
+      // Update in-memory cache immediately
       templateRules = templates;
-      console.log('✅ Templates saved:', templates.length);
-      
+
+      // Attempt to persist to Google Sheets
+      try {
+        const result = await (googleSheetsService as any).saveTemplates(templates);
+        if (!result.success) {
+          console.log('⚠️ Failed to persist templates to Google Sheets:', result.error);
+        }
+      } catch (e: any) {
+        if (e?.code !== 'GOOGLE_SHEETS_NOT_CONFIGURED') {
+          console.log('⚠️ Error saving templates to Google Sheets:', e?.message || e);
+        } else {
+          console.log('ℹ️ Google Sheets not configured; templates saved in-memory only');
+        }
+      }
+
+      console.log('✅ Templates saved (in-memory, attempted persistence):', templates.length);
+
       return NextResponse.json({
         success: true,
         message: 'Templates saved successfully'

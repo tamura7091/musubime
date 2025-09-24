@@ -32,7 +32,9 @@ export async function GET(request: NextRequest) {
       // Fetch data from the "selected" tab using correct headers
       const selectedInfluencers = await googleSheetsService.getSpecificColumns([
         'id_influencer', // B column - Influencer ID
-        'name', // C column - Influencer name  
+        'name', // C column - Influencer name (English)
+        'インフルエンサー名', // C column - Influencer name (Japanese)
+        'influencer_name', // Alternative name column
         'contact_email', // K column - Email
         'platform', // M column - Platform (yt, yts, tw, sv, pc, etc.)
         'sender', // Z column - Team member/sender name
@@ -65,17 +67,34 @@ export async function GET(request: NextRequest) {
           
           return isValidStatus;
         })
-        .map((row, index) => ({
-          id: row['id_influencer'] || `selected_${index}`,
-          name: (row['name'] && row['name']!.trim() !== '') ? String(row['name']) : NAME_PLACEHOLDER,
-          email: row['contact_email'] || '',
-          platform: row['platform'] || 'yt',
-          outreachType: '', // No longer using Google Sheets template column
-          previousContact: row['had_response'] === 'TRUE' || row['had_response'] === '1',
-          teamMemberName: row['sender'] || '',
-          status: row['status'] || '',
-          dateOutreach: row['date_outreach'] || '',
-        }));
+        .map((row, index) => {
+          // Search for name in all possible column variations (same logic as getUsers method)
+          const possibleNames = [
+            row['インフルエンサー名'],
+            row['name'],
+            row['Name'],
+            row['influencer_name'],
+            row['influencer name'],
+            row['Influencer Name']
+          ].filter(Boolean);
+          
+          const firstNameCandidate = String((possibleNames as unknown as string[])[0] || '');
+          const influencerName = firstNameCandidate.trim() !== '' 
+            ? firstNameCandidate 
+            : NAME_PLACEHOLDER;
+
+          return {
+            id: row['id_influencer'] || `selected_${index}`,
+            name: influencerName,
+            email: row['contact_email'] || '',
+            platform: row['platform'] || 'yt',
+            outreachType: '', // No longer using Google Sheets template column
+            previousContact: row['had_response'] === 'TRUE' || row['had_response'] === '1',
+            teamMemberName: row['sender'] || '',
+            status: row['status'] || '',
+            dateOutreach: row['date_outreach'] || '',
+          };
+        });
 
       console.log('✅ Formatted influencers:', formattedInfluencers.length);
 
@@ -119,7 +138,9 @@ export async function POST(request: NextRequest) {
       // Generate messages for selected influencers
       const selectedInfluencers = await googleSheetsService.getSpecificColumns([
         'id_influencer', // B column
-        'name', // C column
+        'name', // C column - Influencer name (English)
+        'インフルエンサー名', // C column - Influencer name (Japanese)
+        'influencer_name', // Alternative name column
         'contact_email', // K column  
         'platform', // M column
         'had_response', // Previous contact indicator
@@ -144,7 +165,20 @@ export async function POST(request: NextRequest) {
       const NAME_PLACEHOLDER = '【名前未入力】';
       const messages = await Promise.all(
         targetInfluencers.map(async (influencer: GoogleSheetsRow) => {
-          const nameForTemplate = (influencer['name'] && influencer['name']!.trim() !== '') ? String(influencer['name']) : NAME_PLACEHOLDER;
+          // Search for name in all possible column variations (same logic as above)
+          const possibleNames = [
+            influencer['インフルエンサー名'],
+            influencer['name'],
+            influencer['Name'],
+            influencer['influencer_name'],
+            influencer['influencer name'],
+            influencer['Influencer Name']
+          ].filter(Boolean);
+          
+          const firstNameCandidate = String((possibleNames as unknown as string[])[0] || '');
+          const nameForTemplate = firstNameCandidate.trim() !== '' 
+            ? firstNameCandidate 
+            : NAME_PLACEHOLDER;
           const messageTemplate = await generateMessageTemplate(
             nameForTemplate,
             influencer['platform'] || 'yt',
@@ -333,8 +367,13 @@ async function generateMessageTemplate(
   const greeting = previousContact ? "お世話になっております" : "初めまして";
   
   try {
-    // Fetch dynamic templates from Settings
-    const templatesResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/templates`);
+    // Fetch dynamic templates from Settings (support vercel/production URLs)
+    const baseUrl =
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}` ||
+      process.env.APP_URL ||
+      'http://localhost:3000';
+    const templatesResponse = await fetch(`${baseUrl}/api/templates`);
     const templatesData = await templatesResponse.json();
     
     if (templatesData.success) {
