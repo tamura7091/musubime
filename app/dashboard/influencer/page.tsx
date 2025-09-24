@@ -143,6 +143,25 @@ export default function InfluencerDashboard() {
     const bDate = b.schedules?.liveDate ? new Date(b.schedules.liveDate).getTime() : 0;
     return bDate - aDate; // Descending order
   });
+
+  // Sort specifically for プロモーション詳細 table: by trailing number in キャンペーン名 (id) desc
+  const sortedForPromotionDetails = [...userCampaigns].sort((a, b) => {
+    const getTrailingNumber = (value: string | undefined) => {
+      if (!value) return -1;
+      const match = value.match(/(\d+)\s*$/);
+      return match ? parseInt(match[1], 10) : -1;
+    };
+
+    const aKey = a.title || a.id || '';
+    const bKey = b.title || b.id || '';
+
+    const aNum = getTrailingNumber(aKey);
+    const bNum = getTrailingNumber(bKey);
+
+    if (aNum !== bNum) return bNum - aNum; // higher number first
+    // Fallback: sort by name descending to keep deterministic order
+    return (bKey || '').localeCompare(aKey || '', 'ja');
+  });
   
   const activeCampaigns = sortedUserCampaigns.filter(campaign => 
     !['completed', 'cancelled'].includes(campaign.status)
@@ -1735,7 +1754,7 @@ export default function InfluencerDashboard() {
 
                 {/* All Campaigns */}
         <div className="mb-6 sm:mb-8">
-          {sortedUserCampaigns.length > 0 ? (
+          {sortedForPromotionDetails.length > 0 ? (
             <div className="space-y-4">
               <div className="rounded-xl p-4 sm:p-6" style={{ 
                 backgroundColor: ds.bg.card,
@@ -1775,7 +1794,7 @@ export default function InfluencerDashboard() {
                         </div>
 
                         {/* Table Rows - All Campaigns */}
-                        {sortedUserCampaigns.map(campaign => (
+                        {sortedForPromotionDetails.map(campaign => (
                           <div key={campaign.id} className="grid grid-cols-10 gap-6 px-6 py-3 border-b hover:bg-opacity-50" 
                                style={{ borderColor: ds.border.secondary }}
                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.bg.surface + '50'}
