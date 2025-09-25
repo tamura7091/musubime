@@ -36,7 +36,6 @@ export async function POST(request: NextRequest) {
     // Build update payload; avoid overwriting platform if not provided by the inline form
     const updateData: Record<string, string> = {
       contact_email: email || '',
-      spend_jpy: normalizedPrice || '',
       date_live: uploadDate || '',
       date_plan: planSubmissionDate || '',
       date_draft: draftSubmissionDate || '',
