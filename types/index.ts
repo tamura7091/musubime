@@ -14,6 +14,7 @@ export type CampaignStatus =
   | 'meeting_scheduling'    // 打ち合わせ予約中
   | 'meeting_scheduled'     // 打ち合わせ予約済み
   | 'contract_pending'      // 契約書待ち
+  | 'trial'                 // 試用
   | 'plan_creating'         // 構成案作成中
   | 'plan_submitted'        // 構成案提出済み
   | 'plan_revising'         // 構成案修正中
@@ -45,6 +46,7 @@ export const getStepFromStatus = (status: CampaignStatus): CampaignStep => {
     case 'meeting_scheduled':
       return 'meeting';
     case 'contract_pending':
+    case 'trial':
       return 'contract';
     case 'plan_creating':
     case 'plan_submitted':

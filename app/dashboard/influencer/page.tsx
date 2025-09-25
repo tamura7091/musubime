@@ -272,6 +272,49 @@ export default function InfluencerDashboard() {
     const currentStep = getStepFromStatus(campaign.status as CampaignStatus);
     
     switch (currentStep) {
+      case 'contract': {
+        // After basic info submission (オンライン契約ステップ)、ask to review guidelines and try premium
+        const platform = String(campaign.platform || '').toLowerCase();
+        let guidelineUrl = '';
+        if (platform === 'youtube_long' || platform === 'yt') {
+          guidelineUrl = 'https://usespeak.notion.site/YouTube-4-0-5b88f1ad34ed45f3aaeca324af039665?source=copy_link';
+        } else if (
+          platform === 'podcast' || platform === 'pc'
+        ) {
+          guidelineUrl = 'https://usespeak.notion.site/Podcast-224792ec2f1080f2a7d5fce804ce4b93?source=copy_link';
+        } else if ([
+          'youtube_short',
+          'short_video',
+          'instagram_reel',
+          'tiktok',
+          'sv',
+          'tt',
+          'yts',
+          'igr'
+        ].includes(platform)) {
+          guidelineUrl = 'https://usespeak.notion.site/1b3792ec2f10800f9f94e476a87c06f1?source=copy_link';
+        } else if ([
+          'x_twitter',
+          'twitter',
+          'tw',
+          'x'
+        ].includes(platform)) {
+          guidelineUrl = 'https://usespeak.notion.site/X-1e111dbf830946a4a225c26a2c6deede?source=copy_link';
+        }
+
+        const guidelineLink = guidelineUrl
+          ? `<a href="${guidelineUrl}" target="_blank" style="color: #60a5fa; text-decoration: underline;">ガイドライン</a>`
+          : 'ガイドライン（リンクは下部「リンク」欄をご確認ください）';
+
+        return {
+          title: 'ガイドラインの確認とプレミアムの試用',
+          description: `1. ${guidelineLink}をご確認ください<br/>2. アプリをダウンロードしてください：<a href="https://apps.apple.com/jp/app/ai%E8%8B%B1%E4%BC%9A%E8%A9%B1%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AF-%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AD%E3%83%B3%E3%82%B0%E7%B7%B4%E7%BF%92%E3%81%A7%E7%99%BA%E9%9F%B3%E3%82%84%E8%8B%B1%E8%AA%9E%E3%82%92%E5%8B%89%E5%BC%B7/id1286609883" target="_blank" style="color: #60a5fa; text-decoration: underline;">iOS</a>、<a href="https://play.google.com/store/apps/details?id=com.speakapp" target="_blank" style="color: #60a5fa; text-decoration: underline;">Android</a><br/>3. 下記の情報でスピークにログインし実際にお試しください`,
+          icon: AlertCircle,
+          color: 'blue',
+          action: 'guideline_premium',
+          inputType: 'none'
+        };
+      }
       case 'not_started':
         return {
           title: '基本情報の入力',
@@ -548,9 +591,10 @@ export default function InfluencerDashboard() {
       case 'meeting_scheduling':
       case 'meeting_scheduled':
       case 'contract_pending':
+      case 'trial':
       case 'plan_creating':
       case 'plan_revising':
-        label = status === 'contract_pending' ? 'オンライン契約' : '構成案提出';
+        label = status === 'contract_pending' ? 'オンライン契約' : (status === 'trial' ? '打ち合わせ予約' : '構成案提出');
         targetDate = campaign?.schedules?.planSubmissionDate;
         break;
       case 'plan_submitted':
@@ -632,9 +676,21 @@ export default function InfluencerDashboard() {
       platform === 'youtube_short' ||
       platform === 'short_video' ||
       platform === 'instagram_reel' ||
-      platform === 'tiktok'
+      platform === 'tiktok' ||
+      platform === 'sv' ||
+      platform === 'tt' ||
+      platform === 'yts' ||
+      platform === 'igr'
     ) {
       return 'https://usespeak.notion.site/1b3792ec2f10800f9f94e476a87c06f1?source=copy_link';
+    }
+    if (
+      platform === 'x_twitter' ||
+      platform === 'twitter' ||
+      platform === 'tw' ||
+      platform === 'x'
+    ) {
+      return 'https://usespeak.notion.site/X-1e111dbf830946a4a225c26a2c6deede?source=copy_link';
     }
     return '';
   };
@@ -1251,14 +1307,13 @@ export default function InfluencerDashboard() {
                     {activeCampaigns.length > 0
                       ? (() => {
                           const subtotal = activeCampaigns.reduce((sum: number, c: any) => sum + (c.contractedPrice || 0), 0);
-                          const taxed = Math.round(subtotal * 1.1);
-                          return formatCurrencySmart(taxed);
+                          return formatCurrencySmart(subtotal);
                         })()
                       : formatCurrencySmart(totalPayoutAllCampaigns)}
                   </p>
                 </VisibilityToggle>
                 <p className="text-xs sm:text-sm" style={{ color: ds.text.secondary }}>
-                  {activeCampaigns.length > 0 ? '進行中PRの報酬額（税込）' : 'PR報酬総額'}
+                  {activeCampaigns.length > 0 ? '進行中PRの報酬額（税抜）' : 'PR報酬総額'}
                 </p>
               </div>
             </div>
@@ -1375,7 +1430,8 @@ export default function InfluencerDashboard() {
                     not_started: '🎉 Welcome! まずは基本情報のご入力をお願いします。',
                     meeting_scheduling: '✅ 基本情報のご入力ありがとうございます！打ち合わせのご予約にお進みください。',
                     meeting_scheduled: '📅 打ち合わせのご予約ありがとうございます！当日のご参加をお願いします。',
-                    plan_creating: `🤝 打ち合わせありがとうございました！構成案の作成をお願いします。${planDueForMsg ? `${planDueForMsg}までに構成案の提出をお願いします。` : ''}`,
+                    trial: '📱 ガイドラインの確認とプレミアムアカウントでの体験をお願いします！',
+                    plan_creating: `🤝 打ち合わせありがとうございました！${planDueForMsg ? `${planDueForMsg}までに` : ''}構成案の作成・提出をお願いします。`,
                     plan_submitted: '📋 構成案のご提出ありがとうございます！ただいま確認中です。',
                     plan_revising: '✏️ ご提出ありがとうございます！フィードバックに沿って修正をお願いします。',
                     draft_creating: '🎊 素敵な構成案をありがとうございます！構成案に沿い、初稿作成にお進みください。',
@@ -1510,6 +1566,103 @@ export default function InfluencerDashboard() {
                         style={{ color: ds.text.secondary }}
                         dangerouslySetInnerHTML={{ __html: action.description }}
                       />
+                      {action.action === 'guideline_premium' && (
+                        <div className="space-y-5">
+                          {/* Inline Premium Account Quick Info */}
+
+                          <div className="space-y-2">
+                            <p className="text-sm" style={{ color: ds.text.secondary }}>以下の情報でログインしてください</p>
+                            {primaryCampaign.campaignData?.trial_login_email_dashboard && primaryCampaign.campaignData?.trial_login_password_dashboard ? (
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-xs font-medium mb-1" style={{ color: ds.text.secondary }}>メールアドレス</label>
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex-1 px-3 py-2 rounded-lg font-mono text-sm" style={{ 
+                                      backgroundColor: ds.bg.surface,
+                                      borderColor: ds.border.secondary,
+                                      borderWidth: '1px',
+                                      borderStyle: 'solid',
+                                      color: ds.text.primary
+                                    }}>
+                                      {primaryCampaign.campaignData.trial_login_email_dashboard}
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(primaryCampaign.campaignData!.trial_login_email_dashboard!);
+                                        setCopiedEmail(true);
+                                        setTimeout(() => setCopiedEmail(false), 2000);
+                                      }}
+                                      className="p-2 rounded-lg transition-colors"
+                                      style={{
+                                        backgroundColor: ds.button.secondary.bg,
+                                        color: ds.button.secondary.text,
+                                        borderColor: ds.border.primary,
+                                        borderWidth: '1px',
+                                        borderStyle: 'solid'
+                                      }}
+                                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.hover}
+                                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.bg}
+                                      title={copiedEmail ? 'コピーしました' : 'コピー'}
+                                    >
+                                      {copiedEmail ? <ClipboardCheck size={14} /> : <Copy size={14} />}
+                                    </button>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium mb-1" style={{ color: ds.text.secondary }}>パスワード</label>
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex-1 px-3 py-2 rounded-lg font-mono text-sm" style={{ 
+                                      backgroundColor: ds.bg.surface,
+                                      borderColor: ds.border.secondary,
+                                      borderWidth: '1px',
+                                      borderStyle: 'solid',
+                                      color: ds.text.primary
+                                    }}>
+                                      {primaryCampaign.campaignData.trial_login_password_dashboard}
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(primaryCampaign.campaignData!.trial_login_password_dashboard!);
+                                        setCopiedPassword(true);
+                                        setTimeout(() => setCopiedPassword(false), 2000);
+                                      }}
+                                      className="p-2 rounded-lg transition-colors"
+                                      style={{
+                                        backgroundColor: ds.button.secondary.bg,
+                                        color: ds.button.secondary.text,
+                                        borderColor: ds.border.primary,
+                                        borderWidth: '1px',
+                                        borderStyle: 'solid'
+                                      }}
+                                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.hover}
+                                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.bg}
+                                      title={copiedPassword ? 'コピーしました' : 'コピー'}
+                                    >
+                                      {copiedPassword ? <ClipboardCheck size={14} /> : <Copy size={14} />}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-xs" style={{ color: ds.text.secondary }}>
+                                ログイン情報が見つからない場合は、ページ下部の「プレミアムアカウント」をご確認ください。
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex justify-end">
+                            <button
+                              onClick={() => handleStatusChange(primaryCampaign.id, 'meeting_scheduling')}
+                              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                              style={{ backgroundColor: ds.button.primary.bg, color: ds.button.primary.text }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.hover}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.bg}
+                            >
+                              ログイン完了
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       
                       {/* Input Section based on inputType */}
                       {action.inputType === 'meeting_schedule' && (
@@ -1873,6 +2026,7 @@ export default function InfluencerDashboard() {
                                   {campaign.status === 'meeting_scheduling' && '打ち合わせ予約中'}
                                   {campaign.status === 'meeting_scheduled' && '打ち合わせ予定'}
                                   {campaign.status === 'contract_pending' && '契約書待ち'}
+                                  {campaign.status === 'trial' && 'アプリトライアル'}
                                   {campaign.status === 'plan_creating' && '構成案作成中'}
                                   {campaign.status === 'plan_submitted' && '構成案提出済み'}
                                   {campaign.status === 'plan_revising' && '構成案修正中'}
@@ -2000,7 +2154,7 @@ export default function InfluencerDashboard() {
               borderWidth: '1px',
               borderStyle: 'solid'
             }}>
-              <h3 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h3.fontSize, lineHeight: ds.typography.heading.h3.lineHeight }}>
+              <h3 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h2.fontSize, lineHeight: ds.typography.heading.h2.lineHeight }}>
                 プレミアムアカウント
               </h3>
               <div className="space-y-6">
@@ -2054,7 +2208,7 @@ export default function InfluencerDashboard() {
                 {/* Login Credentials */}
                 <div>
                   <p className="text-sm mb-3" style={{ color: ds.text.secondary }}>
-                    以下の情報でログインしてください
+                    ログイン情報
                   </p>
                   
                   {/* Check if credentials are available */}
@@ -2192,7 +2346,7 @@ export default function InfluencerDashboard() {
               borderWidth: '1px',
               borderStyle: 'solid'
             }}>
-              <h3 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h3.fontSize, lineHeight: ds.typography.heading.h3.lineHeight }}>
+              <h3 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h2.fontSize, lineHeight: ds.typography.heading.h2.lineHeight }}>
                 リンク
               </h3>
               <div className="space-y-2 text-sm">

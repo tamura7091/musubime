@@ -38,6 +38,8 @@ Musubimeは、ブランドマネージャーとコンテンツクリエイター
 - **meeting_scheduling**: 打ち合わせ予約中
 - **meeting_scheduled**: 打ち合わせ予約済み
 - **contract_pending**: 契約書待ち（オンライン契約）
+ - **contract_pending**: 契約書待ち（オンライン契約）
+ - **trial**: 試用（ガイドライン確認・プレミアム体験）
 - **plan_creating**: 構成案作成中
 - **plan_submitted**: 構成案提出済み
 - **plan_revising**: 構成案修正中

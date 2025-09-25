@@ -701,6 +701,7 @@ class GoogleSheetsService {
       'PAYOUT_DONE': 'completed',
       'payout_done': 'completed',
       'FORM_PENDING': 'contract_pending',
+      'trial': 'trial',
       
       // New status_dashboard mappings (direct mapping)
       'not_started': 'not_started',

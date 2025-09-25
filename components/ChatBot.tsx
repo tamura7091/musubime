@@ -64,6 +64,8 @@ const getNextStepInfo = (status: string, schedules: Campaign['schedules']): Next
       return { label: '打ち合わせの予約確定', due: meetingDate };
     case 'meeting_scheduled':
       return { label: '構成案の作成・提出', due: planDate };
+    case 'trial':
+      return { label: '打ち合わせの予約確定', due: meetingDate };
     case 'plan_creating':
       return { label: '構成案の提出', due: planDate };
     case 'plan_submitted':
@@ -443,6 +445,23 @@ export default function ChatBot({ className }: ChatBotProps) {
       const d = primary.campaignData || {};
       const links: string[] = [];
       if (d.url_main_form) links.push(`- 基本情報フォーム: [開く](${d.url_main_form})`);
+      // Append guideline link based on platform
+      const p = (primary.platform || '').toLowerCase();
+      let guidelineUrl = '';
+      if (p === 'youtube_long' || p === 'yt') {
+        guidelineUrl = 'https://usespeak.notion.site/YouTube-4-0-5b88f1ad34ed45f3aaeca324af039665?source=copy_link';
+      } else if ([
+        'youtube_short', 'short_video', 'instagram_reel', 'tiktok', 'sv', 'tt', 'yts', 'igr'
+      ].includes(p)) {
+        guidelineUrl = 'https://usespeak.notion.site/1b3792ec2f10800f9f94e476a87c06f1?source=copy_link';
+      } else if (p === 'podcast' || p === 'pc') {
+        guidelineUrl = 'https://usespeak.notion.site/Podcast-224792ec2f1080f2a7d5fce804ce4b93?source=copy_link';
+      } else if ([
+        'x_twitter', 'twitter', 'tw', 'x'
+      ].includes(p)) {
+        guidelineUrl = 'https://usespeak.notion.site/X-1e111dbf830946a4a225c26a2c6deede?source=copy_link';
+      }
+      if (guidelineUrl) links.push(`- ガイドライン: [開く](${guidelineUrl})`);
       if (d.url_plan) links.push(`- 構成案URL: [開く](${d.url_plan})`);
       if (d.url_draft) links.push(`- 初稿URL: [開く](${d.url_draft})`);
       if (d.url_content) links.push(`- 公開URL: [開く](${d.url_content})`);
@@ -462,6 +481,15 @@ export default function ChatBot({ className }: ChatBotProps) {
         meeting_scheduled: [
           '打ち合わせ実施の準備',
           '実施後、構成案の作成を開始',
+        ],
+        trial: [
+          'ガイドラインを確認',
+          'ダッシュボード下部のプレミアムアカウントでログインして試用',
+          '完了したら「次のステップへ」をタップ（ダッシュボード）',
+        ],
+        contract_pending: [
+          'ガイドラインを確認',
+          'ダッシュボード下部のプレミアムアカウントでログインして試用',
         ],
         plan_creating: [
           '構成案を作成し、共有URLをダッシュボードに提出',
