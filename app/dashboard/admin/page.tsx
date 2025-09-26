@@ -644,8 +644,8 @@ export default function AdminDashboard() {
               activeTab === 'dashboard' ? 'shadow-sm' : ''
             }`}
             style={{
-              backgroundColor: activeTab === 'dashboard' ? ds.button.primary.bg : ds.button.secondary.bg,
-              color: activeTab === 'dashboard' ? ds.button.primary.text : ds.button.secondary.text
+              backgroundColor: activeTab === 'dashboard' ? ds.bg.surface : ds.button.secondary.bg,
+              color: activeTab === 'dashboard' ? ds.text.primary : ds.button.secondary.text
             }}
           >
             <Users className="w-4 h-4" />
@@ -657,8 +657,8 @@ export default function AdminDashboard() {
               activeTab === 'actions' ? 'shadow-sm' : ''
             }`}
             style={{
-              backgroundColor: activeTab === 'actions' ? ds.button.primary.bg : ds.button.secondary.bg,
-              color: activeTab === 'actions' ? ds.button.primary.text : ds.button.secondary.text
+              backgroundColor: activeTab === 'actions' ? ds.bg.surface : ds.button.secondary.bg,
+              color: activeTab === 'actions' ? ds.text.primary : ds.button.secondary.text
             }}
           >
             <AlertCircle className="w-4 h-4" />
@@ -670,8 +670,8 @@ export default function AdminDashboard() {
               activeTab === 'comms' ? 'shadow-sm' : ''
             }`}
             style={{
-              backgroundColor: activeTab === 'comms' ? ds.button.primary.bg : ds.button.secondary.bg,
-              color: activeTab === 'comms' ? ds.button.primary.text : ds.button.secondary.text
+              backgroundColor: activeTab === 'comms' ? ds.bg.surface : ds.button.secondary.bg,
+              color: activeTab === 'comms' ? ds.text.primary : ds.button.secondary.text
             }}
           >
             <Mail className="w-4 h-4" />
