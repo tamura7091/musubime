@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Check, Calendar } from 'lucide-react';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
 import DatePicker from './DatePicker';
@@ -10,6 +10,7 @@ interface OnboardingSurveyInlineProps {
   campaignId: string;
   onComplete: () => void;
   embedded?: boolean;
+  defaultPrice?: number | string;
 }
 
 interface SurveyData {
@@ -23,7 +24,7 @@ interface SurveyData {
   repurposable: 'yes' | 'no';
 }
 
-export default function OnboardingSurveyInline({ campaignId, onComplete, embedded = false }: OnboardingSurveyInlineProps) {
+export default function OnboardingSurveyInline({ campaignId, onComplete, embedded = false, defaultPrice }: OnboardingSurveyInlineProps) {
   const ds = useDesignSystem();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,6 +32,10 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
   const [showDateConfirmation, setShowDateConfirmation] = useState(false);
   const [pendingDateValue, setPendingDateValue] = useState<string>('');
   const [emailError, setEmailError] = useState<string>('');
+  const [baselinePriceRaw, setBaselinePriceRaw] = useState<string>('');
+  const [showPriceEditWarning, setShowPriceEditWarning] = useState(false);
+  const [pendingPriceValue, setPendingPriceValue] = useState<string>('');
+  const [hasAcknowledgedPriceEdit, setHasAcknowledgedPriceEdit] = useState(false);
   const [surveyData, setSurveyData] = useState<SurveyData>({
     platform: '',
     contractName: '',
@@ -41,6 +46,16 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
     draftSubmissionDate: '',
     repurposable: 'yes'
   });
+
+  // Prefill price from defaultPrice (contracted price from sheet) if provided
+  useEffect(() => {
+    if (defaultPrice != null && surveyData.price === '') {
+      const digitsOnly = String(defaultPrice).replace(/\D/g, '');
+      const withCommas = digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      setSurveyData(prev => ({ ...prev, price: withCommas }));
+      setBaselinePriceRaw(digitsOnly);
+    }
+  }, [defaultPrice, surveyData.price]);
 
   const steps: Array<{
     title: string;
@@ -105,6 +120,13 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
     if (field === 'price') {
       // Keep only digits
       const digitsOnly = value.replace(/\D/g, '');
+      // If editing away from the baseline and not yet acknowledged, warn once
+      if (baselinePriceRaw && digitsOnly !== baselinePriceRaw && !hasAcknowledgedPriceEdit) {
+        const withCommasPending = digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        setPendingPriceValue(withCommasPending);
+        setShowPriceEditWarning(true);
+        return;
+      }
       // Format with commas
       const withCommas = digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
       setSurveyData(prev => ({ ...prev, price: withCommas }));
@@ -316,14 +338,21 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
               }}
             />
             {currentStepData.field === 'price' && (
-              <div className="mt-2 text-xs" style={{ color: ds.text.secondary }}>
-                {(() => {
-                  const raw = (surveyData.price || '').replace(/,/g, '');
-                  const num = raw ? parseInt(raw, 10) : 0;
-                  const taxIncluded = Math.round(num * 1.1);
-                  return `税込 (10%): ¥${taxIncluded.toLocaleString('ja-JP')}`;
-                })()}
-              </div>
+              <>
+                <div className="mt-2 text-xs" style={{ color: ds.text.secondary }}>
+                  {(() => {
+                    const raw = (surveyData.price || '').replace(/,/g, '');
+                    const num = raw ? parseInt(raw, 10) : 0;
+                    const taxIncluded = Math.round(num * 1.1);
+                    return `税込 (10%): ¥${taxIncluded.toLocaleString('ja-JP')}`;
+                  })()}
+                </div>
+                {baselinePriceRaw && (surveyData.price || '').replace(/,/g, '') !== baselinePriceRaw && !hasAcknowledgedPriceEdit && (
+                  <div className="mt-2 text-xs" style={{ color: '#b45309' }}>
+                    メールで同意した金額と異なります。金額変更の際は必ず事前合意のうえでご入力ください。
+                  </div>
+                )}
+              </>
             )}
             {currentStepData.field === 'email' && emailError && (
               <p className="text-red-500 text-sm mt-1">{emailError}</p>
@@ -456,6 +485,66 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
               }}
             >
               OK
+            </button>
+          </div>
+        </div>
+      </Modal>
+      {/* Price Edit Warning Modal */}
+      <Modal
+        isOpen={showPriceEditWarning}
+        onClose={() => {
+          setShowPriceEditWarning(false);
+          setPendingPriceValue('');
+        }}
+        title="金額変更の確認"
+      >
+        <div className="space-y-4">
+          <p className="text-sm" style={{ color: ds.text.secondary }}>
+            メールで同意した報酬額と異なる金額が入力されました。金額を変更する場合は、事前に担当者との合意をお願いいたします。
+          </p>
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => {
+                const withCommas = baselinePriceRaw.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                setSurveyData(prev => ({ ...prev, price: withCommas }));
+                setShowPriceEditWarning(false);
+                setPendingPriceValue('');
+              }}
+              className="px-4 py-2 text-sm border rounded-lg transition-colors"
+              style={{
+                borderColor: ds.border.primary,
+                color: ds.text.secondary,
+                backgroundColor: 'transparent'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = ds.button.secondary.hover;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              元に戻す
+            </button>
+            <button
+              onClick={() => {
+                setSurveyData(prev => ({ ...prev, price: pendingPriceValue }));
+                setHasAcknowledgedPriceEdit(true);
+                setShowPriceEditWarning(false);
+                setPendingPriceValue('');
+              }}
+              className="px-4 py-2 text-sm rounded-lg transition-colors"
+              style={{
+                backgroundColor: ds.button.primary.bg,
+                color: ds.button.primary.text
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = ds.button.primary.hover;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = ds.button.primary.bg;
+              }}
+            >
+              変更を続ける
             </button>
           </div>
         </div>

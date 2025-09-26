@@ -4,8 +4,10 @@ import { triggerZapier } from '@/lib/zapier';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🎯 API: Fetching updates');
-    const updates = await dataService.getUpdates();
+    const { searchParams } = new URL(request.url);
+    const forceRefresh = searchParams.has('t') || searchParams.get('nocache') === '1';
+    console.log('🎯 API: Fetching updates', forceRefresh ? '(forceRefresh)' : '');
+    const updates = await dataService.getUpdates({ forceRefresh });
     console.log('✅ API: Fetched updates:', updates.length);
     
     return NextResponse.json(updates);

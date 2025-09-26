@@ -5,18 +5,19 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
+    const forceRefresh = searchParams.has('t') || searchParams.get('nocache') === '1';
     
-    console.log('🎯 API: Fetching campaigns', userId ? `for user: ${userId}` : 'for all users (admin)');
+    console.log('🎯 API: Fetching campaigns', userId ? `for user: ${userId}` : 'for all users (admin)', forceRefresh ? '(forceRefresh)' : '');
     
     let campaigns;
     if (userId) {
       // For influencer users - fetch user-specific campaigns
-      campaigns = await dataService.getUserCampaigns(userId);
+      campaigns = await dataService.getUserCampaigns(userId, { forceRefresh });
       console.log('✅ API: Fetched user campaigns:', campaigns.length);
       console.log('📊 API: Campaign statuses:', campaigns.map(c => ({ id: c.id, status: c.status, influencerId: c.influencerId })));
     } else {
       // For admin users - fetch all campaigns
-      campaigns = await dataService.getCampaigns();
+      campaigns = await dataService.getCampaigns({ forceRefresh });
       console.log('✅ API: Fetched all campaigns:', campaigns.length);
       console.log('📊 API: Campaign statuses:', campaigns.map(c => ({ id: c.id, status: c.status, influencerId: c.influencerId })));
     }

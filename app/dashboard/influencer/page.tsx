@@ -53,6 +53,7 @@ export default function InfluencerDashboard() {
   const [meetingUpdating, setMeetingUpdating] = useState<{[key: string]: boolean}>({});
   const [urlSubmitting, setUrlSubmitting] = useState<{[key: string]: boolean}>({});
   const [confirmingCompleted, setConfirmingCompleted] = useState<{[key: string]: boolean}>({});
+  const [statusChanging, setStatusChanging] = useState<{[key: string]: boolean}>({});
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [copiedPassword, setCopiedPassword] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -352,7 +353,7 @@ export default function InfluencerDashboard() {
           const planDue = formatMonthDay(campaign?.schedules?.planSubmissionDate);
           return {
             title: '構成案の作成',
-            description: `プロモーションの構成案を作成しリンクを共有してください${planDue ? `。${planDue}までに構成案の提出をお願いします。` : ''}`,
+            description: `こちらのテンプレートを利用し構成案を作成し、リンクを共有してください（<a href="https://docs.google.com/document/d/13Ljg7rR8hsaZflGt3N0sB_g9ad-391G7Nhl4ICwVybg/copy" target="_blank" style="color: #60a5fa; text-decoration: underline;">構成案テンプレート</a>）${planDue ? `。${planDue}までにご提出をお願いします。` : ''}`,
             icon: AlertCircle,
             color: 'blue',
             action: 'plan',
@@ -368,7 +369,7 @@ export default function InfluencerDashboard() {
           const planDue = formatMonthDay(campaign?.schedules?.planSubmissionDate);
           return {
             title: '構成案の作成',
-            description: `プロモーションの構成案を作成しリンクを共有してください${planDue ? `。${planDue}までに構成案の提出をお願いします。` : ''}`,
+            description: `こちらのテンプレートを利用し構成案を作成し、リンクを共有してください（<a href="https://docs.google.com/document/d/13Ljg7rR8hsaZflGt3N0sB_g9ad-391G7Nhl4ICwVybg/copy" target="_blank" style="color: #60a5fa; text-decoration: underline;">構成案テンプレート</a>）${planDue ? `。${planDue}までにご提出をお願いします。` : ''}`,
             icon: AlertCircle,
             color: 'blue',
             action: 'plan',
@@ -917,6 +918,9 @@ export default function InfluencerDashboard() {
     setConfirmingCompleted(prev => ({ ...prev, [campaignId]: true }));
     try {
       await handleStatusChange(campaignId, 'completed');
+      // Clear local waiting state and refresh campaigns
+      setPaymentWaiting(prev => ({ ...prev, [campaignId]: false }));
+      refreshData();
     } finally {
       setConfirmingCompleted(prev => ({ ...prev, [campaignId]: false }));
     }
@@ -1016,12 +1020,12 @@ export default function InfluencerDashboard() {
       // Plan creation step transitions
       'plan_creating': {
         nextStatus: 'plan_submitted',
-        confirmMessage: '構成案を提出しますか？',
+        confirmMessage: 'リンクを知っている人が編集できる設定になっていますか？',
         urlType: 'plan'
       },
       'plan_revising': {
         nextStatus: 'plan_submitted',
-        confirmMessage: '修正版構成案を提出しますか？',
+        confirmMessage: 'リンクを知っている人が編集できる設定になっていますか？',
         urlType: 'plan'
       },
       // Draft creation step transitions
@@ -1108,6 +1112,7 @@ export default function InfluencerDashboard() {
 
   // Handle status change for debug
   const handleStatusChange = async (campaignId: string, newStatus: CampaignStatus) => {
+    setStatusChanging(prev => ({ ...prev, [campaignId]: true }));
     try {
       // Update Google Sheets via API
       const response = await fetch('/api/campaigns/update', {
@@ -1152,6 +1157,8 @@ export default function InfluencerDashboard() {
     } catch (error) {
       console.error('❌ Error updating debug status:', error);
       alert('更新に失敗しました。もう一度お試しください。');
+    } finally {
+      setStatusChanging(prev => ({ ...prev, [campaignId]: false }));
     }
   };
 
@@ -1528,10 +1535,11 @@ export default function InfluencerDashboard() {
                         <div className="flex items-center gap-3">
                           <button
                             onClick={() => handleConfirmPaymentCompleted(primaryCampaign.id)}
-                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                            disabled={!!confirmingCompleted[primaryCampaign.id]}
+                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                             style={{ backgroundColor: ds.button.primary.bg, color: ds.button.primary.text }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.hover}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.bg}
+                            onMouseEnter={(e) => !confirmingCompleted[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
+                            onMouseLeave={(e) => !confirmingCompleted[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
                           >
                             {confirmingCompleted[primaryCampaign.id] ? '更新中...' : '着金を確認しました'}
                           </button>
@@ -1540,7 +1548,7 @@ export default function InfluencerDashboard() {
                             className="text-sm"
                             style={{ color: '#60a5fa', textDecoration: 'underline' }}
                           >
-                            インフルエンサー送金について
+                            送金についてメール
                           </a>
                         </div>
                       </div>
@@ -1653,12 +1661,13 @@ export default function InfluencerDashboard() {
                           <div className="flex justify-end">
                             <button
                               onClick={() => handleStatusChange(primaryCampaign.id, 'meeting_scheduling')}
-                              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                              disabled={!!statusChanging[primaryCampaign.id]}
+                              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                               style={{ backgroundColor: ds.button.primary.bg, color: ds.button.primary.text }}
-                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.hover}
-                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.bg}
+                              onMouseEnter={(e) => !statusChanging[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
+                              onMouseLeave={(e) => !statusChanging[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
                             >
-                              ログイン完了
+                              {statusChanging[primaryCampaign.id] ? '更新中...' : 'ログイン完了'}
                             </button>
                           </div>
                         </div>
@@ -1767,13 +1776,13 @@ export default function InfluencerDashboard() {
                             <button 
                               onClick={() => handleUrlSubmission(primaryCampaign.id, primaryCampaign.status)}
                               disabled={!!urlSubmitting[primaryCampaign.id]}
-                              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                               style={{ 
                                 backgroundColor: ds.button.primary.bg,
                                 color: ds.button.primary.text
                               }}
-                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.hover}
-                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.bg}
+                              onMouseEnter={(e) => !urlSubmitting[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
+                              onMouseLeave={(e) => !urlSubmitting[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
                             >
                               {urlSubmitting[primaryCampaign.id] ? '送信中...' : '提出'}
                             </button>
@@ -1858,6 +1867,7 @@ export default function InfluencerDashboard() {
                               refreshData();
                             }}
                             embedded
+                            defaultPrice={primaryCampaign.contractedPrice}
                           />
                         </div>
                       )}
@@ -1872,10 +1882,11 @@ export default function InfluencerDashboard() {
                         <div className="flex items-center gap-3">
                           <button
                             onClick={() => handleConfirmPaymentCompleted(primaryCampaign.id)}
-                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                            disabled={!!confirmingCompleted[primaryCampaign.id]}
+                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                             style={{ backgroundColor: ds.button.primary.bg, color: ds.button.primary.text }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.hover}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.bg}
+                            onMouseEnter={(e) => !confirmingCompleted[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
+                            onMouseLeave={(e) => !confirmingCompleted[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
                           >
                             {confirmingCompleted[primaryCampaign.id] ? '更新中...' : '着金を確認しました'}
                           </button>

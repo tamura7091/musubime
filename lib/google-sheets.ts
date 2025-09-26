@@ -22,6 +22,9 @@ class GoogleSheetsService {
   private spreadsheetId: string;
   private hasServiceAccount: boolean;
   private hasApiKey: boolean;
+  private cache: Map<string, { data: any; timestamp: number }>;
+  private cacheTtlMs: number;
+  private debugSheets: boolean;
 
   constructor() {
     // Detect credentials
@@ -61,7 +64,34 @@ class GoogleSheetsService {
 
     this.sheets = google.sheets({ version: 'v4', auth });
     this.spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID || '1OCVA_z4FFLGGg8jCRKqla5AMHZLkGMdIpzmizetDPNI';
+    this.cache = new Map();
+    this.cacheTtlMs = Number(process.env.GOOGLE_SHEETS_CACHE_TTL_MS || 30000);
+    this.debugSheets = process.env.DEBUG_SHEETS === '1';
     console.log('📊 Spreadsheet ID:', this.spreadsheetId);
+    console.log('🧠 Sheets cache TTL (ms):', this.cacheTtlMs);
+  }
+
+  private getCache(key: string) {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > this.cacheTtlMs) {
+      this.cache.delete(key);
+      return null;
+    }
+    return entry.data;
+  }
+
+  private setCache(key: string, data: any) {
+    this.cache.set(key, { data, timestamp: Date.now() });
+  }
+
+  private invalidateCacheByPrefixes(prefixes: string[]) {
+    const keys = Array.from(this.cache.keys());
+    for (const key of keys) {
+      if (prefixes.some((p) => key.includes(p))) {
+        this.cache.delete(key);
+      }
+    }
   }
 
   private assertConfigured() {
@@ -72,16 +102,31 @@ class GoogleSheetsService {
     }
   }
 
-  async getSheetData(range: string = (process.env.GOOGLE_SHEETS_RANGE || 'campaigns!A:ZZ')): Promise<GoogleSheetsRow[]> {
+  async getSheetData(
+    range: string = (process.env.GOOGLE_SHEETS_RANGE || 'campaigns!A:ZZ'),
+    options?: { forceRefresh?: boolean }
+  ): Promise<GoogleSheetsRow[]> {
     try {
-      console.log('🔍 GoogleSheetsService.getSheetData() called');
-      console.log('📊 Range:', range);
-      console.log('📊 Environment GOOGLE_SHEETS_RANGE:', process.env.GOOGLE_SHEETS_RANGE);
-      console.log('📋 SpreadsheetId:', this.spreadsheetId);
-      console.log('🔑 Has Service Account:', this.hasServiceAccount);
-      console.log('🔑 Has API Key:', this.hasApiKey);
+      if (this.debugSheets) {
+        console.log('🔍 GoogleSheetsService.getSheetData() called');
+        console.log('📊 Range:', range);
+        console.log('📊 Environment GOOGLE_SHEETS_RANGE:', process.env.GOOGLE_SHEETS_RANGE);
+        console.log('📋 SpreadsheetId:', this.spreadsheetId);
+        console.log('🔑 Has Service Account:', this.hasServiceAccount);
+        console.log('🔑 Has API Key:', this.hasApiKey);
+      }
       
       this.assertConfigured();
+
+      const cacheKey = `${this.spreadsheetId}:${range}`;
+      const useCache = !options?.forceRefresh;
+      if (useCache) {
+        const cached = this.getCache(cacheKey);
+        if (cached) {
+          if (this.debugSheets) console.log('📦 Cache hit for', range);
+          return cached;
+        }
+      }
 
       const request: any = {
         spreadsheetId: this.spreadsheetId,
@@ -97,8 +142,10 @@ class GoogleSheetsService {
 
       console.log('📡 Making request to Google Sheets API...');
       const response = await this.sheets.spreadsheets.values.get(request);
-      console.log('✅ Google Sheets API response received');
-      console.log('📈 Rows returned:', response.data.values?.length || 0);
+      if (this.debugSheets) {
+        console.log('✅ Google Sheets API response received');
+        console.log('📈 Rows returned:', response.data.values?.length || 0);
+      }
 
       const rows = response.data.values;
       if (!rows || rows.length === 0) {
@@ -107,15 +154,19 @@ class GoogleSheetsService {
 
       // First row contains headers
       const headers = rows[0] as string[];
-      console.log('📋 Headers found:', headers.slice(0, 10)); // Show first 10 headers
-      console.log('📊 Total columns fetched:', headers.length);
-      console.log('📋 Last 10 headers:', headers.slice(-10)); // Show last 10 headers
+      if (this.debugSheets) {
+        console.log('📋 Headers found:', headers.slice(0, 10));
+        console.log('📊 Total columns fetched:', headers.length);
+        console.log('📋 Last 10 headers:', headers.slice(-10));
+      }
       
       // Check if message_dashboard column exists
       const messageDashboardIndex = headers.findIndex(h => h === 'message_dashboard');
-      console.log(`📝 message_dashboard column found at index: ${messageDashboardIndex}`);
-      if (messageDashboardIndex !== -1) {
-        console.log(`📝 message_dashboard is at column ${this.columnIndexToLetter(messageDashboardIndex)}`);
+      if (this.debugSheets) {
+        console.log(`📝 message_dashboard column found at index: ${messageDashboardIndex}`);
+        if (messageDashboardIndex !== -1) {
+          console.log(`📝 message_dashboard is at column ${this.columnIndexToLetter(messageDashboardIndex)}`);
+        }
       }
       
       // Convert rows to objects using headers as keys
@@ -128,7 +179,8 @@ class GoogleSheetsService {
         return rowObj;
       });
 
-      console.log('✅ Data processed:', data.length, 'rows');
+      if (useCache) this.setCache(cacheKey, data);
+      if (this.debugSheets) console.log('✅ Data processed:', data.length, 'rows');
       return data;
     } catch (error: any) {
       if (error?.code === 'GOOGLE_SHEETS_NOT_CONFIGURED') {
@@ -140,17 +192,45 @@ class GoogleSheetsService {
   }
 
   // Fetch only specific columns by header names
-  async getSpecificColumns(columnNames: string[], influencerId?: string, sheetName: string = 'campaigns'): Promise<GoogleSheetsRow[]> {
+  async getSpecificColumns(
+    columnNames: string[],
+    influencerId?: string,
+    sheetName: string = 'campaigns',
+    options?: { forceRefresh?: boolean }
+  ): Promise<GoogleSheetsRow[]> {
     try {
-      console.log('🔍 GoogleSheetsService.getSpecificColumns() called');
-      console.log('📋 Requested columns:', columnNames);
-      console.log('📊 Sheet name:', sheetName);
+      if (this.debugSheets) {
+        console.log('🔍 GoogleSheetsService.getSpecificColumns() called');
+        console.log('📋 Requested columns:', columnNames);
+        console.log('📊 Sheet name:', sheetName);
+      }
       
       this.assertConfigured();
 
+      const range = `${sheetName}!A:ZZ`;
+      const cacheKey = `${this.spreadsheetId}:${range}`;
+      const useCache = !options?.forceRefresh;
+      if (useCache) {
+        const cached = this.getCache(cacheKey);
+        if (cached) {
+          if (this.debugSheets) console.log('📦 Cache hit for', range);
+          // cached is already an array of normalized row objects
+          let cachedRows: any[] = cached.slice(0);
+          if (influencerId) {
+            cachedRows = cachedRows.filter((row: any) => row['id_influencer'] === influencerId);
+          }
+          const data: GoogleSheetsRow[] = cachedRows.map((row: any) => {
+            const obj: GoogleSheetsRow = {};
+            columnNames.forEach(col => { obj[col] = row[col] || ''; });
+            return obj;
+          });
+          return data;
+        }
+      }
+
       const request: any = {
         spreadsheetId: this.spreadsheetId,
-        range: `${sheetName}!A:ZZ`, // Use dynamic sheet name
+        range, // Use dynamic sheet name
       };
       
       // If using API key instead of service account
@@ -163,8 +243,10 @@ class GoogleSheetsService {
 
       console.log('📡 Making request to Google Sheets API...');
       const response = await this.sheets.spreadsheets.values.get(request);
-      console.log('✅ Google Sheets API response received');
-      console.log('📈 Rows returned:', response.data.values?.length || 0);
+      if (this.debugSheets) {
+        console.log('✅ Google Sheets API response received');
+        console.log('📈 Rows returned:', response.data.values?.length || 0);
+      }
 
       const rows = response.data.values;
       if (!rows || rows.length === 0) {
@@ -173,12 +255,14 @@ class GoogleSheetsService {
 
       // First row contains headers
       const headers = rows[0] as string[];
-      console.log('📊 Total columns in sheet:', headers.length);
-      console.log('📋 All headers:', headers);
+      if (this.debugSheets) {
+        console.log('📊 Total columns in sheet:', headers.length);
+        console.log('📋 All headers:', headers);
+      }
       
       // Check if message_dashboard column exists
       const messageDashboardIndex = headers.findIndex(h => h === 'message_dashboard');
-      console.log(`📝 message_dashboard column found at index: ${messageDashboardIndex}`);
+      if (this.debugSheets) console.log(`📝 message_dashboard column found at index: ${messageDashboardIndex}`);
       
       // Create a map of requested columns to their indices
       const columnMap: { [key: string]: number } = {};
@@ -186,13 +270,13 @@ class GoogleSheetsService {
         const index = headers.findIndex(header => header === col);
         if (index !== -1) {
           columnMap[col] = index;
-          console.log(`✅ Found column "${col}" at index ${index}`);
+          if (this.debugSheets) console.log(`✅ Found column "${col}" at index ${index}`);
         } else {
-          console.log(`❌ Column "${col}" not found in sheet`);
+          if (this.debugSheets) console.log(`❌ Column "${col}" not found in sheet`);
         }
       });
 
-      console.log('📋 Column mapping:', columnMap);
+      if (this.debugSheets) console.log('📋 Column mapping:', columnMap);
       
       // Convert rows to objects using only the requested columns
       // Start index may vary by sheet; many sheets have 4 header rows, but 'selected' starts earlier
@@ -221,8 +305,20 @@ class GoogleSheetsService {
         return rowObj;
       });
 
-      console.log('✅ Specific columns data processed:', data.length, 'rows');
-      console.log('📊 Sample data:', data.slice(0, 2));
+      if (useCache) {
+        // Build and cache a normalized object array for the full row based on headers
+        const normalizedObjects = rows.slice(startIndex).map((row: any) => {
+          const obj: GoogleSheetsRow = {};
+          headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+          return obj;
+        });
+        this.setCache(cacheKey, normalizedObjects);
+      }
+
+      if (this.debugSheets) {
+        console.log('✅ Specific columns data processed:', data.length, 'rows');
+        console.log('📊 Sample data:', data.slice(0, 2));
+      }
       return data;
     } catch (error: any) {
       if (error?.code === 'GOOGLE_SHEETS_NOT_CONFIGURED') {
@@ -319,7 +415,7 @@ class GoogleSheetsService {
   }
 
   // Get campaigns from the sheet data
-  async getCampaigns(influencerId?: string) {
+  async getCampaigns(influencerId?: string, options?: { forceRefresh?: boolean }) {
     console.log('🎯 getCampaigns() called', influencerId ? `for influencer: ${influencerId}` : 'for all influencers');
     const data = await this.getSpecificColumns([
       'spend_jpy', 
@@ -342,7 +438,7 @@ class GoogleSheetsService {
       // Trial login credentials for premium account section
       'trial_login_email_dashboard',
       'trial_login_password_dashboard'
-    ], influencerId);
+    ], influencerId, 'campaigns', options);
     
     // Filter out rows with empty id_campaign
     const validData = data.filter(row => {
@@ -1013,6 +1109,8 @@ class GoogleSheetsService {
         try {
           await this.sheets.spreadsheets.values.batchUpdate(batchUpdateRequest);
           console.log('✅ Batch update completed successfully');
+          // Invalidate campaigns-related caches to ensure latest data is visible
+          this.invalidateCacheByPrefixes(['campaigns!']);
         } catch (updateError: any) {
           console.error('❌ Batch update failed:', updateError?.message || updateError);
           console.error('❌ Error details:', {
@@ -1144,6 +1242,8 @@ class GoogleSheetsService {
       console.log('📡 Executing onboarding batch update with', updates.length, 'updates');
       await this.sheets.spreadsheets.values.batchUpdate(batchUpdateRequest);
       console.log('✅ Campaign onboarding update completed successfully');
+      // Invalidate campaigns-related caches
+      this.invalidateCacheByPrefixes(['campaigns!']);
       return { success: true };
 
     } catch (error: any) {
@@ -1250,6 +1350,8 @@ class GoogleSheetsService {
       console.log('📡 Executing selected sheet batch update with', updates.length, 'updates');
       await this.sheets.spreadsheets.values.batchUpdate(batchUpdateRequest);
       console.log('✅ Selected influencer status update completed successfully');
+      // Invalidate selected sheet caches
+      this.invalidateCacheByPrefixes(['selected!']);
       return { success: true };
 
     } catch (error: any) {
@@ -1392,6 +1494,16 @@ declare module './google-sheets' {}
     });
 
     console.log('✅ Loaded templates from sheet:', templates.length);
+    // Cache templates range as well
+    try {
+      const headers = rows[0] as string[];
+      const normalizedObjects = rows.slice(1).map((row: any) => {
+        const obj: any = {};
+        headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+        return obj;
+      });
+      this.setCache(`${this.spreadsheetId}:templates!A:ZZ`, normalizedObjects);
+    } catch {}
     return templates;
   } catch (error: any) {
     if (error?.code === 'GOOGLE_SHEETS_NOT_CONFIGURED') {
@@ -1438,6 +1550,8 @@ declare module './google-sheets' {}
     });
 
     console.log('✅ Templates saved to Google Sheets');
+    // Invalidate templates cache
+    this.invalidateCacheByPrefixes(['templates!']);
     return { success: true };
   } catch (error: any) {
     console.error('❌ Error saving templates to Google Sheets:', error?.message || error);

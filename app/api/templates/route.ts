@@ -22,7 +22,7 @@ let templateRules: TemplateRule[] = [
       { field: 'platform', operator: '=', value: 'tw' },
       { field: 'outreachType', operator: '=', value: '1st time outreach' }
     ],
-    subject: '【英会話アプリのPR依頼】',
+    subject: 'スピークのPR依頼｜{influencerName}様',
     body: `【英会話アプリのPR依頼】
 {greeting}、AI英会話アプリ「スピーク」の{teamMemberName}と申します。この度4月1日から行われるキャンペーン期間中にてPR投稿にご協力いただける形を募集しております。
 

@@ -40,11 +40,11 @@ class DataService {
     return [];
   }
 
-  async getCampaigns(): Promise<Campaign[]> {
+  async getCampaigns(opts?: { forceRefresh?: boolean }): Promise<Campaign[]> {
     if (this.useGoogleSheets) {
       try {
         console.log('🎯 Fetching campaigns from Google Sheets...');
-        const googleCampaigns = await googleSheetsService.getCampaigns();
+        const googleCampaigns = await googleSheetsService.getCampaigns(undefined, { forceRefresh: opts?.forceRefresh });
         console.log('✅ Campaigns fetched from Google Sheets:', googleCampaigns.length);
         
         return googleCampaigns.map(campaign => ({
@@ -84,11 +84,11 @@ class DataService {
     return [];
   }
 
-  async getUserCampaigns(userId: string): Promise<Campaign[]> {
+  async getUserCampaigns(userId: string, opts?: { forceRefresh?: boolean }): Promise<Campaign[]> {
     if (this.useGoogleSheets) {
       try {
         console.log('🎯 Fetching campaigns for user from Google Sheets:', userId);
-        const googleCampaigns = await googleSheetsService.getCampaigns(userId);
+        const googleCampaigns = await googleSheetsService.getCampaigns(userId, { forceRefresh: opts?.forceRefresh });
         console.log('✅ User campaigns fetched from Google Sheets:', googleCampaigns.length);
         
         return googleCampaigns.map(campaign => ({
@@ -128,7 +128,7 @@ class DataService {
     return [];
   }
 
-    async getUpdates(): Promise<Update[]> {
+    async getUpdates(opts?: { forceRefresh?: boolean }): Promise<Update[]> {
     // Get updates directly from Google Sheets using date_status_updated and status_dashboard
     if (this.useGoogleSheets) {
       try {
@@ -145,7 +145,7 @@ class DataService {
           'url_draft',
           'url_content',
           'message_dashboard'
-        ]);
+        ], undefined, 'campaigns', { forceRefresh: opts?.forceRefresh });
         
         console.log(`📊 Fetched ${rawData.length} rows from Google Sheets for updates`);
         

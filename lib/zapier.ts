@@ -3,7 +3,7 @@ export type ZapierEventType = 'revision_request' | 'reminder';
 interface BasePayload {
   influencer?: { id?: string; name?: string; email?: string };
   platform_label?: string;
-  item_type?: '構成案' | '初稿' | '動画アップロード';
+  item_type?: '構成案' | '初稿' | '動画アップロード' | 'トライアル' | '打ち合わせ';
   due_date?: string;
   due_time?: string;
   dashboard_url?: string;

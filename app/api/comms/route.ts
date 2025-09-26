@@ -342,6 +342,9 @@ function expandOutreachType(outreachType: string): string[] {
   if (value === '2回目アウトリーチ') {
     return ['2回目アウトリーチ', '2nd Outreach'];
   }
+  if (value === '送金準備') {
+    return ['送金準備', 'payment_prep'];
+  }
   return [value];
 }
 
@@ -412,20 +415,32 @@ async function generateMessageTemplate(
   }
   
   // If no template found, return an error message instead of hardcoded fallback
-  return {
-    subject: `Template Error - ${influencerName}様`,
-    body: `Template matching error for:
-- Platform: ${platform}
-- Outreach Type: ${outreachType}
-- Previous Contact: ${previousContact}
+  const safeSubject = `スピークのPRのご相談｜${influencerName}様`;
+  const safeBody = `${influencerName}様
 
-Please check Settings/Templates to ensure a matching template exists.
+${greeting}。AI英会話アプリ「スピーク」を運営するSpeakeasy Labs, Inc.の${teamMemberName}と申します。
 
-Debug info:
-- Template Type: ${templateType}
-- Influencer: ${influencerName}
-- Team Member: ${teamMemberName}`
-  };
+${influencerName}様のコンテンツを拝見し、ぜひスピークのPRについてご相談させていただきたくご連絡いたしました。
+
+【スピークとは】
+シリコンバレー発・スピーキングに特化した英会話アプリです。
+OpenAIからの出資・日本上陸後の複数回1位受賞・テレビCM放映などの実績がございます。
+
+【ご相談内容】
+普段のコンテンツに自然に組み込む形でのご紹介を想定しています。
+ご興味をお持ちいただけましたら、ご希望のご報酬額（税込）をお伺いできますでしょうか。
+
+【参考資料】
+・インフルエンサー向け資料：https://usespeak.notion.site/5d43676ad8da4a418c722a7b47229f3d?pvs=4
+・公式サイト：https://www.speak.com/jp
+・テレビCM：https://www.youtube.com/watch?v=vH6f_Nctri0
+
+ご検討のほど、何卒よろしくお願いいたします。
+
+ー
+Speakeasy Labs, Inc.
+${teamMemberName}`;
+  return { subject: safeSubject, body: safeBody };
 }
 
 // Helper function to match template rules against influencer data

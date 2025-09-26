@@ -6,7 +6,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Campaign, Update } from '@/types';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
-import { formatAbbreviatedCurrency } from '@/lib/design-system';
+import { formatAbbreviatedCurrency, colors } from '@/lib/design-system';
 import CommsPanel from '@/components/CommsPanel';
 import { SettingsPanel } from '@/components/Settings';
 
@@ -29,7 +29,9 @@ export default function AdminDashboard() {
   const [currentRevisionAction, setCurrentRevisionAction] = useState<{update: Update, action: string} | null>(null);
   const [showAllUpdates, setShowAllUpdates] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'comms' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'actions' | 'comms' | 'settings'>('dashboard');
+  const [reminderSending, setReminderSending] = useState<Set<string>>(new Set());
+  const [queuedEmailActions, setQueuedEmailActions] = useState<Array<{campaignId: string; influencerId: string; influencerName: string; submissionType: 'plan' | 'draft'; followupType: 'approval' | 'revision'}>>([]);
   
   console.log('👤 Current user:', user);
 
@@ -140,6 +142,19 @@ export default function AdminDashboard() {
 
     fetchData();
   }, [user?.role, isAuthLoading]);
+
+  // Load queued follow-up actions from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('postEmailActions');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setQueuedEmailActions(parsed);
+      }
+    } catch (e) {
+      console.warn('Failed to load postEmailActions from localStorage');
+    }
+  }, []);
   
   // Redirect unauthenticated users or non-admins
   useEffect(() => {
@@ -449,7 +464,15 @@ export default function AdminDashboard() {
     // For revision actions, show feedback modal
     if (action.includes('revise')) {
       setCurrentRevisionAction({ update, action });
-      setFeedbackMessage('');
+      // Prefill default message for plan revision with submitted link
+      let defaultFeedback = '';
+      if (update.submissionType === 'plan') {
+        const submittedLink = getAbsoluteUrl(update.submissionUrl);
+        if (submittedLink) {
+          defaultFeedback = `構成案のご提出をありがとうございました！チームで確認しいくつかコメントをさせていただきましたのでご提出いただいたリンクからご確認をよろしくお願いいたします：${submittedLink}`;
+        }
+      }
+      setFeedbackMessage(defaultFeedback);
       setShowFeedbackModal(true);
       return;
     }
@@ -498,6 +521,28 @@ export default function AdminDashboard() {
         
         // Show success message (you can implement a toast notification here)
         alert(result.message);
+        
+        // Queue a follow-up action (UI-only) to send email notification later
+        try {
+          const followupType: 'approval' | 'revision' | null = action.includes('approve') ? 'approval' : action.includes('revise') ? 'revision' : null;
+          const submissionType = update.submissionType;
+          if (followupType && (submissionType === 'plan' || submissionType === 'draft')) {
+            const item = {
+              campaignId: update.campaignId,
+              influencerId: update.influencerId,
+              influencerName: update.influencerName,
+              submissionType,
+              followupType
+            };
+            const raw = localStorage.getItem('postEmailActions');
+            const arr = raw ? JSON.parse(raw) : [];
+            const next = Array.isArray(arr) ? [...arr, item] : [item];
+            localStorage.setItem('postEmailActions', JSON.stringify(next));
+            setQueuedEmailActions(next);
+          }
+        } catch (e) {
+          console.warn('Failed to queue follow-up email action');
+        }
         
         // Refresh the updates to show the new status
         window.location.reload();
@@ -605,6 +650,19 @@ export default function AdminDashboard() {
           >
             <Users className="w-4 h-4" />
             <span>ダッシュボード</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('actions')}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              activeTab === 'actions' ? 'shadow-sm' : ''
+            }`}
+            style={{
+              backgroundColor: activeTab === 'actions' ? ds.button.primary.bg : ds.button.secondary.bg,
+              color: activeTab === 'actions' ? ds.button.primary.text : ds.button.secondary.text
+            }}
+          >
+            <AlertCircle className="w-4 h-4" />
+            <span>アクション</span>
           </button>
           <button
             onClick={() => setActiveTab('comms')}
@@ -1434,6 +1492,405 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+          </div>
+        ) : activeTab === 'actions' ? (
+          <div className="space-y-6">
+            {/* 要対応の提出物 */}
+            <div className="rounded-lg p-4 sm:p-5" style={{ 
+              backgroundColor: ds.bg.card,
+              borderColor: ds.border.primary,
+              borderWidth: '1px',
+              borderStyle: 'solid'
+            }}>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-5 h-5 rounded-md flex items-center justify-center" style={{ backgroundColor: colors.status.red.bg }}>
+                  <AlertCircle size={12} style={{ color: colors.status.red[500] }} />
+                </div>
+                <h3 className="font-medium" style={{ 
+                  color: ds.text.primary, 
+                  fontSize: `${ds.typography.heading.h3.fontSize}px`,
+                  lineHeight: ds.typography.heading.h3.lineHeight,
+                  fontWeight: ds.typography.heading.h3.fontWeight
+                }}>
+                  要対応の提出物
+                </h3>
+              </div>
+              
+              <div className="space-y-3">
+                {updates.filter(u => u.requiresAdminAction).length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="w-8 h-8 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: ds.bg.surface }}>
+                      <Check size={16} style={{ color: ds.text.secondary }} />
+                    </div>
+                    <p className="font-medium mb-1" style={{ 
+                      color: ds.text.primary,
+                      fontSize: `${ds.typography.text.sm.fontSize}px`,
+                      lineHeight: ds.typography.text.sm.lineHeight
+                    }}>すべて完了しました</p>
+                    <p style={{ 
+                      color: ds.text.secondary,
+                      fontSize: `${ds.typography.text.sm.fontSize}px`,
+                      lineHeight: ds.typography.text.sm.lineHeight
+                    }}>現在対応が必要な提出物はありません。</p>
+                  </div>
+                ) : (
+                  updates.filter(u => u.requiresAdminAction).map(u => (
+                    <div key={u.id} className="p-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: colors.status.red[400] }}></div>
+                            <p className="font-medium truncate" style={{ 
+                              color: ds.text.primary,
+                              fontSize: `${ds.typography.text.sm.fontSize}px`,
+                              lineHeight: ds.typography.text.sm.lineHeight
+                            }}>
+                              {u.influencerName}
+                            </p>
+                            <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ 
+                              backgroundColor: colors.status.red.bg,
+                              color: colors.status.red[500]
+                            }}>
+                              {u.submissionType === 'plan' ? '構成案' : u.submissionType === 'draft' ? '初稿' : '提出物'}
+                            </span>
+                          </div>
+                          <p className="text-xs mb-0.5" style={{ color: ds.text.secondary }}>
+                            {u.submissionType === 'plan' ? '構成案が提出されました' : u.submissionType === 'draft' ? '初稿が提出されました' : '提出がありました'}
+                          </p>
+                          <p className="text-xs" style={{ color: ds.text.secondary }}>{formatTimeAgo(u.timestamp)}</p>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {u.submissionUrl && (
+                            <a
+                              href={getAbsoluteUrl(u.submissionUrl)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium transition-colors"
+                              style={{ 
+                                backgroundColor: ds.button.secondary.bg, 
+                                color: ds.button.secondary.text,
+                                borderColor: ds.border.primary,
+                                borderWidth: '1px',
+                                borderStyle: 'solid'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.hover}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.bg}
+                            >
+                              <ExternalLink size={12} />
+                              確認
+                            </a>
+                          )}
+                          <button
+                            onClick={() => handleAdminAction(u, u.submissionType === 'plan' ? 'approve_plan' : 'approve_draft')}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors"
+                            style={{ backgroundColor: colors.status.emerald[500], color: 'white' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.status.emerald[600]}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = colors.status.emerald[500]}
+                          >
+                            <Check size={12} />
+                            承認
+                          </button>
+                          <button
+                            onClick={() => handleAdminAction(u, u.submissionType === 'plan' ? 'revise_plan' : 'revise_draft')}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors"
+                            style={{ backgroundColor: colors.status.orange[500], color: 'white' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.status.orange[600]}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = colors.status.orange[500]}
+                          >
+                            <X size={12} />
+                            修正依頼
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+              {(() => {
+                const now = new Date();
+                const msPerDay = 1000 * 60 * 60 * 24;
+
+                const daysSinceStatusUpdated = (campaign: Campaign) => {
+                  const updatedRaw = campaign.campaignData?.date_status_updated || campaign.updatedAt?.toString();
+                  if (!updatedRaw) return null;
+                  const updatedAt = new Date(updatedRaw);
+                  if (isNaN(updatedAt.getTime())) return null;
+                  return Math.floor((now.getTime() - updatedAt.getTime()) / msPerDay);
+                };
+
+                const daysUntilDraft = (campaign: Campaign) => {
+                  const dueRaw = campaign.schedules?.draftSubmissionDate;
+                  if (!dueRaw || String(dueRaw).trim() === '') return null;
+                  const due = new Date(String(dueRaw));
+                  if (isNaN(due.getTime())) return null;
+                  return Math.ceil((due.getTime() - now.getTime()) / msPerDay);
+                };
+
+                type ActionItem = { campaign: Campaign; kind: 'trial' | 'meeting'; reason: string };
+                const items: ActionItem[] = [];
+
+                for (const c of allCampaigns) {
+                  const status = String(c.status || '');
+                  const since = daysSinceStatusUpdated(c);
+                  const untilDraft = daysUntilDraft(c);
+
+                  // Rule 1: trial > 3 days AND draft due in < 10 days
+                  if (status === 'trial' && since !== null && since > 3 && untilDraft !== null && untilDraft > 0 && untilDraft < 10) {
+                    items.push({
+                      campaign: c,
+                      kind: 'trial',
+                      reason: 'トライアルリマインダー'
+                    });
+                  }
+
+                  // Rule 2: meeting_scheduling for last 3 days AND draft due in < 30 days
+                  if (status === 'meeting_scheduling' && since !== null && since >= 3 && untilDraft !== null && untilDraft > 0 && untilDraft < 30) {
+                    items.push({
+                      campaign: c,
+                      kind: 'meeting',
+                      reason: '打ち合わせリマインダー'
+                    });
+                  }
+                }
+
+                const sendReminder = async (campaign: Campaign, kind: 'trial' | 'meeting') => {
+                  const key = `${campaign.id}_${kind}`;
+                  setReminderSending(prev => new Set(prev).add(key));
+                  try {
+                    const res = await fetch('/api/admin/actions', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        campaignId: campaign.id,
+                        influencerId: campaign.influencerId,
+                        action: 'send_reminder',
+                        reminderType: kind,
+                      })
+                    });
+                    const data = await res.json();
+                    if (!res.ok || !data.success) throw new Error(data.error || 'Failed');
+                    alert(data.message || 'リマインダー送信しました');
+                  } catch (e: any) {
+                    alert(`エラー: ${e?.message || e}`);
+                  } finally {
+                    setReminderSending(prev => {
+                      const next = new Set(prev);
+                      next.delete(key);
+                      return next;
+                    });
+                  }
+                };
+
+                return (
+                  <div className="space-y-4">
+                    {/* リマインダー */}
+                    <div className="rounded-lg p-4 sm:p-5" style={{ 
+                      backgroundColor: ds.bg.card,
+                      borderColor: ds.border.primary,
+                      borderWidth: '1px',
+                      borderStyle: 'solid'
+                    }}>
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="w-5 h-5 rounded-md flex items-center justify-center" style={{ backgroundColor: colors.status.orange.bg }}>
+                          <Clock size={12} style={{ color: colors.status.orange[500] }} />
+                        </div>
+                        <h3 className="font-medium" style={{ 
+                          color: ds.text.primary, 
+                          fontSize: `${ds.typography.heading.h3.fontSize}px`,
+                          lineHeight: ds.typography.heading.h3.lineHeight,
+                          fontWeight: ds.typography.heading.h3.fontWeight
+                        }}>
+                          リマインダー
+                        </h3>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        {items.length === 0 ? (
+                          <div className="text-center py-8">
+                            <div className="w-8 h-8 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: ds.bg.surface }}>
+                              <Clock size={16} style={{ color: ds.text.secondary }} />
+                            </div>
+                            <p className="font-medium mb-1" style={{ 
+                              color: ds.text.primary,
+                              fontSize: `${ds.typography.text.sm.fontSize}px`,
+                              lineHeight: ds.typography.text.sm.lineHeight
+                            }}>リマインダーなし</p>
+                            <p style={{ 
+                              color: ds.text.secondary,
+                              fontSize: `${ds.typography.text.sm.fontSize}px`,
+                              lineHeight: ds.typography.text.sm.lineHeight
+                            }}>現在送信が必要なリマインダーはありません。</p>
+                          </div>
+                        ) : (
+                          items.map(({ campaign: c, kind, reason }) => (
+                            <div key={`${c.id}_${kind}`} className="p-3">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors.status.orange[400] }}></div>
+                                    <p className="font-medium truncate" style={{ 
+                                      color: ds.text.primary,
+                                      fontSize: `${ds.typography.text.sm.fontSize}px`,
+                                      lineHeight: ds.typography.text.sm.lineHeight
+                                    }}>
+                                      {c.influencerName}
+                                    </p>
+                                    <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ 
+                                      backgroundColor: ds.bg.surface,
+                                      color: ds.text.secondary,
+                                      borderColor: ds.border.primary,
+                                      borderWidth: '1px',
+                                      borderStyle: 'solid'
+                                    }}>
+                                      {mapPlatformToJapanese(String(c.platform))}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs" style={{ color: ds.text.secondary }}>
+                                    {reason}
+                                  </p>
+                                </div>
+                                
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  {kind === 'trial' && (
+                                    <button
+                                      onClick={() => sendReminder(c, 'trial')}
+                                      disabled={reminderSending.has(`${c.id}_trial`)}
+                                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                                      style={{ backgroundColor: ds.button.primary.bg, color: ds.button.primary.text }}
+                                      onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
+                                      onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
+                                    >
+                                      {reminderSending.has(`${c.id}_trial`) ? (
+                                        <RefreshCw size={12} className="animate-spin" />
+                                      ) : (
+                                        <Mail size={12} />
+                                      )}
+                                      送信
+                                    </button>
+                                  )}
+                                  {kind === 'meeting' && (
+                                    <button
+                                      onClick={() => sendReminder(c, 'meeting')}
+                                      disabled={reminderSending.has(`${c.id}_meeting`)}
+                                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                                      style={{ backgroundColor: ds.button.primary.bg, color: ds.button.primary.text }}
+                                      onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
+                                      onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
+                                    >
+                                      {reminderSending.has(`${c.id}_meeting`) ? (
+                                        <RefreshCw size={12} className="animate-spin" />
+                                      ) : (
+                                        <Mail size={12} />
+                                      )}
+                                      リマインドを送る
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* フォローアップ（UIのみ） */}
+                    <div className="rounded-lg p-4 sm:p-5" style={{ 
+                      backgroundColor: ds.bg.card,
+                      borderColor: ds.border.primary,
+                      borderWidth: '1px',
+                      borderStyle: 'solid'
+                    }}>
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="w-5 h-5 rounded-md flex items-center justify-center" style={{ backgroundColor: colors.status.blue.bg }}>
+                          <Mail size={12} style={{ color: colors.status.blue[500] }} />
+                        </div>
+                        <h3 className="font-medium" style={{ 
+                          color: ds.text.primary, 
+                          fontSize: `${ds.typography.heading.h3.fontSize}px`,
+                          lineHeight: ds.typography.heading.h3.lineHeight,
+                          fontWeight: ds.typography.heading.h3.fontWeight
+                        }}>
+                          フォローアップ
+                        </h3>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        {queuedEmailActions.length === 0 ? (
+                          <div className="text-center py-8">
+                            <div className="w-8 h-8 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: ds.bg.surface }}>
+                              <Mail size={16} style={{ color: ds.text.secondary }} />
+                            </div>
+                            <p className="font-medium mb-1" style={{ 
+                              color: ds.text.primary,
+                              fontSize: `${ds.typography.text.sm.fontSize}px`,
+                              lineHeight: ds.typography.text.sm.lineHeight
+                            }}>フォローアップなし</p>
+                            <p style={{ 
+                              color: ds.text.secondary,
+                              fontSize: `${ds.typography.text.sm.fontSize}px`,
+                              lineHeight: ds.typography.text.sm.lineHeight
+                            }}>現在送信待ちのフォローアップはありません。</p>
+                          </div>
+                        ) : (
+                          queuedEmailActions.map((q, idx) => (
+                            <div key={`${q.campaignId}_${q.followupType}_${idx}`} className="p-3">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors.status.blue[400] }}></div>
+                                    <p className="font-medium truncate" style={{ 
+                                      color: ds.text.primary,
+                                      fontSize: `${ds.typography.text.sm.fontSize}px`,
+                                      lineHeight: ds.typography.text.sm.lineHeight
+                                    }}>
+                                      {q.influencerName}
+                                    </p>
+                                    <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ 
+                                      backgroundColor: q.followupType === 'approval' ? colors.status.emerald.bg : colors.status.orange.bg,
+                                      color: q.followupType === 'approval' ? colors.status.emerald[500] : colors.status.orange[500]
+                                    }}>
+                                      {q.submissionType === 'plan' ? '構成案' : '初稿'} {q.followupType === 'approval' ? '承認' : '修正依頼'}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs" style={{ color: ds.text.secondary }}>
+                                    メール送付待ち
+                                  </p>
+                                </div>
+                                
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <button
+                                    onClick={() => {
+                                      const next = queuedEmailActions.filter((_, i) => i !== idx);
+                                      setQueuedEmailActions(next);
+                                      localStorage.setItem('postEmailActions', JSON.stringify(next));
+                                      alert('メール送信（ダミー）を完了として記録しました');
+                                    }}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors"
+                                    style={{ 
+                                      backgroundColor: ds.button.secondary.bg, 
+                                      color: ds.button.secondary.text,
+                                      borderColor: ds.border.primary,
+                                      borderWidth: '1px',
+                                      borderStyle: 'solid'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.hover}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.bg}
+                                  >
+                                    <Mail size={12} />
+                                    送信する
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
           </div>
         ) : activeTab === 'comms' ? (
           /* 連絡 Tab */
