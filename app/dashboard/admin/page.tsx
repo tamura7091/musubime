@@ -252,6 +252,43 @@ export default function AdminDashboard() {
     return sortCampaigns(filtered);
   }, [allCampaigns, searchTerm, statusFilter, platformFilter, sortField, sortDirection]);
   
+  // Compute reminder items once for reuse (tab badge + list)
+  const reminderItems = useMemo(() => {
+    const now = new Date();
+    const msPerDay = 1000 * 60 * 60 * 24;
+
+    const daysSinceStatusUpdated = (campaign: Campaign) => {
+      const updatedRaw = campaign.campaignData?.date_status_updated || campaign.updatedAt?.toString();
+      if (!updatedRaw) return null;
+      const updatedAt = new Date(updatedRaw);
+      if (isNaN(updatedAt.getTime())) return null;
+      return Math.floor((now.getTime() - updatedAt.getTime()) / msPerDay);
+    };
+
+    const daysUntilDraft = (campaign: Campaign) => {
+      const dueRaw = campaign.schedules?.draftSubmissionDate;
+      if (!dueRaw || String(dueRaw).trim() === '') return null;
+      const due = new Date(String(dueRaw));
+      if (isNaN(due.getTime())) return null;
+      return Math.ceil((due.getTime() - now.getTime()) / msPerDay);
+    };
+
+    type ActionItem = { campaign: Campaign; kind: 'trial' | 'meeting'; reason: string };
+    const items: ActionItem[] = [];
+    for (const c of allCampaigns) {
+      const status = String(c.status || '');
+      const since = daysSinceStatusUpdated(c);
+      const untilDraft = daysUntilDraft(c);
+      if (status === 'trial' && since !== null && since > 3 && untilDraft !== null && untilDraft > 0 && untilDraft < 10) {
+        items.push({ campaign: c, kind: 'trial', reason: 'トライアルリマインダー' });
+      }
+      if (status === 'meeting_scheduling' && since !== null && since >= 3 && untilDraft !== null && untilDraft > 0 && untilDraft < 30) {
+        items.push({ campaign: c, kind: 'meeting', reason: '打ち合わせリマインダー' });
+      }
+    }
+    return items;
+  }, [allCampaigns]);
+  
   // Show auth loading state to avoid blank screen while resolving session
   if (isAuthLoading) {
     return (
@@ -329,42 +366,7 @@ export default function AdminDashboard() {
     update.requiresAdminAction === true
   ).length;
 
-  // Compute reminder items once for reuse (tab badge + list)
-  const reminderItems = useMemo(() => {
-    const now = new Date();
-    const msPerDay = 1000 * 60 * 60 * 24;
-
-    const daysSinceStatusUpdated = (campaign: Campaign) => {
-      const updatedRaw = campaign.campaignData?.date_status_updated || campaign.updatedAt?.toString();
-      if (!updatedRaw) return null;
-      const updatedAt = new Date(updatedRaw);
-      if (isNaN(updatedAt.getTime())) return null;
-      return Math.floor((now.getTime() - updatedAt.getTime()) / msPerDay);
-    };
-
-    const daysUntilDraft = (campaign: Campaign) => {
-      const dueRaw = campaign.schedules?.draftSubmissionDate;
-      if (!dueRaw || String(dueRaw).trim() === '') return null;
-      const due = new Date(String(dueRaw));
-      if (isNaN(due.getTime())) return null;
-      return Math.ceil((due.getTime() - now.getTime()) / msPerDay);
-    };
-
-    type ActionItem = { campaign: Campaign; kind: 'trial' | 'meeting'; reason: string };
-    const items: ActionItem[] = [];
-    for (const c of allCampaigns) {
-      const status = String(c.status || '');
-      const since = daysSinceStatusUpdated(c);
-      const untilDraft = daysUntilDraft(c);
-      if (status === 'trial' && since !== null && since > 3 && untilDraft !== null && untilDraft > 0 && untilDraft < 10) {
-        items.push({ campaign: c, kind: 'trial', reason: 'トライアルリマインダー' });
-      }
-      if (status === 'meeting_scheduling' && since !== null && since >= 3 && untilDraft !== null && untilDraft > 0 && untilDraft < 30) {
-        items.push({ campaign: c, kind: 'meeting', reason: '打ち合わせリマインダー' });
-      }
-    }
-    return items;
-  }, [allCampaigns]);
+  
 
   const hasAnyAction = (updates.some(u => u.requiresAdminAction) || queuedEmailActions.length > 0 || reminderItems.length > 0);
 
