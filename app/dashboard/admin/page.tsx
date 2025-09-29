@@ -329,6 +329,45 @@ export default function AdminDashboard() {
     update.requiresAdminAction === true
   ).length;
 
+  // Compute reminder items once for reuse (tab badge + list)
+  const reminderItems = useMemo(() => {
+    const now = new Date();
+    const msPerDay = 1000 * 60 * 60 * 24;
+
+    const daysSinceStatusUpdated = (campaign: Campaign) => {
+      const updatedRaw = campaign.campaignData?.date_status_updated || campaign.updatedAt?.toString();
+      if (!updatedRaw) return null;
+      const updatedAt = new Date(updatedRaw);
+      if (isNaN(updatedAt.getTime())) return null;
+      return Math.floor((now.getTime() - updatedAt.getTime()) / msPerDay);
+    };
+
+    const daysUntilDraft = (campaign: Campaign) => {
+      const dueRaw = campaign.schedules?.draftSubmissionDate;
+      if (!dueRaw || String(dueRaw).trim() === '') return null;
+      const due = new Date(String(dueRaw));
+      if (isNaN(due.getTime())) return null;
+      return Math.ceil((due.getTime() - now.getTime()) / msPerDay);
+    };
+
+    type ActionItem = { campaign: Campaign; kind: 'trial' | 'meeting'; reason: string };
+    const items: ActionItem[] = [];
+    for (const c of allCampaigns) {
+      const status = String(c.status || '');
+      const since = daysSinceStatusUpdated(c);
+      const untilDraft = daysUntilDraft(c);
+      if (status === 'trial' && since !== null && since > 3 && untilDraft !== null && untilDraft > 0 && untilDraft < 10) {
+        items.push({ campaign: c, kind: 'trial', reason: 'トライアルリマインダー' });
+      }
+      if (status === 'meeting_scheduling' && since !== null && since >= 3 && untilDraft !== null && untilDraft > 0 && untilDraft < 30) {
+        items.push({ campaign: c, kind: 'meeting', reason: '打ち合わせリマインダー' });
+      }
+    }
+    return items;
+  }, [allCampaigns]);
+
+  const hasAnyAction = (updates.some(u => u.requiresAdminAction) || queuedEmailActions.length > 0 || reminderItems.length > 0);
+
   const uniqueInfluencers = Array.from(
     new Set(allCampaigns.map(campaign => campaign.influencerId))
   ).map(id => {
@@ -662,7 +701,12 @@ export default function AdminDashboard() {
             }}
           >
             <AlertCircle className="w-4 h-4" />
-            <span>アクション</span>
+            <span className="relative inline-flex items-center">
+              アクション
+              {hasAnyAction && (
+                <span className="ml-2 w-2 h-2 rounded-full" style={{ backgroundColor: colors.status.red[500] }}></span>
+              )}
+            </span>
           </button>
           <button
             onClick={() => setActiveTab('comms')}
@@ -1707,7 +1751,7 @@ export default function AdminDashboard() {
                       </div>
                       
                       <div className="space-y-3">
-                        {items.length === 0 ? (
+                        {items.length === 0 && queuedEmailActions.length === 0 ? (
                           <div className="text-center py-8">
                             <div className="w-8 h-8 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: ds.bg.surface }}>
                               <Clock size={16} style={{ color: ds.text.secondary }} />
@@ -1716,15 +1760,16 @@ export default function AdminDashboard() {
                               color: ds.text.primary,
                               fontSize: `${ds.typography.text.sm.fontSize}px`,
                               lineHeight: ds.typography.text.sm.lineHeight
-                            }}>リマインダーなし</p>
+                            }}>アクションなし</p>
                             <p style={{ 
                               color: ds.text.secondary,
                               fontSize: `${ds.typography.text.sm.fontSize}px`,
                               lineHeight: ds.typography.text.sm.lineHeight
-                            }}>現在送信が必要なリマインダーはありません。</p>
+                            }}>現在対応が必要なリマインダーやフォローアップはありません。</p>
                           </div>
                         ) : (
-                          items.map(({ campaign: c, kind, reason }) => (
+                          <>
+                          {items.map(({ campaign: c, kind, reason }) => (
                             <div key={`${c.id}_${kind}`} className="p-3">
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                 <div className="flex-1 min-w-0">
@@ -1790,51 +1835,8 @@ export default function AdminDashboard() {
                                 </div>
                               </div>
                             </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-
-                    {/* フォローアップ（UIのみ） */}
-                    <div className="rounded-lg p-4 sm:p-5" style={{ 
-                      backgroundColor: ds.bg.card,
-                      borderColor: ds.border.primary,
-                      borderWidth: '1px',
-                      borderStyle: 'solid'
-                    }}>
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="w-5 h-5 rounded-md flex items-center justify-center" style={{ backgroundColor: colors.status.blue.bg }}>
-                          <Mail size={12} style={{ color: colors.status.blue[500] }} />
-                        </div>
-                        <h3 className="font-medium" style={{ 
-                          color: ds.text.primary, 
-                          fontSize: `${ds.typography.heading.h3.fontSize}px`,
-                          lineHeight: ds.typography.heading.h3.lineHeight,
-                          fontWeight: ds.typography.heading.h3.fontWeight
-                        }}>
-                          フォローアップ
-                        </h3>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        {queuedEmailActions.length === 0 ? (
-                          <div className="text-center py-8">
-                            <div className="w-8 h-8 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: ds.bg.surface }}>
-                              <Mail size={16} style={{ color: ds.text.secondary }} />
-                            </div>
-                            <p className="font-medium mb-1" style={{ 
-                              color: ds.text.primary,
-                              fontSize: `${ds.typography.text.sm.fontSize}px`,
-                              lineHeight: ds.typography.text.sm.lineHeight
-                            }}>フォローアップなし</p>
-                            <p style={{ 
-                              color: ds.text.secondary,
-                              fontSize: `${ds.typography.text.sm.fontSize}px`,
-                              lineHeight: ds.typography.text.sm.lineHeight
-                            }}>現在送信待ちのフォローアップはありません。</p>
-                          </div>
-                        ) : (
-                          queuedEmailActions.map((q, idx) => (
+                          ))}
+                          {queuedEmailActions.map((q, idx) => (
                             <div key={`${q.campaignId}_${q.followupType}_${idx}`} className="p-3">
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                 <div className="flex-1 min-w-0">
@@ -1884,7 +1886,8 @@ export default function AdminDashboard() {
                                 </div>
                               </div>
                             </div>
-                          ))
+                          ))}
+                          </>
                         )}
                       </div>
                     </div>
