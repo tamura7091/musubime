@@ -44,6 +44,12 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
   });
 
   // Price is no longer prefilled and does not show confirmation on edits
+  const computedPricePlaceholder = (() => {
+    if (defaultPrice === undefined || defaultPrice === null) return '50000';
+    const numeric = Number(String(defaultPrice).replace(/[^0-9.-]/g, ''));
+    if (!Number.isFinite(numeric) || numeric <= 0) return '50000';
+    return String(Math.round(numeric));
+  })();
 
   const steps: Array<{
     title: string;
@@ -71,7 +77,7 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
       title: 'メールで同意した報酬額（税別）',
       field: 'price',
       type: 'text',
-      placeholder: '50000',
+      placeholder: computedPricePlaceholder,
       description: '税抜きで記入してください。'
     },
     {

@@ -9,6 +9,7 @@ interface OnboardingSurveyProps {
   campaignId: string;
   onComplete: () => void;
   onCancel: () => void;
+  defaultPrice?: number | string;
 }
 
 interface SurveyData {
@@ -22,7 +23,7 @@ interface SurveyData {
   repurposable: 'yes' | 'no';
 }
 
-export default function OnboardingSurvey({ campaignId, onComplete, onCancel }: OnboardingSurveyProps) {
+export default function OnboardingSurvey({ campaignId, onComplete, onCancel, defaultPrice }: OnboardingSurveyProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDateConfirmation, setShowDateConfirmation] = useState(false);
@@ -38,6 +39,13 @@ export default function OnboardingSurvey({ campaignId, onComplete, onCancel }: O
     draftSubmissionDate: '',
     repurposable: 'no'
   });
+
+  const computedPricePlaceholder = (() => {
+    if (defaultPrice === undefined || defaultPrice === null) return '50000';
+    const numeric = Number(String(defaultPrice).replace(/[^0-9.-]/g, ''));
+    if (!Number.isFinite(numeric) || numeric <= 0) return '50000';
+    return String(Math.round(numeric));
+  })();
 
   const steps = [
     {
@@ -75,7 +83,7 @@ export default function OnboardingSurvey({ campaignId, onComplete, onCancel }: O
       title: '報酬額（税別）',
       field: 'price',
       type: 'number',
-      placeholder: '50000',
+      placeholder: computedPricePlaceholder,
       description: '税抜きで記入してください。'
     },
     {
