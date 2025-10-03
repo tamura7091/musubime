@@ -439,7 +439,9 @@ class GoogleSheetsService {
       'trial_login_email_dashboard',
       'trial_login_password_dashboard',
       // Influencer-facing notes (markdown) shown on dashboard
-      'note_dashboard'
+      'note_dashboard',
+      // Chat history for Musubime AI
+      'chat_dashboard'
     ], influencerId, 'campaigns', options);
     
     // Filter out rows with empty id_campaign
@@ -677,6 +679,8 @@ class GoogleSheetsService {
           })(),
           // Notes for influencer dashboard (markdown)
           note_dashboard: row['note_dashboard'],
+          // Chat history for Musubime AI (JSON)
+          chat_dashboard: row['chat_dashboard'],
           group: row['group'],
           followers: row['followers'],
           spend_usd: row['spend_usd'],
@@ -1559,6 +1563,86 @@ declare module './google-sheets' {}
     return { success: true };
   } catch (error: any) {
     console.error('❌ Error saving templates to Google Sheets:', error?.message || error);
+    return { success: false, error: error?.message || 'Unknown error' };
+  }
+};
+
+(GoogleSheetsService as any).prototype.updateChatHistory = async function(
+  campaignId: string,
+  chatHistoryJson: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('💬 GoogleSheetsService.updateChatHistory() called');
+    console.log('🎯 Campaign ID:', campaignId);
+
+    if (!this.hasServiceAccount) {
+      console.log('⚠️ No Service Account configured - cannot write to Google Sheets');
+      return {
+        success: false,
+        error: 'Google Sheets write access requires Service Account credentials.'
+      };
+    }
+
+    this.assertConfigured();
+
+    // Fetch full range to locate row
+    const request: any = {
+      spreadsheetId: this.spreadsheetId,
+      range: 'campaigns!A:ZZ',
+    };
+
+    const response = await this.sheets.spreadsheets.values.get(request);
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) {
+      return { success: false, error: 'No data found in sheet' };
+    }
+
+    const headers = rows[0] as string[];
+
+    // Find row index for campaign
+    const idCampaignIndex = headers.findIndex(h => h === 'id_campaign');
+    if (idCampaignIndex === -1) {
+      return { success: false, error: 'id_campaign column not found' };
+    }
+
+    let sheetRowIndex = -1;
+    for (let i = 4; i < rows.length; i++) {
+      if (rows[i][idCampaignIndex] === campaignId) {
+        sheetRowIndex = i;
+        break;
+      }
+    }
+
+    if (sheetRowIndex === -1) {
+      console.error('❌ Campaign not found:', campaignId);
+      return { success: false, error: `Campaign with ID ${campaignId} not found` };
+    }
+
+    console.log('📋 Found campaign at sheet row:', sheetRowIndex + 1);
+
+    // Find chat_dashboard column
+    const chatDashboardIndex = headers.findIndex(h => h === 'chat_dashboard');
+    if (chatDashboardIndex === -1) {
+      console.log('ℹ️ Column "chat_dashboard" not found in sheet headers');
+      return { success: false, error: 'chat_dashboard column not found' };
+    }
+
+    const targetRowNumber = sheetRowIndex + 1; // 1-based
+    const range = `campaigns!${this.columnIndexToLetter(chatDashboardIndex)}${targetRowNumber}`;
+
+    await this.sheets.spreadsheets.values.update({
+      spreadsheetId: this.spreadsheetId,
+      range,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[chatHistoryJson]] }
+    });
+
+    console.log('✅ Chat history updated successfully');
+    // Invalidate campaigns cache
+    this.invalidateCacheByPrefixes(['campaigns!']);
+    return { success: true };
+  } catch (error: any) {
+    console.error('❌ Error updating chat history:', error?.message || error);
     return { success: false, error: error?.message || 'Unknown error' };
   }
 };

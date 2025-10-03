@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MessageCircle, X, Send, Bot, User, Loader2 } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, Loader2, Clock, Plus } from 'lucide-react';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
 import { useAuth } from '@/contexts/AuthContext';
 import { Campaign, CampaignStatus, getStepFromStatus, getStepLabel } from '@/types';
@@ -111,7 +111,7 @@ const extractLatestRevisionFeedback = (messageDashboard?: string): string => {
 function renderMarkdown(text: string): React.ReactNode {
   // Helper to render inline markdown within a line
   const renderInline = (line: string): React.ReactNode[] => {
-    const regex = /\[(.+?)\]\((https?:[^\s)]+)\)|\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+)`/g;
+    const regex = /\[(.+?)\]\(((?:https?|mailto):[^\s)]+)\)|\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+)`/g;
     const parts: React.ReactNode[] = [];
     let lastIndex = 0;
     let match: RegExpExecArray | null;
@@ -121,7 +121,15 @@ function renderMarkdown(text: string): React.ReactNode {
       }
       if (match[1] && match[2]) {
         parts.push(
-          <a key={`a-${match.index}`} href={match[2]} target="_blank" rel="noopener noreferrer" className="underline">
+          <a 
+            key={`a-${match.index}`} 
+            href={match[2]} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="underline hover:opacity-80 transition-opacity"
+            style={{ color: '#60a5fa', cursor: 'pointer' }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {match[1]}
           </a>
         );
@@ -197,11 +205,30 @@ function renderMarkdown(text: string): React.ReactNode {
   return <>{elements}</>;
 }
 
+interface InteractiveOption {
+  label: string;
+  value: string;
+  action?: () => void;
+}
+
 interface Message {
   id: string;
   content: string;
   sender: 'user' | 'bot';
   timestamp: Date;
+  interactive?: {
+    type: 'options';
+    question: string;
+    options: InteractiveOption[];
+  };
+}
+
+interface ChatSession {
+  id: string;
+  title: string;
+  messages: Message[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface ChatBotProps {
@@ -215,14 +242,9 @@ export default function ChatBot({ className }: ChatBotProps) {
     return `${display}Musubimeのサポートアシスタントです。インフルエンサーマーケティングキャンペーンに関するご質問にお答えします。何かお手伝いできることはありますか？`;
   };
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'greet',
-      content: buildGreeting(user?.name),
-      sender: 'bot',
-      timestamp: new Date(),
-    },
-  ]);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -230,9 +252,33 @@ export default function ChatBot({ className }: ChatBotProps) {
   const ds = useDesignSystem();
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [chatHistoryLoaded, setChatHistoryLoaded] = useState(false);
+
+  // Get current messages from current session
+  const messages = chatSessions.find(s => s.id === currentSessionId)?.messages || [];
+  
+  // Helper to update messages in current session
+  const setMessages = (updater: Message[] | ((prev: Message[]) => Message[])) => {
+    setChatSessions(prev => {
+      const newMessages = typeof updater === 'function' 
+        ? updater(prev.find(s => s.id === currentSessionId)?.messages || [])
+        : updater;
+      
+      return prev.map(session => 
+        session.id === currentSessionId 
+          ? { ...session, messages: newMessages, updatedAt: new Date() }
+          : session
+      );
+    });
+  };
 
   // Quick question chips with expected inquiries for relevance matching
   const quickQuestions = [
+    {
+      label: '報酬受け取り手続きの方法',
+      keywords: ['報酬', '受け取り', '手続き', '方法', '支払い', '請求書', 'フォーム', '送金'],
+    },
     {
       label: '現在のステータスを教えて',
       keywords: ['ステータス', 'status', '進捗', '状況', 'どこまで', '現在', '今'],
@@ -315,16 +361,142 @@ export default function ChatBot({ className }: ChatBotProps) {
     }
   ];
 
+  // Create a new chat session
+  const createNewChat = () => {
+    const newSession: ChatSession = {
+      id: `chat_${Date.now()}`,
+      title: '新しいチャット',
+      messages: [
+        {
+          id: 'greet',
+          content: buildGreeting(user?.name),
+          sender: 'bot',
+          timestamp: new Date(),
+        }
+      ],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    setChatSessions(prev => [newSession, ...prev]);
+    setCurrentSessionId(newSession.id);
+    setShowHistory(false);
+    scrollToBottom();
+  };
+
+  // Auto-generate title from first user message
+  const updateChatTitle = (sessionId: string, firstUserMessage: string) => {
+    const title = firstUserMessage.length > 30 
+      ? firstUserMessage.substring(0, 30) + '...' 
+      : firstUserMessage;
+    
+    setChatSessions(prev => prev.map(session => 
+      session.id === sessionId && session.title === '新しいチャット'
+        ? { ...session, title }
+        : session
+    ));
+  };
+
+  // Load chat history from campaigns on mount
+  useEffect(() => {
+    if (chatHistoryLoaded || !campaigns || campaigns.length === 0) return;
+    
+    const primary = pickPrimaryCampaign(campaigns);
+    if (!primary) return;
+    
+    const chatHistory = primary.campaignData?.chat_dashboard;
+    if (chatHistory && typeof chatHistory === 'string' && chatHistory.trim() !== '') {
+      try {
+        const parsedHistory = JSON.parse(chatHistory);
+        if (Array.isArray(parsedHistory) && parsedHistory.length > 0) {
+          // Convert stored sessions to ChatSession objects
+          const loadedSessions = parsedHistory.map((session: any) => ({
+            ...session,
+            createdAt: new Date(session.createdAt),
+            updatedAt: new Date(session.updatedAt),
+            messages: session.messages.map((msg: any) => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp)
+            }))
+          }));
+          console.log('💬 Loaded chat sessions:', loadedSessions.length);
+          setChatSessions(loadedSessions);
+          // Set most recent session as current
+          if (loadedSessions.length > 0) {
+            setCurrentSessionId(loadedSessions[0].id);
+          }
+          setChatHistoryLoaded(true);
+          return;
+        }
+      } catch (error) {
+        console.log('⚠️ Failed to parse chat history, starting fresh');
+      }
+    }
+    
+    // No history found, create first chat
+    createNewChat();
+    setChatHistoryLoaded(true);
+  }, [campaigns, chatHistoryLoaded]);
+
   // Update greeting once user info becomes available
   useEffect(() => {
-    if (!user?.name) return;
+    if (!user?.name || !chatHistoryLoaded) return;
     setMessages(prev => {
       if (!prev.length || prev[0].id !== 'greet') return prev;
       const updated = [...prev];
       updated[0] = { ...updated[0], content: buildGreeting(user.name) };
       return updated;
     });
-  }, [user?.name]);
+  }, [user?.name, chatHistoryLoaded]);
+
+  // Save chat sessions to Google Sheets (debounced)
+  useEffect(() => {
+    if (!chatHistoryLoaded || !campaigns || campaigns.length === 0) return;
+    if (chatSessions.length === 0) return;
+    
+    const primary = pickPrimaryCampaign(campaigns);
+    if (!primary) return;
+    
+    // Clear previous timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    // Debounce save by 2 seconds
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        // Filter out interactive messages before saving
+        const sessionsToSave = chatSessions.map(session => ({
+          ...session,
+          messages: session.messages.filter(msg => !msg.interactive)
+        }));
+        
+        console.log('💾 Saving chat sessions...');
+        const response = await fetch('/api/chat/history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            campaignId: primary.id,
+            messages: sessionsToSave // API endpoint will handle this as sessions array
+          })
+        });
+        
+        if (response.ok) {
+          console.log('✅ Chat sessions saved');
+        } else {
+          console.error('❌ Failed to save chat sessions');
+        }
+      } catch (error) {
+        console.error('❌ Error saving chat sessions:', error);
+      }
+    }, 2000);
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [chatSessions, campaigns, chatHistoryLoaded]);
 
   // Dynamic chip reordering based on user input
   const getRelevantQuestions = (input: string): typeof quickQuestions => {
@@ -632,8 +804,26 @@ export default function ChatBot({ className }: ChatBotProps) {
       return [`打ち合わせ: ${formatMonthDay(md)} 予定`, buildDeadlineText(md), link].filter(Boolean).join('\n');
     }
 
+    // Payment procedure (must come before contract amount to avoid conflict)
+    if (label.includes('報酬受け取り手続きの方法')) {
+      return [
+        '以下のステップにて報酬をお受け取りください。',
+        '',
+        '**報酬受け取りステップ：**',
+        '1. 請求書PDFを作成：[テンプレートを開く](https://bit.ly/speak_invoice)',
+        `2. Googleフォームに記入：[フォームを開く](https://docs.google.com/forms/d/e/1FAIpQLSf5LXFdcD77wApBa2KxxoaBlGDGFu4pvIaI9HvfvnhJv-fDsg/viewform?usp=pp_url&entry.503165310=${primary.id})`,
+        '   - ステップ1で作成した請求書を添付してください',
+        '3. スピークが承認し2-3週間で送金が完了します',
+        '',
+        '**お願い：**',
+        '- 着金が確認でき次第、musubimeのアクションから着金確認ボタンを押してください',
+        '- フォーム送信後から3週間以内に着金が確認できなかった場合は [naoki@usespeak.com](mailto:naoki@usespeak.com) までご連絡ください',
+        '- 送金情報が不明確な場合、海外送金サービスWISEから手続き用のメールが届く可能性がございます。迷惑メール等も含めチェックいただき、WISEからメールが届いた場合は案内に従ってお手続きをよろしくお願いいたします',
+      ].join('\n');
+    }
+
     // Reward amount
-    if (label.includes('契約金額') || label.includes('報酬')) {
+    if (label.includes('契約金額') || (label.includes('報酬') && !label.includes('受け取り'))) {
       const formatAmount = (amount: number | null, currency?: string) => {
         if (typeof amount !== 'number') return '未設定';
         if (!currency || currency.toUpperCase() === 'JPY' || currency === '¥') {
@@ -853,6 +1043,50 @@ export default function ChatBot({ className }: ChatBotProps) {
     setMessages(prev => [...prev, userMessage]);
     scrollToBottom();
 
+    // Special handling for payment procedure - show interactive confirmation first
+    if (label.includes('報酬受け取り手続きの方法')) {
+      const primary = pickPrimaryCampaign(campaigns);
+      const status = primary ? String(primary.status) : '';
+      
+      // Show warning only if PR is not scheduled yet
+      const isPRScheduled = status === 'scheduled' || status === 'payment_processing' || status === 'completed';
+      
+      if (!isPRScheduled) {
+        // Show interactive confirmation for pre-PR payment
+        const interactiveMessage: Message = {
+          id: `${Date.now()}_interactive`,
+          content: '',
+          sender: 'bot',
+          timestamp: new Date(),
+          interactive: {
+            type: 'options',
+            question: 'PRが終了していません。メール等で前払い等を相談しスピークと同意された方のみPR前の報酬支払いを行なっております。',
+            options: [
+              {
+                label: '同意済みのため報酬手続きに進む',
+                value: 'proceed',
+                action: () => {
+                  // Show payment procedure after confirmation
+                  const answer = buildQuickAnswer(label);
+                  addBotMessageWithTyping(answer);
+                },
+              },
+              {
+                label: 'キャンセル',
+                value: 'cancel',
+                action: () => {
+                  addBotMessageWithTyping('了解しました。PR終了後に改めて報酬受け取り手続きをご案内いたします。');
+                },
+              },
+            ],
+          },
+        };
+        setMessages(prev => [...prev, interactiveMessage]);
+        scrollToBottom();
+        return;
+      }
+    }
+
     // Compute local answer and append bot message
     const answer = buildQuickAnswer(label);
     addBotMessageWithTyping(answer);
@@ -902,6 +1136,13 @@ export default function ChatBot({ className }: ChatBotProps) {
       sender: 'user',
       timestamp: new Date(),
     };
+
+    // Update chat title if this is the first user message
+    const currentSession = chatSessions.find(s => s.id === currentSessionId);
+    const isFirstUserMessage = currentSession?.messages.filter(m => m.sender === 'user').length === 0;
+    if (isFirstUserMessage && currentSessionId) {
+      updateChatTitle(currentSessionId, userMessage.content);
+    }
 
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
@@ -1029,6 +1270,34 @@ export default function ChatBot({ className }: ChatBotProps) {
           }}
         >
           <div className="flex items-center space-x-2 sm:space-x-3">
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="p-1.5 rounded-lg hover:bg-opacity-80 transition-colors"
+              style={{ color: ds.text.secondary }}
+              title="チャット履歴"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = ds.bg.card;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              <Clock className="w-4 h-4" />
+            </button>
+            <button
+              onClick={createNewChat}
+              className="p-1.5 rounded-lg hover:bg-opacity-80 transition-colors"
+              style={{ color: ds.text.secondary }}
+              title="新しいチャット"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = ds.bg.card;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              <Plus className="w-4 h-4" />
+            </button>
             <div 
               className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center"
               style={{ backgroundColor: ds.button.primary.bg }}
@@ -1059,7 +1328,84 @@ export default function ChatBot({ className }: ChatBotProps) {
           </button>
         </div>
 
-
+        {/* Chat History Sidebar */}
+        {showHistory && (
+          <div 
+            className="absolute inset-0 z-10 flex"
+            style={{ backgroundColor: ds.bg.card }}
+          >
+            <div className="flex-1 flex flex-col">
+              <div 
+                className="flex items-center justify-between p-3 sm:p-4 border-b"
+                style={{
+                  backgroundColor: ds.bg.surface,
+                  borderColor: ds.border.secondary,
+                }}
+              >
+                <h3 className="font-semibold text-sm" style={{ color: ds.text.primary }}>
+                  チャット履歴
+                </h3>
+                <button
+                  onClick={() => setShowHistory(false)}
+                  className="p-1 rounded-lg hover:bg-opacity-80 transition-colors"
+                  style={{ color: ds.text.secondary }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = ds.bg.card;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-2">
+                {chatSessions.length === 0 ? (
+                  <div className="text-center py-8" style={{ color: ds.text.secondary }}>
+                    <p className="text-sm">チャット履歴がありません</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {chatSessions.map((session) => (
+                      <button
+                        key={session.id}
+                        onClick={() => {
+                          setCurrentSessionId(session.id);
+                          setShowHistory(false);
+                        }}
+                        className="w-full text-left p-3 rounded-lg transition-colors"
+                        style={{
+                          backgroundColor: session.id === currentSessionId ? ds.bg.surface : 'transparent',
+                          borderColor: ds.border.primary,
+                          borderWidth: '1px',
+                          borderStyle: 'solid',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (session.id !== currentSessionId) {
+                            e.currentTarget.style.backgroundColor = ds.bg.surface;
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (session.id !== currentSessionId) {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }
+                        }}
+                      >
+                        <div className="font-medium text-sm mb-1" style={{ color: ds.text.primary }}>
+                          {session.title}
+                        </div>
+                        <div className="text-xs" style={{ color: ds.text.secondary }}>
+                          {session.messages.length}件のメッセージ · {formatTime(session.updatedAt)}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Messages */}
         <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 mobile-chat-messages">
@@ -1086,23 +1432,80 @@ export default function ChatBot({ className }: ChatBotProps) {
               </div>
               
               <div className={`flex-1 max-w-[85%] sm:max-w-[80%] ${message.sender === 'user' ? 'text-right' : ''}`}>
-                <div
-                  className={`inline-block px-3 py-2 rounded-2xl text-sm leading-relaxed ${
-                    message.sender === 'user' 
-                      ? 'rounded-br-md' 
-                      : 'rounded-bl-md'
-                  }`}
-                  style={{
-                    backgroundColor: message.sender === 'user' 
-                      ? ds.text.accent 
-                      : ds.bg.surface,
-                    color: message.sender === 'user' 
-                      ? 'white' 
-                      : ds.text.primary,
-                  }}
-                >
-                  {renderMarkdown(message.content)}
-                </div>
+                {/* Interactive component */}
+                {message.interactive && message.interactive.type === 'options' && (
+                  <div
+                    className="inline-block px-4 py-3 rounded-2xl text-sm rounded-bl-md"
+                    style={{
+                      backgroundColor: ds.bg.surface,
+                      color: ds.text.primary,
+                      borderColor: ds.border.primary,
+                      borderWidth: '1px',
+                      borderStyle: 'solid',
+                      maxWidth: '100%',
+                    }}
+                  >
+                    <p className="mb-3 leading-relaxed">{message.interactive.question}</p>
+                    <div className="flex flex-col gap-2">
+                      {message.interactive.options.map((option, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            // Add user response
+                            const userResponse: Message = {
+                              id: `${Date.now()}_user_choice`,
+                              content: option.label,
+                              sender: 'user',
+                              timestamp: new Date(),
+                            };
+                            setMessages(prev => [...prev, userResponse]);
+                            scrollToBottom();
+                            
+                            // Execute option action
+                            if (option.action) {
+                              option.action();
+                            }
+                          }}
+                          className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
+                          style={{
+                            backgroundColor: idx === 0 ? ds.button.primary.bg : ds.bg.card,
+                            color: idx === 0 ? ds.button.primary.text : ds.text.primary,
+                            borderColor: ds.border.primary,
+                            borderWidth: '1px',
+                            borderStyle: 'solid',
+                          }}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Regular message content */}
+                {!message.interactive && message.content && (
+                  <div
+                    className={`inline-block px-3 py-2 rounded-2xl text-sm leading-relaxed ${
+                      message.sender === 'user' 
+                        ? 'rounded-br-md' 
+                        : 'rounded-bl-md'
+                    }`}
+                    style={{
+                      backgroundColor: message.sender === 'user' 
+                        ? ds.text.accent 
+                        : ds.bg.surface,
+                      color: message.sender === 'user' 
+                        ? 'white' 
+                        : ds.text.primary,
+                      wordBreak: 'break-word',
+                      overflowWrap: 'break-word',
+                      maxWidth: '100%',
+                    }}
+                  >
+                    {renderMarkdown(message.content)}
+                  </div>
+                )}
+                
                 <div 
                   className={`text-xs mt-1 ${message.sender === 'user' ? 'text-right' : ''}`}
                   style={{ color: ds.text.secondary }}

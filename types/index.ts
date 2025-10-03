@@ -188,6 +188,7 @@ export interface Campaign {
     date_status_updated?: string;
     message_dashboard?: string;
     note_dashboard?: string;
+    chat_dashboard?: string;
   };
 }
 
