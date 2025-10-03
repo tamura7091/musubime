@@ -126,7 +126,7 @@
 
 @keyframes slideInLeft {
   from {
-    transform: translateX(-100%);
+    transform: translateX(-20px);
     opacity: 0;
   }
   to {
@@ -140,5 +140,5 @@
 }
 
 .animate-slideInLeft {
-  animation: slideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideInLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }

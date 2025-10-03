@@ -465,13 +465,13 @@ export default function ChatBot({ className }: ChatBotProps) {
     // Debounce save by 2 seconds
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        // Filter out interactive messages before saving
+        // Filter to only save user messages (no bot responses or interactive components)
         const sessionsToSave = chatSessions.map(session => ({
           ...session,
-          messages: session.messages.filter(msg => !msg.interactive)
+          messages: session.messages.filter(msg => msg.sender === 'user' && !msg.interactive)
         }));
         
-        console.log('💾 Saving chat sessions...');
+        console.log('💾 Saving chat sessions (user messages only)...');
         const response = await fetch('/api/chat/history', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1318,17 +1318,13 @@ export default function ChatBot({ className }: ChatBotProps) {
         {showHistory && (
           <div 
             className="absolute inset-0 z-10 flex animate-fadeIn"
-            style={{ 
-              backgroundColor: 'rgba(0, 0, 0, 0.3)',
-              backdropFilter: 'blur(2px)',
-            }}
             onClick={() => setShowHistory(false)}
           >
             <div 
-              className="w-[280px] flex flex-col animate-slideInLeft"
+              className="w-full flex flex-col animate-slideInLeft rounded-2xl overflow-hidden"
               style={{
                 backgroundColor: ds.bg.card,
-                boxShadow: ds.isDark ? '2px 0 8px rgba(0, 0, 0, 0.5)' : '2px 0 8px rgba(0, 0, 0, 0.1)',
+                boxShadow: ds.isDark ? '0 4px 16px rgba(0, 0, 0, 0.6)' : '0 4px 16px rgba(0, 0, 0, 0.1)',
               }}
               onClick={(e) => e.stopPropagation()}
             >
