@@ -1317,23 +1317,34 @@ export default function ChatBot({ className }: ChatBotProps) {
         {/* Chat History Sidebar */}
         {showHistory && (
           <div 
-            className="absolute inset-0 z-10 flex"
-            style={{ backgroundColor: ds.bg.card }}
+            className="absolute inset-0 z-10 flex animate-fadeIn"
+            style={{ 
+              backgroundColor: 'rgba(0, 0, 0, 0.3)',
+              backdropFilter: 'blur(2px)',
+            }}
+            onClick={() => setShowHistory(false)}
           >
-            <div className="flex-1 flex flex-col">
+            <div 
+              className="w-[280px] flex flex-col animate-slideInLeft"
+              style={{
+                backgroundColor: ds.bg.card,
+                boxShadow: ds.isDark ? '2px 0 8px rgba(0, 0, 0, 0.5)' : '2px 0 8px rgba(0, 0, 0, 0.1)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <div 
-                className="flex items-center justify-between p-3 sm:p-4 border-b"
+                className="flex items-center justify-between p-4 border-b"
                 style={{
                   backgroundColor: ds.bg.surface,
                   borderColor: ds.border.secondary,
                 }}
               >
-                <h3 className="font-semibold text-sm" style={{ color: ds.text.primary }}>
+                <h3 className="font-semibold text-base" style={{ color: ds.text.primary }}>
                   メニュー
                 </h3>
                 <button
                   onClick={() => setShowHistory(false)}
-                  className="p-1 rounded-lg hover:bg-opacity-80 transition-colors"
+                  className="p-1.5 rounded-lg transition-all"
                   style={{ color: ds.text.secondary }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = ds.bg.card;
@@ -1347,19 +1358,23 @@ export default function ChatBot({ className }: ChatBotProps) {
               </div>
               
               {/* New Chat Button */}
-              <div className="p-3 border-b" style={{ borderColor: ds.border.secondary }}>
+              <div className="p-3">
                 <button
                   onClick={createNewChat}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-all hover:opacity-90"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm"
                   style={{
                     backgroundColor: ds.button.primary.bg,
                     color: ds.button.primary.text,
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = ds.button.primary.hover;
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = ds.isDark ? '0 4px 12px rgba(0, 0, 0, 0.4)' : '0 4px 12px rgba(0, 0, 0, 0.15)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = ds.button.primary.bg;
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
                   <MessageCircle className="w-4 h-4" />
@@ -1367,14 +1382,22 @@ export default function ChatBot({ className }: ChatBotProps) {
                 </button>
               </div>
               
+              {/* Chat History Section Header */}
+              <div className="px-4 py-2 border-t" style={{ borderColor: ds.border.secondary }}>
+                <h4 className="text-xs font-semibold uppercase tracking-wide" style={{ color: ds.text.secondary }}>
+                  チャット履歴
+                </h4>
+              </div>
+              
               {/* Chat History List */}
-              <div className="flex-1 overflow-y-auto p-2">
+              <div className="flex-1 overflow-y-auto px-3 pb-3">
                 {chatSessions.length === 0 ? (
-                  <div className="text-center py-8" style={{ color: ds.text.secondary }}>
+                  <div className="text-center py-12" style={{ color: ds.text.secondary }}>
+                    <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">チャット履歴がありません</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {chatSessions.map((session) => (
                       <button
                         key={session.id}
@@ -1382,29 +1405,34 @@ export default function ChatBot({ className }: ChatBotProps) {
                           setCurrentSessionId(session.id);
                           setShowHistory(false);
                         }}
-                        className="w-full text-left p-3 rounded-lg transition-colors"
+                        className="w-full text-left p-3 rounded-xl transition-all duration-200"
                         style={{
                           backgroundColor: session.id === currentSessionId ? ds.bg.surface : 'transparent',
-                          borderColor: ds.border.primary,
+                          borderColor: session.id === currentSessionId ? ds.border.primary : 'transparent',
                           borderWidth: '1px',
                           borderStyle: 'solid',
+                          boxShadow: session.id === currentSessionId 
+                            ? (ds.isDark ? '0 2px 8px rgba(0, 0, 0, 0.3)' : '0 2px 8px rgba(0, 0, 0, 0.06)')
+                            : 'none',
                         }}
                         onMouseEnter={(e) => {
                           if (session.id !== currentSessionId) {
                             e.currentTarget.style.backgroundColor = ds.bg.surface;
+                            e.currentTarget.style.transform = 'translateX(4px)';
                           }
                         }}
                         onMouseLeave={(e) => {
                           if (session.id !== currentSessionId) {
                             e.currentTarget.style.backgroundColor = 'transparent';
+                            e.currentTarget.style.transform = 'translateX(0)';
                           }
                         }}
                       >
-                        <div className="font-medium text-sm mb-1" style={{ color: ds.text.primary }}>
+                        <div className="font-medium text-sm mb-1 truncate" style={{ color: ds.text.primary }}>
                           {session.title}
                         </div>
-                        <div className="text-xs" style={{ color: ds.text.secondary }}>
-                          {session.messages.length}件のメッセージ · {formatTime(session.updatedAt)}
+                        <div className="text-xs truncate" style={{ color: ds.text.secondary }}>
+                          {session.messages.length}件 · {formatTime(session.updatedAt)}
                         </div>
                       </button>
                     ))}
