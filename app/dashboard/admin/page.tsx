@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, TrendingUp, Clock, AlertCircle, Search, Filter, User, Tag, ChevronUp, ChevronDown, ExternalLink, Check, X, RefreshCw, Mail, Settings } from 'lucide-react';
+import { Users, TrendingUp, Clock, AlertCircle, Search, Filter, User, Tag, ChevronUp, ChevronDown, ExternalLink, Check, X, RefreshCw, Mail, Settings, Copy } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Campaign, Update } from '@/types';
@@ -31,6 +31,7 @@ export default function AdminDashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'actions' | 'comms' | 'settings'>('dashboard');
   const [reminderSending, setReminderSending] = useState<Set<string>>(new Set());
+  const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set());
   const [queuedEmailActions, setQueuedEmailActions] = useState<Array<{campaignId: string; influencerId: string; influencerName: string; submissionType: 'plan' | 'draft'; followupType: 'approval' | 'revision'}>>([]);
   
   console.log('👤 Current user:', user);
@@ -1798,6 +1799,53 @@ export default function AdminDashboard() {
                   }
                 }
 
+                const formatDateString = (raw?: string | null): string => {
+                  if (!raw || String(raw).trim() === '') return '';
+                  const d = new Date(String(raw));
+                  if (isNaN(d.getTime())) return '';
+                  return new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric' }).format(d);
+                };
+
+                const getDeadlineInfo = (campaign: Campaign): { type: 'plan' | 'draft' | 'live'; label: string; date: string } | null => {
+                  const status = String(campaign.status || '');
+                  if (['plan_creating', 'plan_submitted', 'plan_revising'].includes(status)) {
+                    return { type: 'plan', label: '構成案提出期限', date: formatDateString(campaign.schedules?.planSubmissionDate || null) };
+                  }
+                  if (['draft_creating', 'draft_submitted', 'draft_revising'].includes(status)) {
+                    return { type: 'draft', label: '初稿提出期限', date: formatDateString(campaign.schedules?.draftSubmissionDate || null) };
+                  }
+                  if (['scheduling', 'scheduled'].includes(status)) {
+                    return { type: 'live', label: '投稿予定日', date: formatDateString(campaign.schedules?.liveDate || null) };
+                  }
+                  // fallback to draft
+                  return { type: 'draft', label: '初稿提出期限', date: formatDateString(campaign.schedules?.draftSubmissionDate || null) };
+                };
+
+                const buildEmail = (campaign: Campaign, kind: 'trial' | 'meeting' | 'overdue'): { to: string; subject: string; body: string } => {
+                  const to = String(campaign.campaignData?.contact_email || '');
+                  const name = String(campaign.influencerName || campaign.title || 'インフルエンサー様');
+                  const platformLabel = mapPlatformToJapanese(String(campaign.platform || ''));
+                  const title = String(campaign.title || `${platformLabel}案件（ID: ${campaign.id.slice(-6)}）`);
+                  const deadlineInfo = getDeadlineInfo(campaign);
+
+                  let subject = '';
+                  let body = '';
+
+                  if (kind === 'trial') {
+                    subject = `【スピークPR】トライアルご利用のご感想と次のステップについて`; 
+                    body = `${name} 様\n\nいつもお世話になっております。スピークチームです。\n\n先日ご案内したトライアルのご利用状況はいかがでしょうか。${platformLabel}での${title}に向けた進行について、\n簡単なご感想やご不明点などございましたらお知らせいただけますと幸いです。\n\n引き続きどうぞよろしくお願いいたします。\n\nスピークチーム`;
+                  } else if (kind === 'meeting') {
+                    subject = `【スピークPR】打ち合わせ日程のご調整について`; 
+                    body = `${name} 様\n\nいつもお世話になっております。スピークチームです。\n\n${platformLabel}での${title}に関して、打ち合わせ日程のご調整のご連絡です。\nご都合の良い候補日時を2〜3つお知らせいただけますでしょうか。\nオンラインで30分程度を想定しております。\n\nお忙しいところ恐れ入りますが、何卒よろしくお願いいたします。\n\nスピークチーム`;
+                  } else {
+                    const deadlineText = deadlineInfo ? `${deadlineInfo.label}${deadlineInfo.date ? `（${deadlineInfo.date}）` : ''}` : '期限';
+                    subject = `【スピークPR】${deadlineText}のご確認のお願い`;
+                    body = `${name} 様\n\nいつもお世話になっております。スピークチームです。\n\n${platformLabel}での${title}に関しまして、${deadlineText}を過ぎておりますため、\n恐れ入りますが現状の進捗と今後のご予定をお知らせいただけますでしょうか。\n\nご対応のほど、何卒よろしくお願いいたします。\n\nスピークチーム`;
+                  }
+
+                  return { to, subject, body };
+                };
+
                 const sendReminder = async (campaign: Campaign, kind: 'trial' | 'meeting' | 'overdue') => {
                   const key = `${campaign.id}_${kind}`;
                   setReminderSending(prev => new Set(prev).add(key));
@@ -1902,57 +1950,58 @@ export default function AdminDashboard() {
                                 </div>
                                 
                                 <div className="flex items-center gap-2 flex-shrink-0">
-                                  {kind === 'trial' && (
-                                    <button
-                                      onClick={() => sendReminder(c, 'trial')}
-                                      disabled={reminderSending.has(`${c.id}_trial`)}
-                                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50"
-                                      style={{ backgroundColor: ds.button.primary.bg, color: ds.button.primary.text }}
-                                      onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
-                                      onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
-                                    >
-                                      {reminderSending.has(`${c.id}_trial`) ? (
-                                        <RefreshCw size={12} className="animate-spin" />
-                                      ) : (
-                                        <Mail size={12} />
-                                      )}
-                                      送信
-                                    </button>
-                                  )}
-                                  {kind === 'meeting' && (
-                                    <button
-                                      onClick={() => sendReminder(c, 'meeting')}
-                                      disabled={reminderSending.has(`${c.id}_meeting`)}
-                                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50"
-                                      style={{ backgroundColor: ds.button.primary.bg, color: ds.button.primary.text }}
-                                      onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
-                                      onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
-                                    >
-                                      {reminderSending.has(`${c.id}_meeting`) ? (
-                                        <RefreshCw size={12} className="animate-spin" />
-                                      ) : (
-                                        <Mail size={12} />
-                                      )}
-                                      リマインドを送る
-                                    </button>
-                                  )}
-                                  {kind === 'overdue' && (
-                                    <button
-                                      onClick={() => sendReminder(c, 'overdue')}
-                                      disabled={reminderSending.has(`${c.id}_overdue`)}
-                                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50"
-                                      style={{ backgroundColor: colors.status.red[500], color: 'white' }}
-                                      onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = colors.status.red[600])}
-                                      onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = colors.status.red[500])}
-                                    >
-                                      {reminderSending.has(`${c.id}_overdue`) ? (
-                                        <RefreshCw size={12} className="animate-spin" />
-                                      ) : (
-                                        <AlertCircle size={12} />
-                                      )}
-                                      催促を送る
-                                    </button>
-                                  )}
+                                  {(() => {
+                                    const email = buildEmail(c, kind);
+                                    const mailto = `mailto:${encodeURIComponent(email.to)}?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`;
+                                    const copyKey = `${c.id}_${kind}`;
+                                    const isCopied = copiedItems.has(copyKey);
+                                    return (
+                                      <>
+                                        <button
+                                          onClick={async () => {
+                                            try {
+                                              await navigator.clipboard.writeText(`${email.subject}\n\n${email.body}`);
+                                              setCopiedItems(prev => new Set(prev).add(copyKey));
+                                              setTimeout(() => {
+                                                setCopiedItems(prev => {
+                                                  const next = new Set(prev);
+                                                  next.delete(copyKey);
+                                                  return next;
+                                                });
+                                              }, 2000);
+                                            } catch (err) {
+                                              console.error('Copy failed:', err);
+                                            }
+                                          }}
+                                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors"
+                                          style={{ 
+                                            backgroundColor: isCopied ? colors.status.emerald[500] : ds.button.secondary.bg, 
+                                            color: isCopied ? 'white' : ds.button.secondary.text, 
+                                            borderColor: isCopied ? colors.status.emerald[500] : ds.border.primary, 
+                                            borderWidth: '1px', 
+                                            borderStyle: 'solid' 
+                                          }}
+                                          onMouseEnter={(e) => !isCopied && (e.currentTarget.style.backgroundColor = ds.button.secondary.hover)}
+                                          onMouseLeave={(e) => !isCopied && (e.currentTarget.style.backgroundColor = ds.button.secondary.bg)}
+                                        >
+                                          {isCopied ? <Check size={12} /> : <Copy size={12} />}
+                                          内容をコピー
+                                        </button>
+                                        <a
+                                          href={mailto}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors"
+                                          style={{ backgroundColor: ds.button.primary.bg, color: ds.button.primary.text }}
+                                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
+                                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
+                                        >
+                                          <Mail size={12} />
+                                          メール作成
+                                        </a>
+                                      </>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             </div>
