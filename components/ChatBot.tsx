@@ -6,7 +6,6 @@ import { useDesignSystem } from '@/hooks/useDesignSystem';
 import { useAuth } from '@/contexts/AuthContext';
 import { Campaign, CampaignStatus, getStepFromStatus, getStepLabel } from '@/types';
 import React from 'react';
-import Image from 'next/image';
 
 // Utilities for platform label and date handling
 const getPlatformLabel = (platform?: string): string => {
@@ -1328,13 +1327,10 @@ export default function ChatBot({ className }: ChatBotProps) {
               className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center"
               style={{ backgroundColor: '#f5f5f5' }}
             >
-              <Image 
+              <img 
                 src="/blue.svg" 
                 alt="Blue" 
-                width={20} 
-                height={20}
                 className="w-4 h-4 sm:w-5 sm:h-5"
-                unoptimized
               />
             </div>
             <div>
@@ -1546,13 +1542,10 @@ export default function ChatBot({ className }: ChatBotProps) {
                 {message.sender === 'user' ? (
                   <User className="w-3 h-3" style={{ color: 'white' }} />
                 ) : (
-                  <Image 
+                  <img 
                     src="/blue.svg" 
                     alt="Blue" 
-                    width={12} 
-                    height={12}
                     className="w-3 h-3"
-                    unoptimized
                   />
                 )}
               </div>

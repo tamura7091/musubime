@@ -15,7 +15,6 @@ import { useRouter } from 'next/navigation';
 import { CampaignStatus, getStepFromStatus } from '@/types';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
 import { formatAbbreviatedCurrency } from '@/lib/design-system';
-import Image from 'next/image';
 
 export default function InfluencerDashboard() {
   // Prefer full currency unless it overflows; fallback to abbreviated (K/M)
@@ -1475,13 +1474,10 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
               <div className="mb-5 flex items-start gap-3 max-w-3xl">
                 {/* Blue Character */}
                 <div className="flex-shrink-0 mt-1">
-                  <Image 
+                  <img 
                     src="/blue.svg" 
                     alt="Character" 
-                    width={48} 
-                    height={48}
                     className="w-12 h-12"
-                    unoptimized
                   />
                 </div>
 
@@ -1558,13 +1554,10 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
               <div className="mb-5 flex items-start gap-3 max-w-3xl">
                 {/* Blue Character */}
                 <div className="flex-shrink-0 mt-1">
-                  <Image 
+                  <img 
                     src="/blue.svg" 
                     alt="Character" 
-                    width={48} 
-                    height={48}
                     className="w-12 h-12"
-                    unoptimized
                   />
                 </div>
                 
