@@ -203,21 +203,44 @@ class GoogleSheetsService {
         console.log('🔍 GoogleSheetsService.getSpecificColumns() called');
         console.log('📋 Requested columns:', columnNames);
         console.log('📊 Sheet name:', sheetName);
+        console.log('👤 Influencer ID filter:', influencerId || 'none (fetch all)');
       }
       
       this.assertConfigured();
 
       const range = `${sheetName}!A:ZZ`;
-      const cacheKey = `${this.spreadsheetId}:${range}`;
+      // Create separate cache keys for full sheet vs filtered by influencer
+      const baseCacheKey = `${this.spreadsheetId}:${range}`;
+      const filteredCacheKey = influencerId ? `${baseCacheKey}:influencer:${influencerId}` : baseCacheKey;
+      
       const useCache = !options?.forceRefresh;
+      
+      // First, try to get influencer-specific cached data
+      if (useCache && influencerId) {
+        const cachedFiltered = this.getCache(filteredCacheKey);
+        if (cachedFiltered) {
+          if (this.debugSheets) console.log('📦 Cache hit for influencer-specific data:', influencerId);
+          // Return cached influencer-specific data
+          const data: GoogleSheetsRow[] = cachedFiltered.map((row: any) => {
+            const obj: GoogleSheetsRow = {};
+            columnNames.forEach(col => { obj[col] = row[col] || ''; });
+            return obj;
+          });
+          return data;
+        }
+      }
+      
+      // Next, try to get full sheet from cache and filter it
       if (useCache) {
-        const cached = this.getCache(cacheKey);
+        const cached = this.getCache(baseCacheKey);
         if (cached) {
-          if (this.debugSheets) console.log('📦 Cache hit for', range);
+          if (this.debugSheets) console.log('📦 Cache hit for full sheet, filtering in memory');
           // cached is already an array of normalized row objects
           let cachedRows: any[] = cached.slice(0);
           if (influencerId) {
             cachedRows = cachedRows.filter((row: any) => row['id_influencer'] === influencerId);
+            // Cache the filtered result for faster subsequent access
+            this.setCache(filteredCacheKey, cachedRows);
           }
           const data: GoogleSheetsRow[] = cachedRows.map((row: any) => {
             const obj: GoogleSheetsRow = {};
@@ -312,7 +335,15 @@ class GoogleSheetsService {
           headers.forEach((h, i) => { obj[h] = row[i] || ''; });
           return obj;
         });
-        this.setCache(cacheKey, normalizedObjects);
+        // Cache the full sheet
+        this.setCache(baseCacheKey, normalizedObjects);
+        
+        // Also cache the filtered result if influencerId was provided
+        if (influencerId) {
+          const filteredObjects = normalizedObjects.filter((row: any) => row['id_influencer'] === influencerId);
+          this.setCache(filteredCacheKey, filteredObjects);
+          console.log(`💾 Cached ${filteredObjects.length} rows for influencer ${influencerId}`);
+        }
       }
 
       if (this.debugSheets) {
@@ -440,8 +471,8 @@ class GoogleSheetsService {
       'trial_login_password_dashboard',
       // Influencer-facing notes (markdown) shown on dashboard
       'note_dashboard',
-      // Chat history for Musubime AI
-      'chat_dashboard'
+      // Chat history for Musubime AI - REMOVED for performance, use getChatHistory() instead
+      // 'chat_dashboard'
     ], influencerId, 'campaigns', options);
     
     // Filter out rows with empty id_campaign
@@ -736,6 +767,37 @@ class GoogleSheetsService {
         }
       };
     });
+  }
+
+  // Get chat history for a specific campaign (lazy loaded for performance)
+  async getChatHistory(campaignId: string): Promise<string | null> {
+    try {
+      console.log('💬 getChatHistory() called for campaign:', campaignId);
+      
+      this.assertConfigured();
+
+      // Fetch only the chat_dashboard column for this campaign
+      const data = await this.getSpecificColumns([
+        'id_campaign',
+        'chat_dashboard'
+      ], undefined, 'campaigns', { forceRefresh: false });
+      
+      // Find the campaign
+      const campaign = data.find(row => row['id_campaign'] === campaignId);
+      
+      if (!campaign) {
+        console.log('❌ Campaign not found:', campaignId);
+        return null;
+      }
+      
+      const chatHistory = campaign['chat_dashboard'] || '';
+      console.log(`✅ Chat history fetched for ${campaignId}: ${chatHistory.length} characters`);
+      
+      return chatHistory;
+    } catch (error: any) {
+      console.error('❌ Error fetching chat history:', error?.message || error);
+      return null;
+    }
   }
 
   // Map platform values from Google Sheets to our enum

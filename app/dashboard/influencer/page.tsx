@@ -626,6 +626,33 @@ export default function InfluencerDashboard() {
     return { label, days: getDaysUntil(targetDate) };
   };
 
+  // Get the target due date (raw) for the next step based on current status
+  const getNextStepTargetDate = (campaign: any): string | null | undefined => {
+    if (!campaign) return null;
+    const status = campaign.status as CampaignStatus;
+    switch (status) {
+      case 'not_started':
+      case 'meeting_scheduling':
+      case 'meeting_scheduled':
+      case 'contract_pending':
+      case 'trial':
+      case 'plan_creating':
+      case 'plan_revising':
+        return campaign?.schedules?.planSubmissionDate;
+      case 'plan_submitted':
+      case 'draft_creating':
+      case 'draft_revising':
+        return campaign?.schedules?.draftSubmissionDate;
+      case 'draft_submitted':
+      case 'scheduling':
+      case 'scheduled':
+      case 'payment_processing':
+      case 'cancelled':
+      default:
+        return campaign?.schedules?.liveDate;
+    }
+  };
+
   // Format date helper for schedule display
   const formatDate = (date: Date | string | undefined | null) => {
     if (!date) return '未定';
@@ -1445,25 +1472,64 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
             
             {/* Warning Message for Behind Schedule */}
             {isActionRequiredNow(primaryCampaign) && isCurrentStepBehindSchedule(primaryCampaign) ? (
-              <div className="mb-5 p-4 rounded-xl" style={{ 
-                backgroundColor: ds.isDark ? '#2d1b1b' : '#fef2f2',
-                borderColor: ds.isDark ? '#7f1d1d' : '#fecaca',
-                borderWidth: '1px',
-                borderStyle: 'solid'
-              }}>
-                <div className="flex items-center gap-3">
-                  <AlertCircle size={18} style={{ color: '#ef4444' }} />
-                  <span className="text-sm font-semibold" style={{ 
-                    color: ds.isDark ? '#f87171' : '#dc2626'
-                  }}>
-                    スケジュールより遅れています
-                  </span>
+              <div className="mb-5 flex items-start gap-3 max-w-3xl">
+                {/* Blue Character */}
+                <div className="flex-shrink-0 mt-1">
+                  <Image 
+                    src="/blue.svg" 
+                    alt="Character" 
+                    width={48} 
+                    height={48}
+                    className="w-12 h-12"
+                  />
                 </div>
-                <p className="text-sm mt-2 ml-7" style={{ 
-                  color: ds.isDark ? '#dc2626' : '#7f1d1d'
-                }}>
-                  次のステップの期限を過ぎています。可能な限り早めの対応をお願いいたします。
-                </p>
+
+                {/* Chat Bubble (soft tone) */}
+                <div 
+                  className="relative inline-block rounded-2xl px-4 py-3 shadow-sm"
+                  style={{ 
+                    backgroundColor: ds.isDark ? '#1e40af25' : '#dbeafe',
+                    borderColor: ds.isDark ? '#60a5fa' : '#93c5fd',
+                    borderWidth: '1px',
+                    borderStyle: 'solid'
+                  }}
+                >
+                  {/* Speech Bubble Pointer with border */}
+                  <div 
+                    className="absolute -left-2 top-4"
+                    style={{
+                      width: 0,
+                      height: 0,
+                      borderTop: '8px solid transparent',
+                      borderBottom: '8px solid transparent',
+                      borderRight: `9px solid ${ds.isDark ? '#60a5fa' : '#93c5fd'}`
+                    }}
+                  />
+                  <div 
+                    className="absolute top-4"
+                    style={{
+                      left: '-7px',
+                      width: 0,
+                      height: 0,
+                      borderTop: '7px solid transparent',
+                      borderBottom: '7px solid transparent',
+                      borderRight: `8px solid ${ds.isDark ? '#1e40af25' : '#dbeafe'}`
+                    }}
+                  />
+
+                  <p className="text-sm leading-relaxed" style={{ color: ds.text.primary }}>
+                    {(() => {
+                      const info = nextStepInfo; // { label, days }
+                      const targetDateRaw = getNextStepTargetDate(primaryCampaign);
+                      const targetDateText = formatDate(targetDateRaw);
+                      const overdueDays = info?.days != null && info.days < 0 ? Math.abs(info.days) : null;
+                      if (overdueDays != null) {
+                        return `⚠️ 「${info?.label}」が${overdueDays}日遅れています（期限: ${targetDateText}）。お早めにご対応いただけると助かります。`;
+                      }
+                      return `⚠️ 「${info?.label}」の期限を過ぎています（期限: ${targetDateText}）。お早めにご対応いただけると助かります。`;
+                    })()}
+                  </p>
+                </div>
               </div>
             ) : isActionRequiredNow(primaryCampaign) && isCurrentStepDueToday(primaryCampaign) ? (
               <div className="mb-5 p-4 rounded-xl" style={{ 
@@ -1541,19 +1607,19 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                         meeting_scheduling: 'ご入力ありがとうございます。つぎは打ち合わせの日程をいっしょに決めましょう📅',
                         meeting_scheduled: 'ご予約ありがとうございます。当日お会いできるのを楽しみにしています！📅',
                         trial: '順調です。ガイドラインのチェックとプレミアムアカウントの体験もいってみましょう✨',
-                        plan_creating: `打ち合わせおつかれさまでした。${planDueForMsg ? `${planDueForMsg}までに` : ''}構成案のご提出をお願いできますか？ぼくがしっかり受け取ります📩`,
+                        plan_creating: `打ち合わせおつかれさまでした。${planDueForMsg ? `${planDueForMsg}までに` : ''}構成案のご提出をお願いします！`,
                         plan_submitted: '構成案ありがとうございます。いま確認中です。もう少しだけお待ちください🔎',
                         plan_revising: 'フィードバックをお届けしました。いっしょに良くしていきましょう✏️ 修正のご対応をお願いできますか？',
                         draft_creating: '素敵な構成案です！この流れで初稿の作成をお願いできるとうれしいです🚀',
                         draft_submitted: '初稿ありがとうございます。現在チェック中です。完成が楽しみです🎬',
-                        draft_revising: '初稿の修正をお願いできますか？ぼくも応援しています💪',
+                        draft_revising: '初稿の修正をお願いします🙇',
                         scheduling: 'ここまでおつかれさまです。つぎは投稿準備へ。いっしょに進めましょう📣',
                         scheduled: '投稿ありがとうございます。すごく良かったです！送金手続きを進めますね💰',
                         payment_processing: '送金を開始しました。着金までいっしょに少々お待ちください⏳',
                         completed: 'ご協力ありがとうございました。今回も素敵でした！またご一緒できる日を楽しみにしています🎉',
-                        cancelled: 'ご対応ありがとうございました。今回はここまで。また機会があればうれしいです。',
+                        cancelled: 'ご対応ありがとうございました。また機会があればうれしいです！',
                       };
-                      return messages[primaryCampaign.status] || 'いいペースです。この調子でいっしょに進めましょう。';
+                      return messages[primaryCampaign.status] || 'いい感じです！';
                     })()}
                   </p>
                 </div>

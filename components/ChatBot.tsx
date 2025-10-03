@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MessageCircle, X, Send, Bot, User, Loader2, Menu } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, Loader2, Menu, History } from 'lucide-react';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
 import { useAuth } from '@/contexts/AuthContext';
 import { Campaign, CampaignStatus, getStepFromStatus, getStepLabel } from '@/types';
@@ -255,6 +255,7 @@ export default function ChatBot({ className }: ChatBotProps) {
   const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [chatHistoryLoaded, setChatHistoryLoaded] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   // Get current messages from current session
   const messages = chatSessions.find(s => s.id === currentSessionId)?.messages || [];
@@ -398,46 +399,75 @@ export default function ChatBot({ className }: ChatBotProps) {
     ));
   };
 
-  // Load chat history from campaigns on mount
-  useEffect(() => {
-    if (chatHistoryLoaded || !campaigns || campaigns.length === 0) return;
+  // Lazy load chat history from API when explicitly requested
+  const loadChatHistory = async () => {
+    if (isLoadingHistory) return; // Prevent double-loading
     
-    const primary = pickPrimaryCampaign(campaigns);
-    if (!primary) return;
-    
-    const chatHistory = primary.campaignData?.chat_dashboard;
-    if (chatHistory && typeof chatHistory === 'string' && chatHistory.trim() !== '') {
-      try {
-        const parsedHistory = JSON.parse(chatHistory);
-        if (Array.isArray(parsedHistory) && parsedHistory.length > 0) {
-          // Convert stored sessions to ChatSession objects
-          const loadedSessions = parsedHistory.map((session: any) => ({
-            ...session,
-            createdAt: new Date(session.createdAt),
-            updatedAt: new Date(session.updatedAt),
-            messages: session.messages.map((msg: any) => ({
-              ...msg,
-              timestamp: new Date(msg.timestamp)
-            }))
-          }));
-          console.log('💬 Loaded chat sessions:', loadedSessions.length);
-          setChatSessions(loadedSessions);
-          // Set most recent session as current
-          if (loadedSessions.length > 0) {
-            setCurrentSessionId(loadedSessions[0].id);
-          }
-          setChatHistoryLoaded(true);
-          return;
-        }
-      } catch (error) {
-        console.log('⚠️ Failed to parse chat history, starting fresh');
-      }
+    if (!campaigns || campaigns.length === 0) {
+      alert('キャンペーンデータが読み込まれていません');
+      return;
     }
     
-    // No history found, create first chat
-    createNewChat();
-    setChatHistoryLoaded(true);
-  }, [campaigns, chatHistoryLoaded]);
+    const primary = pickPrimaryCampaign(campaigns);
+    if (!primary) {
+      alert('キャンペーンが見つかりません');
+      return;
+    }
+    
+    setIsLoadingHistory(true);
+    try {
+      console.log('💬 Fetching chat history for campaign:', primary.id);
+      const response = await fetch(`/api/chat/history?campaignId=${encodeURIComponent(primary.id)}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch chat history');
+      }
+      
+      const data = await response.json();
+      const parsedHistory = data.messages;
+      
+      if (Array.isArray(parsedHistory) && parsedHistory.length > 0) {
+        // Convert stored sessions to ChatSession objects
+        const loadedSessions = parsedHistory.map((session: any) => ({
+          ...session,
+          createdAt: new Date(session.createdAt),
+          updatedAt: new Date(session.updatedAt),
+          messages: session.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }))
+        }));
+        console.log('💬 Loaded chat sessions:', loadedSessions.length);
+        
+        // Replace or merge with current sessions
+        // If we already have sessions, replace them; otherwise just set
+        setChatSessions(loadedSessions);
+        
+        // Set most recent session as current
+        if (loadedSessions.length > 0) {
+          setCurrentSessionId(loadedSessions[0].id);
+        }
+        
+        alert(`${loadedSessions.length}件のチャット履歴を読み込みました`);
+      } else {
+        alert('保存されたチャット履歴がありません');
+      }
+    } catch (error) {
+      console.error('❌ Failed to load chat history:', error);
+      alert('チャット履歴の読み込みに失敗しました');
+    } finally {
+      setIsLoadingHistory(false);
+      setChatHistoryLoaded(true);
+    }
+  };
+
+  // Start with fresh chat when opened (don't auto-load history)
+  useEffect(() => {
+    if (isOpen && !chatHistoryLoaded && !isLoadingHistory && chatSessions.length === 0) {
+      // Create a fresh chat session instead of loading history
+      createNewChat();
+      setChatHistoryLoaded(true);
+    }
+  }, [isOpen, chatHistoryLoaded, chatSessions.length]);
 
   // Update greeting once user info becomes available
   useEffect(() => {
@@ -1370,7 +1400,7 @@ export default function ChatBot({ className }: ChatBotProps) {
               </div>
               
               {/* New Chat Button */}
-              <div className="p-3">
+              <div className="p-3 space-y-2">
                 <button
                   onClick={createNewChat}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm"
@@ -1391,6 +1421,41 @@ export default function ChatBot({ className }: ChatBotProps) {
                 >
                   <MessageCircle className="w-4 h-4" />
                   新しいチャット
+                </button>
+                
+                {/* Load History Button */}
+                <button
+                  onClick={() => {
+                    loadChatHistory();
+                  }}
+                  disabled={isLoadingHistory}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all"
+                  style={{
+                    backgroundColor: ds.bg.card,
+                    color: ds.text.primary,
+                    borderColor: ds.border.primary,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    opacity: isLoadingHistory ? 0.6 : 1,
+                    cursor: isLoadingHistory ? 'not-allowed' : 'pointer',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isLoadingHistory) {
+                      e.currentTarget.style.backgroundColor = ds.bg.surface;
+                      e.currentTarget.style.borderColor = ds.text.accent;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = ds.bg.card;
+                    e.currentTarget.style.borderColor = ds.border.primary;
+                  }}
+                >
+                  {isLoadingHistory ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <History className="w-4 h-4" />
+                  )}
+                  履歴をロードする
                 </button>
               </div>
               
@@ -1457,7 +1522,12 @@ export default function ChatBot({ className }: ChatBotProps) {
 
         {/* Messages */}
         <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 mobile-chat-messages">
-          {messages.map((message) => (
+          {isLoadingHistory ? (
+            <div className="flex flex-col items-center justify-center h-full space-y-3">
+              <Loader2 className="w-8 h-8 animate-spin" style={{ color: ds.text.secondary }} />
+              <p className="text-sm" style={{ color: ds.text.secondary }}>チャット履歴を読み込み中...</p>
+            </div>
+          ) : messages.map((message) => (
             <div
               key={message.id}
               className={`flex items-start space-x-2 ${

@@ -1,39 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { googleSheetsService } from '@/lib/google-sheets';
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const { campaignId, messages } = await request.json();
-
-    if (!campaignId || !messages) {
+    const { searchParams } = new URL(request.url);
+    const campaignId = searchParams.get('campaignId');
+    
+    if (!campaignId) {
       return NextResponse.json(
-        { error: 'campaignId and messages are required' },
+        { error: 'campaignId is required' },
         { status: 400 }
       );
     }
-
-    console.log('💬 Updating chat history for campaign:', campaignId);
-
-    // Update chat_dashboard column in Google Sheets
-    const result = await (googleSheetsService as any).updateChatHistory(
-      campaignId,
-      JSON.stringify(messages)
-    );
-
-    if (result.success) {
-      return NextResponse.json({ success: true });
-    } else {
+    
+    console.log('🎯 API: Fetching chat history for campaign:', campaignId);
+    
+    const chatHistory = await googleSheetsService.getChatHistory(campaignId);
+    
+    if (chatHistory === null) {
       return NextResponse.json(
-        { error: result.error || 'Failed to update chat history' },
-        { status: 500 }
+        { error: 'Campaign not found or no chat history' },
+        { status: 404 }
       );
     }
-  } catch (error: any) {
-    console.error('❌ Error updating chat history:', error);
+    
+    // Parse the JSON if it exists
+    let messages = [];
+    if (chatHistory && chatHistory.trim()) {
+      try {
+        messages = JSON.parse(chatHistory);
+        if (!Array.isArray(messages)) {
+          messages = [];
+        }
+      } catch (parseError) {
+        console.error('❌ Failed to parse chat history JSON:', parseError);
+        messages = [];
+      }
+    }
+    
+    console.log('✅ API: Fetched chat history:', messages.length, 'messages');
+    
+    return NextResponse.json({ messages });
+  } catch (error) {
+    console.error('❌ API: Failed to fetch chat history:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to update chat history' },
+      { error: 'Failed to fetch chat history' },
       { status: 500 }
     );
   }
 }
-
