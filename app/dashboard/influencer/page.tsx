@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { CampaignStatus, getStepFromStatus } from '@/types';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
 import { formatAbbreviatedCurrency } from '@/lib/design-system';
+import Image from 'next/image';
 
 export default function InfluencerDashboard() {
   // Prefer full currency unless it overflows; fallback to abbreviated (K/M)
@@ -1360,15 +1361,23 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                   <p className="text-2xl sm:text-3xl font-semibold mb-1" style={{ color: ds.text.primary, letterSpacing: '-0.01em' }}>
                     {activeCampaigns.length > 0
                       ? (() => {
-                          const subtotal = activeCampaigns.reduce((sum: number, c: any) => sum + (c.contractedPrice || 0), 0);
-                          return formatCurrencySmart(subtotal);
+                          const subtotalExclTax = activeCampaigns.reduce((sum: number, c: any) => sum + (c.contractedPrice || 0), 0);
+                          const subtotalInclTax = Math.round(subtotalExclTax * 1.1);
+                          return formatCurrencySmart(subtotalInclTax);
                         })()
                       : formatCurrencySmart(totalPayoutAllCampaigns)}
                   </p>
                 </VisibilityToggle>
-                <p className="text-sm font-medium" style={{ color: ds.text.secondary }}>
-                  {activeCampaigns.length > 0 ? '進行中PRの報酬額（税抜）' : 'PR報酬総額'}
-                </p>
+                <div>
+                  <p className="text-sm font-medium" style={{ color: ds.text.secondary }}>
+                    {activeCampaigns.length > 0 ? '進行中PRの報酬額（税込）' : 'PR報酬総額'}
+                  </p>
+                  {activeCampaigns.length > 0 && (
+                    <p className="text-xs mt-0.5" style={{ color: ds.text.secondary, opacity: 0.7 }}>
+                      海外法人の方は消費税の対象外となります
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1478,30 +1487,77 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                 </p>
               </div>
             ) : (
-              /* Status Message - only show if not behind schedule or due today */
-              <p className="mb-5 text-base" style={{ color: ds.text.primary, lineHeight: 1.6, fontWeight: 500 }}>
-                {(() => {
-                  const planDueForMsg = formatMonthDay(primaryCampaign?.schedules?.planSubmissionDate);
-                  const messages: Record<string, string> = {
-                    not_started: '🎉 Welcome! まずは基本情報のご入力をお願いします。',
-                    meeting_scheduling: '✅ 基本情報のご入力ありがとうございます！打ち合わせのご予約にお進みください。',
-                    meeting_scheduled: '📅 打ち合わせのご予約ありがとうございます！当日のご参加をお願いします。',
-                    trial: '📱 ガイドラインの確認とプレミアムアカウントでの体験をお願いします！',
-                    plan_creating: `🤝 打ち合わせありがとうございました！${planDueForMsg ? `${planDueForMsg}までに` : ''}構成案の作成・提出をお願いします。`,
-                    plan_submitted: '📋 構成案のご提出ありがとうございます！ただいま確認中です。',
-                    plan_revising: '✏️ ご提出ありがとうございます！フィードバックに沿って修正をお願いします。',
-                    draft_creating: '🎊 素敵な構成案をありがとうございます！構成案に沿い、初稿作成にお進みください。',
-                    draft_submitted: '🎬 初稿のご提出ありがとうございます！ただいま確認中です。',
-                    draft_revising: '🔧 初稿修正のご対応をお願いします。',
-                    scheduling: '📱 初稿のご対応ありがとうございます！投稿準備をお願いします。',
-                    scheduled: '🚀 投稿ありがとうございます！送金手続きを進めます。',
-                    payment_processing: '💰 投稿ありがとうございました！送金手続きを開始しました。着金まで少々お待ちください。',
-                    completed: '🎉 ご協力ありがとうございました！プロモーションは完了しました。',
-                    cancelled: '😔 今回はご対応ありがとうございました。',
-                  };
-                  return messages[primaryCampaign.status] || '進捗ありがとうございます！次のステップにお進みください。';
-                })()}
-              </p>
+              /* Status Message with Character - only show if not behind schedule or due today */
+              <div className="mb-5 flex items-start gap-3 max-w-3xl">
+                {/* Blue Character */}
+                <div className="flex-shrink-0 mt-1">
+                  <Image 
+                    src="/blue.svg" 
+                    alt="Character" 
+                    width={48} 
+                    height={48}
+                    className="w-12 h-12"
+                  />
+                </div>
+                
+                {/* Chat Bubble */}
+                <div 
+                  className="relative inline-block rounded-2xl px-4 py-3 shadow-sm"
+                  style={{ 
+                    backgroundColor: ds.isDark ? '#1e40af25' : '#dbeafe',
+                    borderColor: ds.isDark ? '#60a5fa' : '#93c5fd',
+                    borderWidth: '1px',
+                    borderStyle: 'solid'
+                  }}
+                >
+                  {/* Speech Bubble Pointer with border */}
+                  <div 
+                    className="absolute -left-2 top-4"
+                    style={{
+                      width: 0,
+                      height: 0,
+                      borderTop: '8px solid transparent',
+                      borderBottom: '8px solid transparent',
+                      borderRight: `9px solid ${ds.isDark ? '#60a5fa' : '#93c5fd'}`
+                    }}
+                  />
+                  <div 
+                    className="absolute top-4"
+                    style={{
+                      left: '-7px',
+                      width: 0,
+                      height: 0,
+                      borderTop: '7px solid transparent',
+                      borderBottom: '7px solid transparent',
+                      borderRight: `8px solid ${ds.isDark ? '#1e40af25' : '#dbeafe'}`
+                    }}
+                  />
+                  
+                  <p className="text-base leading-relaxed" style={{ color: ds.text.primary, fontWeight: 500 }}>
+                    {(() => {
+                      const planDueForMsg = formatMonthDay(primaryCampaign?.schedules?.planSubmissionDate);
+                      const messages: Record<string, string> = {
+                        not_started: 'はじめまして！ぼくがご案内します。まずは基本情報のご入力からいっしょに進めましょう😊',
+                        meeting_scheduling: 'ご入力ありがとうございます。つぎは打ち合わせの日程をいっしょに決めましょう📅',
+                        meeting_scheduled: 'ご予約ありがとうございます。当日お会いできるのを楽しみにしています！📅',
+                        trial: '順調です。ガイドラインのチェックとプレミアムアカウントの体験もいってみましょう✨',
+                        plan_creating: `打ち合わせおつかれさまでした。${planDueForMsg ? `${planDueForMsg}までに` : ''}構成案のご提出をお願いできますか？ぼくがしっかり受け取ります📩`,
+                        plan_submitted: '構成案ありがとうございます。いま確認中です。もう少しだけお待ちください🔎',
+                        plan_revising: 'フィードバックをお届けしました。いっしょに良くしていきましょう✏️ 修正のご対応をお願いできますか？',
+                        draft_creating: '素敵な構成案です！この流れで初稿の作成をお願いできるとうれしいです🚀',
+                        draft_submitted: '初稿ありがとうございます。現在チェック中です。完成が楽しみです🎬',
+                        draft_revising: '初稿の修正をお願いできますか？ぼくも応援しています💪',
+                        scheduling: 'ここまでおつかれさまです。つぎは投稿準備へ。いっしょに進めましょう📣',
+                        scheduled: '投稿ありがとうございます。すごく良かったです！送金手続きを進めますね💰',
+                        payment_processing: '送金を開始しました。着金までいっしょに少々お待ちください⏳',
+                        completed: 'ご協力ありがとうございました。今回も素敵でした！またご一緒できる日を楽しみにしています🎉',
+                        cancelled: 'ご対応ありがとうございました。今回はここまで。また機会があればうれしいです。',
+                      };
+                      return messages[primaryCampaign.status] || 'いいペースです。この調子でいっしょに進めましょう。';
+                    })()}
+                  </p>
+                </div>
+              </div>
             )}
             
             <div className="rounded-2xl p-5 sm:p-7" style={{ 
@@ -2036,7 +2092,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                           <div className="text-sm font-medium whitespace-nowrap min-w-[150px]" style={{ color: ds.text.secondary }}>キャンペーン名</div>
                           <div className="text-sm font-medium whitespace-nowrap min-w-[120px]" style={{ color: ds.text.secondary }}>プラットフォーム</div>
                           <div className="text-sm font-medium whitespace-nowrap min-w-[130px]" style={{ color: ds.text.secondary }}>ステータス</div>
-                          <div className="text-sm font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>報酬</div>
+                          <div className="text-sm font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>報酬（税込）</div>
                           <div className="text-sm font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>構成案提出</div>
                           <div className="text-sm font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>初稿提出</div>
                           <div className="text-sm font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>PR投稿</div>
@@ -2145,7 +2201,11 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                             <div className="text-sm font-semibold min-w-[100px]" style={{ color: ds.text.primary }}>
                               <div className="min-w-[100px] whitespace-nowrap">
                                 <VisibilityToggle showToggleButton={false}>
-                                  {formatCurrencySmart(campaign.contractedPrice || 0)}
+                                  {(() => {
+                                    const excl = campaign.contractedPrice || 0;
+                                    const incl = Math.round(excl * 1.1);
+                                    return formatCurrencySmart(incl);
+                                  })()}
                                 </VisibilityToggle>
                               </div>
                             </div>

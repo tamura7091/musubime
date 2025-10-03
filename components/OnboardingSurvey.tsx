@@ -85,7 +85,7 @@ export default function OnboardingSurvey({ campaignId, onComplete, onCancel, def
       title: '報酬額（税別）',
       field: 'price',
       type: 'number',
-      placeholder: computedPricePlaceholder,
+      placeholder: `${computedPricePlaceholder}（税込: ¥${(() => { const n = Number(String(computedPricePlaceholder).replace(/[^0-9.-]/g, '')); return Number.isFinite(n) ? Math.round(n * 1.1).toLocaleString('ja-JP') : '' })()}）`,
       description: '税抜きで記入してください。'
     },
     {

@@ -472,6 +472,15 @@ export default function ChatBot({ className }: ChatBotProps) {
         }));
         
         console.log('💾 Saving chat sessions (user and AI messages)...');
+        console.log('📊 Sessions to save:', sessionsToSave.length);
+        console.log('📝 Total messages across all sessions:', sessionsToSave.reduce((sum, s) => sum + s.messages.length, 0));
+        console.log('🔍 Message breakdown:', sessionsToSave.map(s => ({
+          sessionId: s.id,
+          messageCount: s.messages.length,
+          userMessages: s.messages.filter(m => m.sender === 'user').length,
+          botMessages: s.messages.filter(m => m.sender === 'bot').length
+        })));
+        
         const response = await fetch('/api/chat/history', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1467,7 +1476,7 @@ export default function ChatBot({ className }: ChatBotProps) {
                 {/* Interactive component */}
                 {message.interactive && message.interactive.type === 'options' && (
                   <div
-                    className="inline-block px-4 py-3 rounded-2xl text-sm rounded-bl-md"
+                    className="inline-block px-4 py-3 rounded-2xl text-sm chat-bubble-bot"
                     style={{
                       backgroundColor: ds.bg.surface,
                       color: ds.text.primary,
@@ -1519,8 +1528,8 @@ export default function ChatBot({ className }: ChatBotProps) {
                   <div
                     className={`inline-block px-3 py-2 rounded-2xl text-sm leading-relaxed ${
                       message.sender === 'user' 
-                        ? 'rounded-br-md' 
-                        : 'rounded-bl-md'
+                        ? 'chat-bubble-user' 
+                        : 'chat-bubble-bot'
                     }`}
                     style={{
                       backgroundColor: message.sender === 'user' 
@@ -1529,6 +1538,11 @@ export default function ChatBot({ className }: ChatBotProps) {
                       color: message.sender === 'user' 
                         ? 'white' 
                         : ds.text.primary,
+                      borderColor: message.sender === 'bot' 
+                        ? ds.border.primary 
+                        : 'transparent',
+                      borderWidth: message.sender === 'bot' ? '1px' : '0',
+                      borderStyle: 'solid',
                       wordBreak: 'break-word',
                       overflowWrap: 'break-word',
                       maxWidth: '100%',

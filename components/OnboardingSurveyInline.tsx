@@ -77,7 +77,7 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
       title: 'メールで同意した報酬額（税別）',
       field: 'price',
       type: 'text',
-      placeholder: computedPricePlaceholder,
+      placeholder: `${computedPricePlaceholder}（税込: ¥${(() => { const n = Number(String(computedPricePlaceholder).replace(/[^0-9.-]/g, '')); return Number.isFinite(n) ? Math.round(n * 1.1).toLocaleString('ja-JP') : '' })()}）`,
       description: '税抜きで記入してください。'
     },
     {
