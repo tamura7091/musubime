@@ -306,7 +306,7 @@ export default function InfluencerDashboard() {
 
         const guidelineLink = guidelineUrl
           ? `<a href="${guidelineUrl}" target="_blank" style="color: #60a5fa; text-decoration: underline;">ガイドライン</a>`
-          : 'ガイドライン（リンクは下部「リンク」欄をご確認ください）';
+          : 'ガイドライン（リンクは下部「ノート」欄をご確認ください）';
 
         return {
           title: 'ガイドラインの確認とプレミアムの試用',
@@ -700,13 +700,30 @@ export default function InfluencerDashboard() {
   // Get the most active campaign for status display
   const primaryCampaign = activeCampaigns[0] || userCampaigns[0];
 
-  // Find the first non-empty influencer note across all campaigns
-  const influencerNote: string | null = (() => {
+  // Find the first non-empty influencer note across all campaigns and append default links
+  const influencerNote: string = (() => {
+    // Get custom note if exists
+    let customNote = '';
     for (const c of userCampaigns) {
       const note = c?.campaignData?.note_dashboard;
-      if (typeof note === 'string' && note.trim() !== '') return note;
+      if (typeof note === 'string' && note.trim() !== '') {
+        customNote = note;
+        break;
+      }
     }
-    return null;
+    
+    // Get guideline URL based on platform
+    const guidelineUrl = primaryCampaign ? getGuidelineUrl(primaryCampaign.platform as string) : '';
+    
+    // Build default links section in markdown
+    const defaultLinks = `### リンク集
+
+${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
+- [構成案テンプレート](https://docs.google.com/document/d/13Ljg7rR8hsaZflGt3N0sB_g9ad-391G7Nhl4ICwVybg/copy)
+- [請求書テンプレート](https://docs.google.com/spreadsheets/d/1R7FffUOmZtlCo8Cm7TYOVTAixQ7Qz-ax3UC3rpgreVc/copy)`;
+    
+    // Combine custom note with default links
+    return customNote ? `${customNote}\n\n${defaultLinks}` : defaultLinks;
   })();
 
   // Get days left for the primary campaign
@@ -1964,8 +1981,8 @@ export default function InfluencerDashboard() {
           </div>
         )}
 
-        {/* Notes Section */}
-        {influencerNote && (
+        {/* Notes Section - Always show with default links */}
+        {primaryCampaign && (
           <div className="mb-8 sm:mb-12">
             <div className="rounded-2xl p-5 sm:p-7" style={{ 
               backgroundColor: ds.bg.card,
@@ -2419,62 +2436,6 @@ export default function InfluencerDashboard() {
           </div>
         )}
 
-        {/* Links Section - moved to bottom */}
-        {primaryCampaign && (
-          <div className="mt-6 sm:mt-8">
-            <div className="rounded-xl p-4 sm:p-6" style={{ 
-              backgroundColor: ds.bg.card,
-              borderColor: ds.border.primary,
-              borderWidth: '1px',
-              borderStyle: 'solid'
-            }}>
-              <h3 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h2.fontSize, lineHeight: ds.typography.heading.h2.lineHeight }}>
-                リンク
-              </h3>
-              <div className="space-y-2 text-sm">
-                {(() => {
-                  const url = getGuidelineUrl(primaryCampaign.platform as string);
-                  if (!url) return null;
-                  return (
-                    <div className="flex items-center space-x-2">
-                      <ExternalLink size={14} style={{ color: ds.text.accent }} />
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: ds.text.accent, textDecoration: 'underline' }}
-                      >
-                        ガイドライン
-                      </a>
-                    </div>
-                  );
-                })()}
-                <div className="flex items-center space-x-2">
-                  <ExternalLink size={14} style={{ color: ds.text.accent }} />
-                  <a
-                    href="https://docs.google.com/document/d/13Ljg7rR8hsaZflGt3N0sB_g9ad-391G7Nhl4ICwVybg/copy"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: ds.text.accent, textDecoration: 'underline' }}
-                  >
-                    ドラフトテンプレート
-                  </a>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <ExternalLink size={14} style={{ color: ds.text.accent }} />
-                  <a
-                    href="https://docs.google.com/spreadsheets/d/1R7FffUOmZtlCo8Cm7TYOVTAixQ7Qz-ax3UC3rpgreVc/copy"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: ds.text.accent, textDecoration: 'underline' }}
-                  >
-                    請求書テンプレート
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
     </AmountVisibilityProvider>
