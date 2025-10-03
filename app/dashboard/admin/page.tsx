@@ -632,45 +632,71 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: ds.bg.primary }}>
       <div className="max-w-7xl mx-auto mobile-padding">
-        <div className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-2">
+        <div className="mb-8 sm:mb-12">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-3">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="font-bold" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h1.fontSize, lineHeight: ds.typography.heading.h1.lineHeight }}>
+              <div className="flex items-center gap-4 mb-2">
+                <h1 className="font-bold" style={{ 
+                  color: ds.text.primary, 
+                  fontSize: '32px', 
+                  lineHeight: '1.2',
+                  fontWeight: 700,
+                  letterSpacing: '-0.02em'
+                }}>
                   管理者ダッシュボード
                 </h1>
                 
                 {/* Settings Button */}
                 <button
                   onClick={() => setActiveTab('settings')}
-                  className={`flex items-center justify-center p-1 transition-colors flex-shrink-0 ${
-                    activeTab === 'settings' ? 'shadow-sm' : ''
-                  }`}
-                  style={{ 
-                    color: activeTab === 'settings' ? ds.button.primary.bg : ds.text.secondary
+                  className={`flex items-center justify-center p-2 rounded-lg transition-all flex-shrink-0`}
+                  style={{
+                    color: activeTab === 'settings' ? ds.button.primary.bg : ds.text.secondary,
+                    backgroundColor: ds.bg.card
                   }}
-                  onMouseEnter={(e) => activeTab !== 'settings' && (e.currentTarget.style.color = ds.text.primary)}
-                  onMouseLeave={(e) => activeTab !== 'settings' && (e.currentTarget.style.color = ds.text.secondary)}
+                  onMouseEnter={(e) => {
+                    if (activeTab !== 'settings') {
+                      e.currentTarget.style.color = ds.text.primary;
+                      e.currentTarget.style.backgroundColor = ds.bg.surface;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activeTab !== 'settings') {
+                      e.currentTarget.style.color = ds.text.secondary;
+                      e.currentTarget.style.backgroundColor = ds.bg.card;
+                    }
+                  }}
                 >
-                  <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <Settings className="w-5 h-5" />
                 </button>
                 
                 {/* Refresh Button */}
                 <button
                   onClick={refreshData}
                   disabled={isRefreshing}
-                  className="flex items-center justify-center p-1 transition-colors disabled:opacity-50 flex-shrink-0"
+                  className="flex items-center justify-center p-2 rounded-lg transition-all disabled:opacity-50 flex-shrink-0"
                   style={{ 
-                    color: ds.text.secondary
+                    color: ds.text.secondary,
+                    backgroundColor: ds.bg.card
                   }}
-                  onMouseEnter={(e) => !isRefreshing && (e.currentTarget.style.color = ds.text.primary)}
-                  onMouseLeave={(e) => !isRefreshing && (e.currentTarget.style.color = ds.text.secondary)}
+                  onMouseEnter={(e) => {
+                    if (!isRefreshing) {
+                      e.currentTarget.style.color = ds.text.primary;
+                      e.currentTarget.style.backgroundColor = ds.bg.surface;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isRefreshing) {
+                      e.currentTarget.style.color = ds.text.secondary;
+                      e.currentTarget.style.backgroundColor = ds.bg.card;
+                    }
+                  }}
                 >
-                  <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
                 </button>
               </div>
               
-              <p className="mobile-text" style={{ color: ds.text.secondary }}>
+              <p className="text-base" style={{ color: ds.text.secondary }}>
                 全インフルエンサーキャンペーンの概要と最新の活動状況
               </p>
             </div>
@@ -678,15 +704,14 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex space-x-1 mb-6">
+        <div className="flex space-x-2 mb-8">
           <button
             onClick={() => setActiveTab('dashboard')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-              activeTab === 'dashboard' ? 'shadow-sm' : ''
-            }`}
+            className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl font-semibold transition-all`}
             style={{
               backgroundColor: activeTab === 'dashboard' ? ds.bg.surface : ds.button.secondary.bg,
-              color: activeTab === 'dashboard' ? ds.text.primary : ds.button.secondary.text
+              color: activeTab === 'dashboard' ? ds.text.primary : ds.button.secondary.text,
+              boxShadow: activeTab === 'dashboard' ? (ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)') : 'none'
             }}
           >
             <Users className="w-4 h-4" />
@@ -694,12 +719,11 @@ export default function AdminDashboard() {
           </button>
           <button
             onClick={() => setActiveTab('actions')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-              activeTab === 'actions' ? 'shadow-sm' : ''
-            }`}
+            className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl font-semibold transition-all`}
             style={{
               backgroundColor: activeTab === 'actions' ? ds.bg.surface : ds.button.secondary.bg,
-              color: activeTab === 'actions' ? ds.text.primary : ds.button.secondary.text
+              color: activeTab === 'actions' ? ds.text.primary : ds.button.secondary.text,
+              boxShadow: activeTab === 'actions' ? (ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)') : 'none'
             }}
           >
             <AlertCircle className="w-4 h-4" />
@@ -712,12 +736,11 @@ export default function AdminDashboard() {
           </button>
           <button
             onClick={() => setActiveTab('comms')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-              activeTab === 'comms' ? 'shadow-sm' : ''
-            }`}
+            className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl font-semibold transition-all`}
             style={{
               backgroundColor: activeTab === 'comms' ? ds.bg.surface : ds.button.secondary.bg,
-              color: activeTab === 'comms' ? ds.text.primary : ds.button.secondary.text
+              color: activeTab === 'comms' ? ds.text.primary : ds.button.secondary.text,
+              boxShadow: activeTab === 'comms' ? (ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)') : 'none'
             }}
           >
             <Mail className="w-4 h-4" />
@@ -728,79 +751,83 @@ export default function AdminDashboard() {
         {activeTab === 'dashboard' ? (
           <div>
             {/* Stats Overview */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-          <div className="rounded-xl p-4 sm:p-6" style={{ 
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
+          <div className="rounded-2xl p-5 sm:p-7 transition-all hover:scale-[1.02]" style={{ 
             backgroundColor: ds.bg.card,
             borderColor: ds.border.primary,
             borderWidth: '1px',
-            borderStyle: 'solid'
+            borderStyle: 'solid',
+            boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
           }}>
-            <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-lg" style={{ backgroundColor: ds.button.primary.bg + '20' }}>
+            <div className="flex items-center space-x-4">
+              <div className="p-3 rounded-xl flex-shrink-0" style={{ backgroundColor: ds.button.primary.bg + '15' }}>
                 <TrendingUp size={24} style={{ color: ds.button.primary.bg }} />
               </div>
-              <div>
-                <p className="text-2xl font-bold" style={{ color: ds.text.primary }}>
+              <div className="min-w-0 flex-1">
+                <p className="text-2xl sm:text-3xl font-semibold mb-1" style={{ color: ds.text.primary, letterSpacing: '-0.01em' }}>
                   {formatAbbreviatedCurrency(totalValue)}
                 </p>
-                <p className="text-sm" style={{ color: ds.text.secondary }}>総契約額</p>
+                <p className="text-sm font-medium" style={{ color: ds.text.secondary }}>総契約額</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-xl p-4 sm:p-6" style={{ 
+          <div className="rounded-2xl p-5 sm:p-7 transition-all hover:scale-[1.02]" style={{ 
             backgroundColor: ds.bg.card,
             borderColor: ds.border.primary,
             borderWidth: '1px',
-            borderStyle: 'solid'
+            borderStyle: 'solid',
+            boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
           }}>
-            <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-lg" style={{ backgroundColor: '#3b82f6' + '20' }}>
+            <div className="flex items-center space-x-4">
+              <div className="p-3 rounded-xl flex-shrink-0" style={{ backgroundColor: '#3b82f6' + '15' }}>
                 <Users size={24} style={{ color: '#3b82f6' }} />
               </div>
-              <div>
-                <p className="text-2xl font-bold" style={{ color: ds.text.primary }}>
+              <div className="min-w-0 flex-1">
+                <p className="text-2xl sm:text-3xl font-semibold mb-1" style={{ color: ds.text.primary, letterSpacing: '-0.01em' }}>
                   {allCampaigns.length}
                 </p>
-                <p className="text-sm" style={{ color: ds.text.secondary }}>キャンペーン数</p>
+                <p className="text-sm font-medium" style={{ color: ds.text.secondary }}>キャンペーン数</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-xl p-4 sm:p-6" style={{ 
+          <div className="rounded-2xl p-5 sm:p-7 transition-all hover:scale-[1.02]" style={{ 
             backgroundColor: ds.bg.card,
             borderColor: ds.border.primary,
             borderWidth: '1px',
-            borderStyle: 'solid'
+            borderStyle: 'solid',
+            boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
           }}>
-            <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-lg" style={{ backgroundColor: '#f97316' + '20' }}>
+            <div className="flex items-center space-x-4">
+              <div className="p-3 rounded-xl flex-shrink-0" style={{ backgroundColor: '#f97316' + '15' }}>
                 <Clock size={24} style={{ color: '#f97316' }} />
               </div>
-              <div>
-                <p className="text-2xl font-bold" style={{ color: ds.text.primary }}>
+              <div className="min-w-0 flex-1">
+                <p className="text-2xl sm:text-3xl font-semibold mb-1" style={{ color: ds.text.primary, letterSpacing: '-0.01em' }}>
                   {activeCampaigns.length}
                 </p>
-                <p className="text-sm" style={{ color: ds.text.secondary }}>進行中</p>
+                <p className="text-sm font-medium" style={{ color: ds.text.secondary }}>進行中</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-xl p-4 sm:p-6" style={{ 
+          <div className="rounded-2xl p-5 sm:p-7 transition-all hover:scale-[1.02]" style={{ 
             backgroundColor: ds.bg.card,
             borderColor: ds.border.primary,
             borderWidth: '1px',
-            borderStyle: 'solid'
+            borderStyle: 'solid',
+            boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
           }}>
-            <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-lg" style={{ backgroundColor: '#ef4444' + '20' }}>
+            <div className="flex items-center space-x-4">
+              <div className="p-3 rounded-xl flex-shrink-0" style={{ backgroundColor: '#ef4444' + '15' }}>
                 <AlertCircle size={24} style={{ color: '#ef4444' }} />
               </div>
-              <div>
-                <p className="text-2xl font-bold" style={{ color: ds.text.primary }}>
+              <div className="min-w-0 flex-1">
+                <p className="text-2xl sm:text-3xl font-semibold mb-1" style={{ color: ds.text.primary, letterSpacing: '-0.01em' }}>
                   {pendingApprovals}
                 </p>
-                <p className="text-sm" style={{ color: ds.text.secondary }}>要確認</p>
+                <p className="text-sm font-medium" style={{ color: ds.text.secondary }}>要確認</p>
               </div>
             </div>
           </div>
@@ -809,13 +836,14 @@ export default function AdminDashboard() {
         {/* Main Content */}
         <div className="w-full">
             {/* Latest Updates */}
-            <div className="rounded-xl p-4 sm:p-6 mb-6" style={{ 
+            <div className="rounded-2xl p-5 sm:p-7 mb-8" style={{ 
               backgroundColor: ds.bg.card,
               borderColor: ds.border.primary,
               borderWidth: '1px',
-              borderStyle: 'solid'
+              borderStyle: 'solid',
+              boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
             }}>
-              <h3 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h2.fontSize, lineHeight: ds.typography.heading.h2.lineHeight }}>
+              <h3 className="font-semibold mb-5" style={{ color: ds.text.primary, fontSize: '20px', lineHeight: '1.3' }}>
                 アップデート
               </h3>
               <div className="space-y-2">
@@ -933,7 +961,7 @@ export default function AdminDashboard() {
                   <div className="text-center pt-4">
                     <button
                       onClick={() => setShowAllUpdates(true)}
-                      className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                      className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all"
                       style={{
                         backgroundColor: ds.button.secondary.bg,
                         color: ds.button.secondary.text,
@@ -954,7 +982,7 @@ export default function AdminDashboard() {
                   <div className="text-center pt-4">
                     <button
                       onClick={() => setShowAllUpdates(false)}
-                      className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                      className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all"
                       style={{
                         backgroundColor: ds.button.secondary.bg,
                         color: ds.button.secondary.text,
@@ -973,13 +1001,14 @@ export default function AdminDashboard() {
             </div>
 
             {/* Campaigns Table */}
-            <div className="rounded-xl p-4 sm:p-6" style={{ 
+            <div className="rounded-2xl p-5 sm:p-7" style={{ 
               backgroundColor: ds.bg.card,
               borderColor: ds.border.primary,
               borderWidth: '1px',
-              borderStyle: 'solid'
+              borderStyle: 'solid',
+              boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
             }}>
-              <h2 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h2.fontSize, lineHeight: ds.typography.heading.h2.lineHeight }}>
+              <h2 className="font-semibold mb-6" style={{ color: ds.text.primary, fontSize: '20px', lineHeight: '1.3' }}>
                 キャンペーン一覧 ({filteredCampaigns.length})
               </h2>
               
@@ -995,7 +1024,7 @@ export default function AdminDashboard() {
                         placeholder="インフルエンサー名またはキャンペーン名で検索..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                        className="pl-10 w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 transition-all"
                         style={{ 
                           backgroundColor: ds.form.input.bg,
                           borderColor: ds.form.input.border,
@@ -1015,7 +1044,7 @@ export default function AdminDashboard() {
                       <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                        className="w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 transition-all"
                         style={{ 
                           backgroundColor: ds.form.input.bg,
                           borderColor: ds.form.input.border,
@@ -1059,7 +1088,7 @@ export default function AdminDashboard() {
                       <select
                         value={platformFilter}
                         onChange={(e) => setPlatformFilter(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                        className="w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 transition-all"
                         style={{ 
                           backgroundColor: ds.form.input.bg,
                           borderColor: ds.form.input.border,
@@ -1121,7 +1150,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
-              <div className="rounded-lg overflow-hidden isolate" style={{ 
+              <div className="rounded-xl overflow-hidden isolate" style={{ 
                 borderColor: ds.border.primary,
                 borderWidth: '1px',
                 borderStyle: 'solid'

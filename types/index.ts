@@ -187,6 +187,7 @@ export interface Campaign {
     trial_login_password_dashboard?: string;
     date_status_updated?: string;
     message_dashboard?: string;
+    note_dashboard?: string;
   };
 }
 

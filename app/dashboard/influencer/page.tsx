@@ -10,6 +10,7 @@ import VisibilityToggle from '@/components/VisibilityToggle';
 import { AmountVisibilityProvider } from '@/contexts/AmountVisibilityContext';
 import PreviousStepMessage from '@/components/PreviousStepMessage';
 import { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useRouter } from 'next/navigation';
 import { CampaignStatus, getStepFromStatus } from '@/types';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
@@ -699,6 +700,15 @@ export default function InfluencerDashboard() {
   // Get the most active campaign for status display
   const primaryCampaign = activeCampaigns[0] || userCampaigns[0];
 
+  // Find the first non-empty influencer note across all campaigns
+  const influencerNote: string | null = (() => {
+    for (const c of userCampaigns) {
+      const note = c?.campaignData?.note_dashboard;
+      if (typeof note === 'string' && note.trim() !== '') return note;
+    }
+    return null;
+  })();
+
   // Get days left for the primary campaign
   const daysUntilLive = primaryCampaign ? getDaysUntilLive(primaryCampaign) : null;
 
@@ -1186,15 +1196,17 @@ export default function InfluencerDashboard() {
     <AmountVisibilityProvider>
       <div className="min-h-screen" style={{ backgroundColor: ds.bg.primary }}>
       <div className="max-w-7xl mx-auto mobile-padding">
-        <div className="mb-6 sm:mb-8">
+        <div className="mb-8 sm:mb-12">
           {/* Responsive Header Layout */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-3">
             {/* Greeting Section with Refresh Button */}
-            <div className="flex-1 min-w-0 flex items-center gap-3">
-              <h1 className="font-bold truncate text-2xl sm:text-3xl lg:text-4xl" style={{ 
+            <div className="flex-1 min-w-0 flex items-center gap-4">
+              <h1 className="font-bold truncate" style={{ 
                 color: ds.text.primary,
-                lineHeight: 1.2,
-                fontWeight: ds.typography.heading.h1.fontWeight
+                fontSize: '32px',
+                lineHeight: '1.2',
+                fontWeight: 700,
+                letterSpacing: '-0.02em'
               }}>
                 {user.name}さんのスピークPR情報
               </h1>
@@ -1203,14 +1215,25 @@ export default function InfluencerDashboard() {
               <button
                 onClick={refreshData}
                 disabled={isRefreshing}
-                className="flex items-center justify-center p-1 transition-colors disabled:opacity-50 flex-shrink-0"
+                className="flex items-center justify-center p-2 rounded-lg transition-all disabled:opacity-50 flex-shrink-0"
                 style={{ 
-                  color: ds.text.secondary
+                  color: ds.text.secondary,
+                  backgroundColor: ds.bg.card
                 }}
-                onMouseEnter={(e) => !isRefreshing && (e.currentTarget.style.color = ds.text.primary)}
-                onMouseLeave={(e) => !isRefreshing && (e.currentTarget.style.color = ds.text.secondary)}
+                onMouseEnter={(e) => {
+                  if (!isRefreshing) {
+                    e.currentTarget.style.color = ds.text.primary;
+                    e.currentTarget.style.backgroundColor = ds.bg.surface;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isRefreshing) {
+                    e.currentTarget.style.color = ds.text.secondary;
+                    e.currentTarget.style.backgroundColor = ds.bg.card;
+                  }
+                }}
               >
-                <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
               </button>
             </div>
             
@@ -1243,16 +1266,19 @@ export default function InfluencerDashboard() {
 
         {/* Debug Card - Only for demo accounts */}
         {showDebugCard && (user.id === 'actre_vlog_yt' || user.id === 'eigatube_yt') && (
-          <div className="mb-6 sm:mb-8">
-            <div className="rounded-xl p-4 sm:p-6 border-2" style={{ 
+          <div className="mb-8 sm:mb-12">
+            <div className="rounded-2xl p-5 sm:p-7" style={{ 
               borderColor: ds.border.primary,
-              backgroundColor: ds.bg.card
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              backgroundColor: ds.bg.card,
+              boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
             }}>
-              <div className="flex items-center space-x-2 mb-4">
-                <Settings size={20} style={{ color: ds.text.accent }} />
+              <div className="flex items-center space-x-3 mb-5">
+                <Settings size={22} style={{ color: ds.text.accent }} />
                 <h2 className="text-lg font-semibold" style={{ color: ds.text.primary }}>デバッグモード</h2>
               </div>
-              <p className="text-sm mb-4" style={{ color: ds.text.secondary }}>
+              <p className="text-sm mb-5" style={{ color: ds.text.secondary }}>
                 デモ用アカウントでのみ表示されます。キャンペーンのステータスを変更してテストできます。
               </p>
               
@@ -1275,7 +1301,10 @@ export default function InfluencerDashboard() {
                         style={{ 
                           backgroundColor: ds.form.input.bg,
                           borderColor: ds.form.input.border,
-                          color: ds.text.primary
+                          color: ds.text.primary,
+                          borderWidth: '1px',
+                          borderStyle: 'solid',
+                          outline: 'none',
                         }}
                       >
                         {getStatusOptions().map(option => (
@@ -1297,20 +1326,21 @@ export default function InfluencerDashboard() {
         )}
 
         {/* Stats Overview */}
-        <div className="mobile-grid mb-6 sm:mb-8">
-          <div className="rounded-xl p-4 sm:p-6" style={{ 
+        <div className="mobile-grid mb-8 sm:mb-12">
+          <div className="rounded-2xl p-5 sm:p-7 transition-all hover:scale-[1.02]" style={{ 
             backgroundColor: ds.bg.card,
             borderColor: ds.border.primary,
             borderWidth: '1px',
-            borderStyle: 'solid'
+            borderStyle: 'solid',
+            boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
           }}>
-            <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-lg flex-shrink-0" style={{ backgroundColor: ds.button.primary.bg + '20' }}>
-                <CreditCard size={20} style={{ color: ds.button.primary.bg }} />
+            <div className="flex items-center space-x-4">
+              <div className="p-3 rounded-xl flex-shrink-0" style={{ backgroundColor: ds.button.primary.bg + '15' }}>
+                <CreditCard size={24} style={{ color: ds.button.primary.bg }} />
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <VisibilityToggle>
-                  <p className="text-xl sm:text-2xl font-bold" style={{ color: ds.text.primary }}>
+                  <p className="text-2xl sm:text-3xl font-semibold mb-1" style={{ color: ds.text.primary, letterSpacing: '-0.01em' }}>
                     {activeCampaigns.length > 0
                       ? (() => {
                           const subtotal = activeCampaigns.reduce((sum: number, c: any) => sum + (c.contractedPrice || 0), 0);
@@ -1319,63 +1349,65 @@ export default function InfluencerDashboard() {
                       : formatCurrencySmart(totalPayoutAllCampaigns)}
                   </p>
                 </VisibilityToggle>
-                <p className="text-xs sm:text-sm" style={{ color: ds.text.secondary }}>
+                <p className="text-sm font-medium" style={{ color: ds.text.secondary }}>
                   {activeCampaigns.length > 0 ? '進行中PRの報酬額（税抜）' : 'PR報酬総額'}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-xl p-4 sm:p-6" style={{ 
+          <div className="rounded-2xl p-5 sm:p-7 transition-all hover:scale-[1.02]" style={{ 
             backgroundColor: ds.bg.card,
             borderColor: ds.border.primary,
             borderWidth: '1px',
-            borderStyle: 'solid'
+            borderStyle: 'solid',
+            boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
           }}>
-            <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-lg flex-shrink-0" style={{ backgroundColor: '#f97316' + '20' }}>
-                <Clock size={20} style={{ color: '#f97316' }} />
+            <div className="flex items-center space-x-4">
+              <div className="p-3 rounded-xl flex-shrink-0" style={{ backgroundColor: '#f97316' + '15' }}>
+                <Clock size={24} style={{ color: '#f97316' }} />
               </div>
-              <div className="min-w-0">
-                <p className="text-xl sm:text-2xl font-bold" style={{ color: ds.text.primary }}>
+              <div className="min-w-0 flex-1">
+                <p className="text-2xl sm:text-3xl font-semibold mb-1" style={{ color: ds.text.primary, letterSpacing: '-0.01em' }}>
                   {pendingActions}
                 </p>
-                <p className="text-xs sm:text-sm" style={{ color: ds.text.secondary }}>要対応</p>
+                <p className="text-sm font-medium" style={{ color: ds.text.secondary }}>要対応</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-xl p-4 sm:p-6" style={{ 
+          <div className="rounded-2xl p-5 sm:p-7 transition-all hover:scale-[1.02]" style={{ 
             backgroundColor: ds.bg.card,
             borderColor: ds.border.primary,
             borderWidth: '1px',
-            borderStyle: 'solid'
+            borderStyle: 'solid',
+            boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
           }}>
-            <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-lg flex-shrink-0" style={{ 
+            <div className="flex items-center space-x-4">
+              <div className="p-3 rounded-xl flex-shrink-0" style={{ 
                 backgroundColor: nextStepInfo && nextStepInfo.days !== null && nextStepInfo.days < 0 
-                  ? '#ef4444' + '20' 
+                  ? '#ef4444' + '15' 
                   : nextStepInfo && nextStepInfo.days === 0
-                  ? '#eab308' + '20'
-                  : '#22c55e' + '20' 
+                  ? '#eab308' + '15'
+                  : '#22c55e' + '15' 
               }}>
                 {nextStepInfo && nextStepInfo.days !== null && nextStepInfo.days < 0 ? (
-                  <AlertCircle size={20} style={{ color: '#ef4444' }} />
+                  <AlertCircle size={24} style={{ color: '#ef4444' }} />
                 ) : nextStepInfo && nextStepInfo.days === 0 ? (
-                  <Clock size={20} style={{ color: '#eab308' }} />
+                  <Clock size={24} style={{ color: '#eab308' }} />
                 ) : (
-                  <CheckCircle size={20} style={{ color: '#22c55e' }} />
+                  <CheckCircle size={24} style={{ color: '#22c55e' }} />
                 )}
               </div>
-              <div className="min-w-0">
-                <p className="text-xl sm:text-2xl font-bold" style={{ color: ds.text.primary }}>
+              <div className="min-w-0 flex-1">
+                <p className="text-2xl sm:text-3xl font-semibold mb-1" style={{ color: ds.text.primary, letterSpacing: '-0.01em' }}>
                   {nextStepInfo && nextStepInfo.days !== null ? (
                     nextStepInfo.days > 0 ? `${nextStepInfo.days}日` :
                     nextStepInfo.days === 0 ? '今日' :
                     `${Math.abs(nextStepInfo.days)}日遅れ`
                   ) : '未確定'}
                 </p>
-                <p className="text-xs sm:text-sm" style={{ color: ds.text.secondary }}>{nextStepInfo ? `${nextStepInfo.label}までの日数` : '次のステップまでの日数'}</p>
+                <p className="text-sm font-medium" style={{ color: ds.text.secondary }}>{nextStepInfo ? `${nextStepInfo.label}までの日数` : '次のステップまでの日数'}</p>
               </div>
             </div>
           </div>
@@ -1383,54 +1415,54 @@ export default function InfluencerDashboard() {
 
         {/* Action Section */}
         {primaryCampaign && (
-          <div className="mb-6 sm:mb-8">
+          <div className="mb-8 sm:mb-12">
             
             {/* Warning Message for Behind Schedule */}
             {isActionRequiredNow(primaryCampaign) && isCurrentStepBehindSchedule(primaryCampaign) ? (
-              <div className="mb-4 p-3 border rounded-lg" style={{ 
-                backgroundColor: ds.isDark ? '#2d1b1b' : '#fef2f2', // Dark mode: dark red, Light mode: light red
-                borderColor: ds.isDark ? '#7f1d1d' : '#fecaca', // Dark mode: darker red, Light mode: red border
+              <div className="mb-5 p-4 rounded-xl" style={{ 
+                backgroundColor: ds.isDark ? '#2d1b1b' : '#fef2f2',
+                borderColor: ds.isDark ? '#7f1d1d' : '#fecaca',
                 borderWidth: '1px',
                 borderStyle: 'solid'
               }}>
-                <div className="flex items-center gap-2">
-                  <AlertCircle size={16} style={{ color: '#ef4444' }} />
-                  <span className="text-sm font-medium" style={{ 
-                    color: ds.isDark ? '#f87171' : '#dc2626' // Dark mode: lighter red, Light mode: dark red
+                <div className="flex items-center gap-3">
+                  <AlertCircle size={18} style={{ color: '#ef4444' }} />
+                  <span className="text-sm font-semibold" style={{ 
+                    color: ds.isDark ? '#f87171' : '#dc2626'
                   }}>
                     スケジュールより遅れています
                   </span>
                 </div>
-                <p className="text-xs mt-1" style={{ 
-                  color: ds.isDark ? '#dc2626' : '#7f1d1d' // Dark mode: medium red, Light mode: darker red
+                <p className="text-sm mt-2 ml-7" style={{ 
+                  color: ds.isDark ? '#dc2626' : '#7f1d1d'
                 }}>
                   次のステップの期限を過ぎています。可能な限り早めの対応をお願いいたします。
                 </p>
               </div>
             ) : isActionRequiredNow(primaryCampaign) && isCurrentStepDueToday(primaryCampaign) ? (
-              <div className="mb-4 p-3 border rounded-lg" style={{ 
-                backgroundColor: ds.isDark ? '#2d2a1b' : '#fefce8', // Dark mode: dark yellow, Light mode: light yellow
-                borderColor: ds.isDark ? '#a16207' : '#fde68a', // Dark mode: darker yellow, Light mode: yellow border
+              <div className="mb-5 p-4 rounded-xl" style={{ 
+                backgroundColor: ds.isDark ? '#2d2a1b' : '#fefce8',
+                borderColor: ds.isDark ? '#a16207' : '#fde68a',
                 borderWidth: '1px',
                 borderStyle: 'solid'
               }}>
-                <div className="flex items-center gap-2">
-                  <Clock size={16} style={{ color: '#eab308' }} />
-                  <span className="text-sm font-medium" style={{ 
-                    color: ds.isDark ? '#fbbf24' : '#a16207' // Dark mode: lighter yellow, Light mode: dark yellow
+                <div className="flex items-center gap-3">
+                  <Clock size={18} style={{ color: '#eab308' }} />
+                  <span className="text-sm font-semibold" style={{ 
+                    color: ds.isDark ? '#fbbf24' : '#a16207'
                   }}>
                     本日が期限です
                   </span>
                 </div>
-                <p className="text-xs mt-1" style={{ 
-                  color: ds.isDark ? '#a16207' : '#713f12' // Dark mode: medium yellow, Light mode: darker yellow
+                <p className="text-sm mt-2 ml-7" style={{ 
+                  color: ds.isDark ? '#a16207' : '#713f12'
                 }}>
                   次のステップの期限が本日となっております。お時間のあるときにご対応をお願いいたします。
                 </p>
               </div>
             ) : (
               /* Status Message - only show if not behind schedule or due today */
-              <p className="mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.text.base.fontSize, lineHeight: ds.typography.text.base.lineHeight, fontWeight: 600 }}>
+              <p className="mb-5 text-base" style={{ color: ds.text.primary, lineHeight: 1.6, fontWeight: 500 }}>
                 {(() => {
                   const planDueForMsg = formatMonthDay(primaryCampaign?.schedules?.planSubmissionDate);
                   const messages: Record<string, string> = {
@@ -1455,13 +1487,14 @@ export default function InfluencerDashboard() {
               </p>
             )}
             
-            <div className="rounded-xl p-4 sm:p-6" style={{ 
+            <div className="rounded-2xl p-5 sm:p-7" style={{ 
               backgroundColor: ds.bg.card,
               borderColor: ds.border.primary,
               borderWidth: '1px',
-              borderStyle: 'solid'
+              borderStyle: 'solid',
+              boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
             }}>
-              <h3 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h2.fontSize, lineHeight: ds.typography.heading.h2.lineHeight }}>
+              <h3 className="font-semibold mb-5" style={{ color: ds.text.primary, fontSize: '20px', lineHeight: '1.3' }}>
                 次のステップ
               </h3>
               {(() => {
@@ -1536,7 +1569,7 @@ export default function InfluencerDashboard() {
                           <button
                             onClick={() => handleConfirmPaymentCompleted(primaryCampaign.id)}
                             disabled={!!confirmingCompleted[primaryCampaign.id]}
-                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                            className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
                             style={{ backgroundColor: ds.button.primary.bg, color: ds.button.primary.text }}
                             onMouseEnter={(e) => !confirmingCompleted[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
                             onMouseLeave={(e) => !confirmingCompleted[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
@@ -1662,7 +1695,7 @@ export default function InfluencerDashboard() {
                             <button
                               onClick={() => handleStatusChange(primaryCampaign.id, 'meeting_scheduling')}
                               disabled={!!statusChanging[primaryCampaign.id]}
-                              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                              className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
                               style={{ backgroundColor: ds.button.primary.bg, color: ds.button.primary.text }}
                               onMouseEnter={(e) => !statusChanging[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
                               onMouseLeave={(e) => !statusChanging[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
@@ -1679,7 +1712,7 @@ export default function InfluencerDashboard() {
                           <button
                             onClick={() => handleMeetingStatusChange(primaryCampaign.id, 'scheduled')}
                             disabled={!!meetingUpdating[primaryCampaign.id]}
-                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                            className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
                             style={{ 
                               backgroundColor: ds.button.primary.bg,
                               color: ds.button.primary.text
@@ -1697,7 +1730,7 @@ export default function InfluencerDashboard() {
                           <button
                             onClick={() => handleMeetingStatusChange(primaryCampaign.id, 'completed')}
                             disabled={!!meetingUpdating[primaryCampaign.id]}
-                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                            className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
                             style={{ 
                               backgroundColor: ds.button.primary.bg,
                               color: ds.button.primary.text
@@ -1719,7 +1752,10 @@ export default function InfluencerDashboard() {
                                                               className="w-6 h-6 text-blue-500 rounded focus:ring-blue-500 focus:ring-2"
                                 style={{ 
                                   backgroundColor: ds.form.input.bg,
-                                  borderColor: ds.form.input.border
+                                  borderColor: ds.form.input.border,
+                                  borderWidth: '1px',
+                                  borderStyle: 'solid',
+                                  outline: 'none',
                                 }}
                             />
                           </label>
@@ -1738,7 +1774,10 @@ export default function InfluencerDashboard() {
                                   className="w-5 h-5 text-blue-500 rounded focus:ring-blue-500 focus:ring-2"
                                   style={{ 
                                     backgroundColor: ds.form.input.bg,
-                                    borderColor: ds.form.input.border
+                                    borderColor: ds.form.input.border,
+                                    borderWidth: '1px',
+                                    borderStyle: 'solid',
+                                    outline: 'none',
                                   }}
                                 />
                                 <span>指定の内容を概要欄に追加済み</span>
@@ -1751,7 +1790,10 @@ export default function InfluencerDashboard() {
                                   className="w-5 h-5 text-blue-500 rounded focus:ring-blue-500 focus:ring-2"
                                   style={{ 
                                     backgroundColor: ds.form.input.bg,
-                                    borderColor: ds.form.input.border
+                                    borderColor: ds.form.input.border,
+                                    borderWidth: '1px',
+                                    borderStyle: 'solid',
+                                    outline: 'none',
                                   }}
                                 />
                                 <span>指定の内容を固定コメントに追加済み</span>
@@ -1764,7 +1806,7 @@ export default function InfluencerDashboard() {
                               placeholder="URLを入力してください"
                               value={urlInputs[primaryCampaign.id] || ''}
                               onChange={(e) => setUrlInputs(prev => ({ ...prev, [primaryCampaign.id]: e.target.value }))}
-                              className="flex-1 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent border"
+                              className="flex-1 px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent border transition-all"
                               style={{ 
                                 backgroundColor: ds.form.input.bg,
                                 borderColor: ds.form.input.border,
@@ -1776,7 +1818,7 @@ export default function InfluencerDashboard() {
                             <button 
                               onClick={() => handleUrlSubmission(primaryCampaign.id, primaryCampaign.status)}
                               disabled={!!urlSubmitting[primaryCampaign.id]}
-                              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                              className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
                               style={{ 
                                 backgroundColor: ds.button.primary.bg,
                                 color: ds.button.primary.text
@@ -1801,7 +1843,10 @@ export default function InfluencerDashboard() {
                                 className="w-5 h-5 text-blue-500 rounded focus:ring-blue-500 focus:ring-2"
                                 style={{ 
                                   backgroundColor: ds.form.input.bg,
-                                  borderColor: ds.form.input.border
+                                  borderColor: ds.form.input.border,
+                                  borderWidth: '1px',
+                                  borderStyle: 'solid',
+                                  outline: 'none',
                                 }}
                               />
                               <span>
@@ -1824,7 +1869,10 @@ export default function InfluencerDashboard() {
                                 className="w-5 h-5 text-blue-500 rounded focus:ring-blue-500 focus:ring-2"
                                 style={{ 
                                   backgroundColor: ds.form.input.bg,
-                                  borderColor: ds.form.input.border
+                                  borderColor: ds.form.input.border,
+                                  borderWidth: '1px',
+                                  borderStyle: 'solid',
+                                  outline: 'none',
                                 }}
                               />
                               <span>
@@ -1844,7 +1892,7 @@ export default function InfluencerDashboard() {
                             <button
                               onClick={() => handlePaymentSubmission(primaryCampaign.id)}
                               disabled={isProcessingPayment}
-                              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                              className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
                               style={{ 
                                 backgroundColor: ds.button.primary.bg,
                                 color: ds.button.primary.text
@@ -1883,7 +1931,7 @@ export default function InfluencerDashboard() {
                           <button
                             onClick={() => handleConfirmPaymentCompleted(primaryCampaign.id)}
                             disabled={!!confirmingCompleted[primaryCampaign.id]}
-                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                            className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
                             style={{ backgroundColor: ds.button.primary.bg, color: ds.button.primary.text }}
                             onMouseEnter={(e) => !confirmingCompleted[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
                             onMouseLeave={(e) => !confirmingCompleted[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
@@ -1911,25 +1959,48 @@ export default function InfluencerDashboard() {
 
         {/* Status Section */}
         {primaryCampaign && (
-          <div className="mb-6 sm:mb-8">
+          <div className="mb-8 sm:mb-12">
             <StatusSection campaign={primaryCampaign} />
           </div>
         )}
 
+        {/* Notes Section */}
+        {influencerNote && (
+          <div className="mb-8 sm:mb-12">
+            <div className="rounded-2xl p-5 sm:p-7" style={{ 
+              backgroundColor: ds.bg.card,
+              borderColor: ds.border.primary,
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
+            }}>
+              <h3 className="font-semibold mb-5" style={{ color: ds.text.primary, fontSize: '20px', lineHeight: '1.3' }}>
+                ノート
+              </h3>
+              <div className={`prose prose-sm max-w-none ${ds.isDark ? 'prose-invert' : ''}`} style={{ color: ds.text.primary }}>
+                <ReactMarkdown>
+                  {influencerNote}
+                </ReactMarkdown>
+              </div>
+            </div>
+          </div>
+        )}
+
                 {/* All Campaigns */}
-        <div className="mb-6 sm:mb-8">
+        <div className="mb-8 sm:mb-12">
           {sortedForPromotionDetails.length > 0 ? (
             <div className="space-y-4">
-              <div className="rounded-xl p-4 sm:p-6" style={{ 
+              <div className="rounded-2xl p-5 sm:p-7" style={{ 
                 backgroundColor: ds.bg.card,
                 borderColor: ds.border.primary,
                 borderWidth: '1px',
-                borderStyle: 'solid'
+                borderStyle: 'solid',
+                boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
               }}>
-                <h3 className="font-semibold mb-4" style={{ color: ds.text.primary, fontSize: ds.typography.heading.h2.fontSize, lineHeight: ds.typography.heading.h2.lineHeight }}>
+                <h3 className="font-semibold mb-6" style={{ color: ds.text.primary, fontSize: '20px', lineHeight: '1.3' }}>
                   プロモーション詳細
                 </h3>
-                <div className="rounded-lg overflow-hidden isolate" style={{ 
+                <div className="rounded-xl overflow-hidden isolate" style={{ 
                   borderColor: ds.border.primary,
                   borderWidth: '1px',
                   borderStyle: 'solid'

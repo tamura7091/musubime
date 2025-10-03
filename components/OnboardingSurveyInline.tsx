@@ -275,6 +275,9 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
               backgroundColor: ds.form.input.bg,
               borderColor: ds.form.input.border,
               color: ds.text.primary,
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              outline: 'none',
             }}
             className="w-full p-3 rounded-lg focus:ring-2 focus:border-transparent"
             onFocus={(e) => {
@@ -312,6 +315,9 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
                 backgroundColor: ds.form.input.bg,
                 borderColor: currentStepData.field === 'email' && emailError ? '#ef4444' : ds.form.input.border,
                 color: ds.text.primary,
+                borderWidth: '1px',
+                borderStyle: 'solid',
+                outline: 'none',
               }}
               className="w-full p-3 rounded-lg focus:ring-2 focus:border-transparent"
               onFocus={(e) => {

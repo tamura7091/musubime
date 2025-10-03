@@ -437,7 +437,9 @@ class GoogleSheetsService {
       'url_content',
       // Trial login credentials for premium account section
       'trial_login_email_dashboard',
-      'trial_login_password_dashboard'
+      'trial_login_password_dashboard',
+      // Influencer-facing notes (markdown) shown on dashboard
+      'note_dashboard'
     ], influencerId, 'campaigns', options);
     
     // Filter out rows with empty id_campaign
@@ -673,6 +675,8 @@ class GoogleSheetsService {
             console.log(`📝 Campaign ${row['id_campaign']}: message_dashboard = "${msgDashboard}" (type: ${typeof msgDashboard})`);
             return msgDashboard;
           })(),
+          // Notes for influencer dashboard (markdown)
+          note_dashboard: row['note_dashboard'],
           group: row['group'],
           followers: row['followers'],
           spend_usd: row['spend_usd'],

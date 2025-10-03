@@ -2,28 +2,28 @@
 export const colors = {
   // Background colors
   dark: {
-    bg: '#0f0f0f', // Modern dark background with better contrast
-    card: '#1a1a1a', // Card background with improved contrast
-    border: '#333333', // Better visible border color
+    bg: '#000000', // True black like iOS
+    card: '#1c1c1e', // Card background - iOS system gray 6
+    border: '#38383a', // iOS system gray 5
   },
   light: {
-    bg: '#fafbfc', // Softer than pure white - easier on eyes
+    bg: '#f2f2f7', // iOS system gray 6 light
     card: '#ffffff', // Keep cards pure white for contrast
-    border: '#e2e8f0', // Border color
+    border: '#d1d1d6', // iOS system gray 4 light
   },
   
   // Text colors
   text: {
     primary: '#ffffff', // Primary text (pure white for better contrast)
-    secondary: '#a0a0a0', // Secondary text (improved contrast)
-    accent: '#58a6ff', // Accent text (brand blue lighter)
-    accentHover: '#1c49ff', // Accent text hover (brand blue)
+    secondary: '#8e8e93', // iOS system gray
+    accent: '#0a84ff', // iOS blue
+    accentHover: '#0040dd', // iOS blue pressed
   },
   textLight: {
-    primary: '#24292f', // Primary text (softer dark)
-    secondary: '#656d76', // Secondary text (softer gray)
-    accent: '#1c49ff', // Accent text (brand blue)
-    accentHover: '#1a3fd9', // Accent text hover (darker brand blue)
+    primary: '#000000', // iOS label
+    secondary: '#8e8e93', // iOS secondary label  
+    accent: '#007aff', // iOS blue light
+    accentHover: '#0051d5', // iOS blue light pressed
   },
   
   // Status colors
@@ -105,47 +105,47 @@ export const colors = {
   // Button colors
   button: {
     primary: {
-      bg: '#1c49ff', // Brand blue
-      hover: '#1a3fd9', // Darker brand blue for hover
+      bg: '#007aff', // iOS blue
+      hover: '#0051d5', // iOS blue pressed
       text: '#ffffff',
     },
     secondary: {
       bg: 'transparent',
-      hover: 'rgba(255, 255, 255, 0.1)',
-      text: '#a0a0a0',
+      hover: 'rgba(255, 255, 255, 0.08)',
+      text: '#8e8e93',
     },
   },
   
   // Form colors
   form: {
     input: {
-      bg: '#2a2a2a', // Darker background for better contrast in dark mode
-      border: '#404040', // More visible border
+      bg: '#1c1c1e', // iOS system gray 6
+      border: '#38383a', // iOS system gray 5
       focus: {
-        ring: '#1c49ff', // Use brand blue for focus
+        ring: '#007aff', // iOS blue
         border: 'transparent',
       },
     },
     inputLight: {
-      bg: '#f8fafc', // Light gray background for better visibility
-      border: '#cbd5e1', // Darker border for better contrast
+      bg: '#ffffff', // Pure white for inputs
+      border: '#d1d1d6', // iOS system gray 4 light
       focus: {
-        ring: '#1c49ff', // Use brand blue for focus
+        ring: '#007aff', // iOS blue
         border: 'transparent',
       },
     },
-    placeholder: '#666666', // Better contrast for placeholders
-    placeholderLight: '#6b7280',
+    placeholder: '#8e8e93', // iOS system gray
+    placeholderLight: '#8e8e93', // iOS system gray
   },
   
   // Progress bar colors
   progress: {
-    bg: '#21262d',
-    fill: '#1c49ff', // Brand blue
+    bg: '#38383a',
+    fill: '#007aff', // iOS blue
   },
   progressLight: {
-    bg: '#e2e8f0',
-    fill: '#1c49ff', // Brand blue
+    bg: '#e5e5ea',
+    fill: '#007aff', // iOS blue
   },
 } as const;
 

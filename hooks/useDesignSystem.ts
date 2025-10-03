@@ -14,13 +14,13 @@ export function useDesignSystem() {
     bg: {
       primary: isDark ? colors.dark.bg : colors.light.bg,
       card: isDark ? colors.dark.card : colors.light.card,
-      surface: isDark ? '#262626' : '#f8fafc',
+      surface: isDark ? '#2c2c2e' : '#e5e5ea', // iOS system gray 5
     },
     
     // Border colors
     border: {
       primary: isDark ? colors.dark.border : colors.light.border,
-      secondary: isDark ? '#404040' : '#e5e7eb',
+      secondary: isDark ? '#48484a' : '#d1d1d6', // iOS system gray 4
     },
     
     // Text colors

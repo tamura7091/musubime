@@ -15,11 +15,14 @@ export default function DatePicker({ value, onChange, disabled }: DatePickerProp
       value={value || ''}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
-      className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors date-picker-input"
+      className="w-full p-3 rounded-lg focus:ring-2 focus:border-transparent date-picker-input"
       style={{
         backgroundColor: ds.form.input.bg,
         borderColor: ds.form.input.border,
         color: ds.text.primary,
+        borderWidth: '1px',
+        borderStyle: 'solid',
+        outline: 'none',
         '--tw-ring-color': ds.form.input.focus.ring,
       } as React.CSSProperties}
     />

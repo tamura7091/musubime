@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { useDesignSystem } from '@/hooks/useDesignSystem';
 import DatePicker from './DatePicker';
 import Modal from './Modal';
 
@@ -24,6 +25,7 @@ interface SurveyData {
 }
 
 export default function OnboardingSurvey({ campaignId, onComplete, onCancel, defaultPrice }: OnboardingSurveyProps) {
+  const ds = useDesignSystem();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDateConfirmation, setShowDateConfirmation] = useState(false);
@@ -275,9 +277,23 @@ export default function OnboardingSurvey({ campaignId, onComplete, onCancel, def
                 value={surveyData[currentStepData.field as keyof SurveyData] as string}
                 onChange={(e) => handleInputChange(currentStepData.field as keyof SurveyData, e.target.value)}
                 onKeyDown={handleEnterKey}
-                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  currentStepData.field === 'email' && emailError ? 'border-red-500' : 'border-gray-300'
-                }`}
+                style={{
+                  backgroundColor: ds.form.input.bg,
+                  borderColor: currentStepData.field === 'email' && emailError ? '#ef4444' : ds.form.input.border,
+                  color: ds.text.primary,
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  outline: 'none',
+                }}
+                className="w-full p-3 rounded-lg focus:ring-2 focus:border-transparent"
+                onFocus={(e) => {
+                  e.target.style.borderColor = ds.form.input.focus.ring;
+                  e.target.style.boxShadow = `0 0 0 2px ${ds.form.input.focus.ring}`;
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = currentStepData.field === 'email' && emailError ? '#ef4444' : ds.form.input.border;
+                  e.target.style.boxShadow = 'none';
+                }}
               />
               {currentStepData.field === 'email' && emailError && (
                 <p className="text-red-500 text-sm mt-1">{emailError}</p>
