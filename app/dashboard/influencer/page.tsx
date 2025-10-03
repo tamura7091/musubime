@@ -1475,7 +1475,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                 {/* Blue Character */}
                 <div className="flex-shrink-0 mt-1">
                   <img 
-                    src="/blue.svg" 
+                    src="/blue.png" 
                     alt="Character" 
                     className="w-12 h-12"
                   />
@@ -1555,7 +1555,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                 {/* Blue Character */}
                 <div className="flex-shrink-0 mt-1">
                   <img 
-                    src="/blue.svg" 
+                    src="/blue.png" 
                     alt="Character" 
                     className="w-12 h-12"
                   />

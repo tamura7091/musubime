@@ -1328,7 +1328,7 @@ export default function ChatBot({ className }: ChatBotProps) {
               style={{ backgroundColor: '#f5f5f5' }}
             >
               <img 
-                src="/blue.svg" 
+                src="/blue.png" 
                 alt="Blue" 
                 className="w-4 h-4 sm:w-5 sm:h-5"
               />
@@ -1543,7 +1543,7 @@ export default function ChatBot({ className }: ChatBotProps) {
                   <User className="w-3 h-3" style={{ color: 'white' }} />
                 ) : (
                   <img 
-                    src="/blue.svg" 
+                    src="/blue.png" 
                     alt="Blue" 
                     className="w-3 h-3"
                   />
