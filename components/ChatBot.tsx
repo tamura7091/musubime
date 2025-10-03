@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MessageCircle, X, Send, Bot, User, Loader2, Clock, Plus } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, Loader2, Menu } from 'lucide-react';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
 import { useAuth } from '@/contexts/AuthContext';
 import { Campaign, CampaignStatus, getStepFromStatus, getStepLabel } from '@/types';
@@ -1274,7 +1274,7 @@ export default function ChatBot({ className }: ChatBotProps) {
               onClick={() => setShowHistory(!showHistory)}
               className="p-1.5 rounded-lg hover:bg-opacity-80 transition-colors"
               style={{ color: ds.text.secondary }}
-              title="チャット履歴"
+              title="メニュー"
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = ds.bg.card;
               }}
@@ -1282,21 +1282,7 @@ export default function ChatBot({ className }: ChatBotProps) {
                 e.currentTarget.style.backgroundColor = 'transparent';
               }}
             >
-              <Clock className="w-4 h-4" />
-            </button>
-            <button
-              onClick={createNewChat}
-              className="p-1.5 rounded-lg hover:bg-opacity-80 transition-colors"
-              style={{ color: ds.text.secondary }}
-              title="新しいチャット"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = ds.bg.card;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              <Plus className="w-4 h-4" />
+              <Menu className="w-5 h-5" />
             </button>
             <div 
               className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center"
@@ -1343,7 +1329,7 @@ export default function ChatBot({ className }: ChatBotProps) {
                 }}
               >
                 <h3 className="font-semibold text-sm" style={{ color: ds.text.primary }}>
-                  チャット履歴
+                  メニュー
                 </h3>
                 <button
                   onClick={() => setShowHistory(false)}
@@ -1360,6 +1346,28 @@ export default function ChatBot({ className }: ChatBotProps) {
                 </button>
               </div>
               
+              {/* New Chat Button */}
+              <div className="p-3 border-b" style={{ borderColor: ds.border.secondary }}>
+                <button
+                  onClick={createNewChat}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-all hover:opacity-90"
+                  style={{
+                    backgroundColor: ds.button.primary.bg,
+                    color: ds.button.primary.text,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = ds.button.primary.hover;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = ds.button.primary.bg;
+                  }}
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  新しいチャット
+                </button>
+              </div>
+              
+              {/* Chat History List */}
               <div className="flex-1 overflow-y-auto p-2">
                 {chatSessions.length === 0 ? (
                   <div className="text-center py-8" style={{ color: ds.text.secondary }}>
