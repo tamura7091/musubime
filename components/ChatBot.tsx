@@ -465,13 +465,13 @@ export default function ChatBot({ className }: ChatBotProps) {
     // Debounce save by 2 seconds
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        // Filter to only save user messages (no bot responses or interactive components)
+        // Filter to only exclude interactive UI components (save both user and bot messages)
         const sessionsToSave = chatSessions.map(session => ({
           ...session,
-          messages: session.messages.filter(msg => msg.sender === 'user' && !msg.interactive)
+          messages: session.messages.filter(msg => !msg.interactive)
         }));
         
-        console.log('💾 Saving chat sessions (user messages only)...');
+        console.log('💾 Saving chat sessions (user and AI messages)...');
         const response = await fetch('/api/chat/history', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
