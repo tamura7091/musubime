@@ -265,25 +265,57 @@ export default function AdminDashboard() {
       return Math.floor((now.getTime() - updatedAt.getTime()) / msPerDay);
     };
 
-    const daysUntilDraft = (campaign: Campaign) => {
-      const dueRaw = campaign.schedules?.draftSubmissionDate;
-      if (!dueRaw || String(dueRaw).trim() === '') return null;
-      const due = new Date(String(dueRaw));
+    const daysUntilDeadline = (dateString: string | null | undefined) => {
+      if (!dateString || String(dateString).trim() === '') return null;
+      const due = new Date(String(dateString));
       if (isNaN(due.getTime())) return null;
       return Math.ceil((due.getTime() - now.getTime()) / msPerDay);
     };
 
-    type ActionItem = { campaign: Campaign; kind: 'trial' | 'meeting'; reason: string };
+    const getRelevantDeadline = (campaign: Campaign): { days: number | null; type: string; label: string } => {
+      const status = String(campaign.status || '');
+      
+      // Check plan deadline for plan-related statuses
+      if (['plan_creating', 'plan_submitted', 'plan_revising'].includes(status)) {
+        const days = daysUntilDeadline(campaign.schedules?.planSubmissionDate);
+        return { days, type: 'plan', label: '構成案提出期限' };
+      }
+      
+      // Check draft deadline for draft-related statuses
+      if (['draft_creating', 'draft_submitted', 'draft_revising'].includes(status)) {
+        const days = daysUntilDeadline(campaign.schedules?.draftSubmissionDate);
+        return { days, type: 'draft', label: '初稿提出期限' };
+      }
+      
+      // Check live date for scheduling/posting statuses
+      if (['scheduling', 'scheduled'].includes(status)) {
+        const days = daysUntilDeadline(campaign.schedules?.liveDate);
+        return { days, type: 'live', label: '投稿予定日' };
+      }
+      
+      // For other statuses, check draft deadline (most common)
+      const days = daysUntilDeadline(campaign.schedules?.draftSubmissionDate);
+      return { days, type: 'draft', label: '初稿提出期限' };
+    };
+
+    type ActionItem = { campaign: Campaign; kind: 'trial' | 'meeting' | 'overdue'; reason: string };
     const items: ActionItem[] = [];
     for (const c of allCampaigns) {
       const status = String(c.status || '');
       const since = daysSinceStatusUpdated(c);
-      const untilDraft = daysUntilDraft(c);
-      if (status === 'trial' && since !== null && since > 3 && untilDraft !== null && untilDraft > 0 && untilDraft < 10) {
+      const deadline = getRelevantDeadline(c);
+      const untilDeadline = deadline.days;
+      
+      if (status === 'trial' && since !== null && since > 3 && untilDeadline !== null && untilDeadline > 0 && untilDeadline < 10) {
         items.push({ campaign: c, kind: 'trial', reason: 'トライアルリマインダー' });
       }
-      if (status === 'meeting_scheduling' && since !== null && since >= 3 && untilDraft !== null && untilDraft > 0 && untilDraft < 30) {
+      if (status === 'meeting_scheduling' && since !== null && since >= 3 && untilDeadline !== null && untilDeadline > 0 && untilDeadline < 30) {
         items.push({ campaign: c, kind: 'meeting', reason: '打ち合わせリマインダー' });
+      }
+      // Overdue campaigns - deadline has passed but not yet completed
+      if (untilDeadline !== null && untilDeadline < 0 && !['completed', 'cancelled'].includes(status)) {
+        const daysOverdue = Math.abs(untilDeadline);
+        items.push({ campaign: c, kind: 'overdue', reason: `${deadline.label}超過 (${daysOverdue}日遅れ)` });
       }
     }
     return items;
@@ -1695,24 +1727,50 @@ export default function AdminDashboard() {
                   return Math.floor((now.getTime() - updatedAt.getTime()) / msPerDay);
                 };
 
-                const daysUntilDraft = (campaign: Campaign) => {
-                  const dueRaw = campaign.schedules?.draftSubmissionDate;
-                  if (!dueRaw || String(dueRaw).trim() === '') return null;
-                  const due = new Date(String(dueRaw));
+                const daysUntilDeadline = (dateString: string | null | undefined) => {
+                  if (!dateString || String(dateString).trim() === '') return null;
+                  const due = new Date(String(dateString));
                   if (isNaN(due.getTime())) return null;
                   return Math.ceil((due.getTime() - now.getTime()) / msPerDay);
                 };
 
-                type ActionItem = { campaign: Campaign; kind: 'trial' | 'meeting'; reason: string };
+                const getRelevantDeadline = (campaign: Campaign): { days: number | null; type: string; label: string } => {
+                  const status = String(campaign.status || '');
+                  
+                  // Check plan deadline for plan-related statuses
+                  if (['plan_creating', 'plan_submitted', 'plan_revising'].includes(status)) {
+                    const days = daysUntilDeadline(campaign.schedules?.planSubmissionDate);
+                    return { days, type: 'plan', label: '構成案提出期限' };
+                  }
+                  
+                  // Check draft deadline for draft-related statuses
+                  if (['draft_creating', 'draft_submitted', 'draft_revising'].includes(status)) {
+                    const days = daysUntilDeadline(campaign.schedules?.draftSubmissionDate);
+                    return { days, type: 'draft', label: '初稿提出期限' };
+                  }
+                  
+                  // Check live date for scheduling/posting statuses
+                  if (['scheduling', 'scheduled'].includes(status)) {
+                    const days = daysUntilDeadline(campaign.schedules?.liveDate);
+                    return { days, type: 'live', label: '投稿予定日' };
+                  }
+                  
+                  // For other statuses, check draft deadline (most common)
+                  const days = daysUntilDeadline(campaign.schedules?.draftSubmissionDate);
+                  return { days, type: 'draft', label: '初稿提出期限' };
+                };
+
+                type ActionItem = { campaign: Campaign; kind: 'trial' | 'meeting' | 'overdue'; reason: string };
                 const items: ActionItem[] = [];
 
                 for (const c of allCampaigns) {
                   const status = String(c.status || '');
                   const since = daysSinceStatusUpdated(c);
-                  const untilDraft = daysUntilDraft(c);
+                  const deadline = getRelevantDeadline(c);
+                  const untilDeadline = deadline.days;
 
                   // Rule 1: trial > 3 days AND draft due in < 10 days
-                  if (status === 'trial' && since !== null && since > 3 && untilDraft !== null && untilDraft > 0 && untilDraft < 10) {
+                  if (status === 'trial' && since !== null && since > 3 && untilDeadline !== null && untilDeadline > 0 && untilDeadline < 10) {
                     items.push({
                       campaign: c,
                       kind: 'trial',
@@ -1721,19 +1779,31 @@ export default function AdminDashboard() {
                   }
 
                   // Rule 2: meeting_scheduling for last 3 days AND draft due in < 30 days
-                  if (status === 'meeting_scheduling' && since !== null && since >= 3 && untilDraft !== null && untilDraft > 0 && untilDraft < 30) {
+                  if (status === 'meeting_scheduling' && since !== null && since >= 3 && untilDeadline !== null && untilDeadline > 0 && untilDeadline < 30) {
                     items.push({
                       campaign: c,
                       kind: 'meeting',
                       reason: '打ち合わせリマインダー'
                     });
                   }
+
+                  // Rule 3: Overdue campaigns - deadline has passed but not yet completed
+                  if (untilDeadline !== null && untilDeadline < 0 && !['completed', 'cancelled'].includes(status)) {
+                    const daysOverdue = Math.abs(untilDeadline);
+                    items.push({
+                      campaign: c,
+                      kind: 'overdue',
+                      reason: `${deadline.label}超過 (${daysOverdue}日遅れ)`
+                    });
+                  }
                 }
 
-                const sendReminder = async (campaign: Campaign, kind: 'trial' | 'meeting') => {
+                const sendReminder = async (campaign: Campaign, kind: 'trial' | 'meeting' | 'overdue') => {
                   const key = `${campaign.id}_${kind}`;
                   setReminderSending(prev => new Set(prev).add(key));
                   try {
+                    // For overdue, use 'draft' as reminderType (since it's about draft deadline)
+                    const reminderType = kind === 'overdue' ? 'draft' : kind;
                     const res = await fetch('/api/admin/actions', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
@@ -1741,7 +1811,7 @@ export default function AdminDashboard() {
                         campaignId: campaign.id,
                         influencerId: campaign.influencerId,
                         action: 'send_reminder',
-                        reminderType: kind,
+                        reminderType: reminderType,
                       })
                     });
                     const data = await res.json();
@@ -1805,7 +1875,10 @@ export default function AdminDashboard() {
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
-                                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors.status.orange[400] }}></div>
+                                    <div 
+                                      className={`w-1.5 h-1.5 rounded-full ${kind === 'overdue' ? 'animate-pulse' : ''}`} 
+                                      style={{ backgroundColor: kind === 'overdue' ? colors.status.red[500] : colors.status.orange[400] }}
+                                    ></div>
                                     <p className="font-medium truncate" style={{ 
                                       color: ds.text.primary,
                                       fontSize: `${ds.typography.text.sm.fontSize}px`,
@@ -1814,16 +1887,16 @@ export default function AdminDashboard() {
                                       {c.influencerName}
                                     </p>
                                     <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ 
-                                      backgroundColor: ds.bg.surface,
-                                      color: ds.text.secondary,
-                                      borderColor: ds.border.primary,
+                                      backgroundColor: kind === 'overdue' ? colors.status.red.bg : ds.bg.surface,
+                                      color: kind === 'overdue' ? colors.status.red[500] : ds.text.secondary,
+                                      borderColor: kind === 'overdue' ? colors.status.red.border : ds.border.primary,
                                       borderWidth: '1px',
                                       borderStyle: 'solid'
                                     }}>
                                       {mapPlatformToJapanese(String(c.platform))}
                                     </span>
                                   </div>
-                                  <p className="text-xs" style={{ color: ds.text.secondary }}>
+                                  <p className="text-xs" style={{ color: kind === 'overdue' ? colors.status.red[600] : ds.text.secondary }}>
                                     {reason}
                                   </p>
                                 </div>
@@ -1861,6 +1934,23 @@ export default function AdminDashboard() {
                                         <Mail size={12} />
                                       )}
                                       リマインドを送る
+                                    </button>
+                                  )}
+                                  {kind === 'overdue' && (
+                                    <button
+                                      onClick={() => sendReminder(c, 'overdue')}
+                                      disabled={reminderSending.has(`${c.id}_overdue`)}
+                                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                                      style={{ backgroundColor: colors.status.red[500], color: 'white' }}
+                                      onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = colors.status.red[600])}
+                                      onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = colors.status.red[500])}
+                                    >
+                                      {reminderSending.has(`${c.id}_overdue`) ? (
+                                        <RefreshCw size={12} className="animate-spin" />
+                                      ) : (
+                                        <AlertCircle size={12} />
+                                      )}
+                                      催促を送る
                                     </button>
                                   )}
                                 </div>
