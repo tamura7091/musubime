@@ -1334,6 +1334,7 @@ export default function ChatBot({ className }: ChatBotProps) {
                 width={20} 
                 height={20}
                 className="w-4 h-4 sm:w-5 sm:h-5"
+                unoptimized
               />
             </div>
             <div>
@@ -1551,6 +1552,7 @@ export default function ChatBot({ className }: ChatBotProps) {
                     width={12} 
                     height={12}
                     className="w-3 h-3"
+                    unoptimized
                   />
                 )}
               </div>
