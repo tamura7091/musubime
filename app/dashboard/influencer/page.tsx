@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { CampaignStatus, getStepFromStatus } from '@/types';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
 import { formatAbbreviatedCurrency } from '@/lib/design-system';
+// import blueCharacter from '../../public/blue.png';
 
 export default function InfluencerDashboard() {
   // Prefer full currency unless it overflows; fallback to abbreviated (K/M)
@@ -762,6 +763,8 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
   // Check if current step is behind schedule (for warning message)
   const isCurrentStepBehindSchedule = (campaign: any) => {
     if (!campaign || campaign.status === 'completed') return false;
+    // 構成案/初稿の修正中は遅れてますエラーを出さない
+    if (campaign.status === 'plan_revising' || campaign.status === 'draft_revising') return false;
     const nextStepInfo = getNextStepInfo(campaign);
     return nextStepInfo && nextStepInfo.days !== null && nextStepInfo.days < 0;
   };
@@ -1437,13 +1440,13 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
           }}>
             <div className="flex items-center space-x-4">
               <div className="p-3 rounded-xl flex-shrink-0" style={{ 
-                backgroundColor: nextStepInfo && nextStepInfo.days !== null && nextStepInfo.days < 0 
+                backgroundColor: nextStepInfo && nextStepInfo.days !== null && nextStepInfo.days < 0 && primaryCampaign?.status !== 'plan_revising' && primaryCampaign?.status !== 'draft_revising'
                   ? '#ef4444' + '15' 
                   : nextStepInfo && nextStepInfo.days === 0
                   ? '#eab308' + '15'
                   : '#22c55e' + '15' 
               }}>
-                {nextStepInfo && nextStepInfo.days !== null && nextStepInfo.days < 0 ? (
+                {nextStepInfo && nextStepInfo.days !== null && nextStepInfo.days < 0 && primaryCampaign?.status !== 'plan_revising' && primaryCampaign?.status !== 'draft_revising' ? (
                   <AlertCircle size={24} style={{ color: '#ef4444' }} />
                 ) : nextStepInfo && nextStepInfo.days === 0 ? (
                   <Clock size={24} style={{ color: '#eab308' }} />
@@ -1456,6 +1459,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                   {nextStepInfo && nextStepInfo.days !== null ? (
                     nextStepInfo.days > 0 ? `${nextStepInfo.days}日` :
                     nextStepInfo.days === 0 ? '今日' :
+                    (primaryCampaign?.status === 'plan_revising' || primaryCampaign?.status === 'draft_revising') ? `修正中` :
                     `${Math.abs(nextStepInfo.days)}日遅れ`
                   ) : '未確定'}
                 </p>
@@ -1736,9 +1740,9 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                       <h3 className="text-lg font-semibold mb-2" style={{ color: ds.text.primary }}>
                         {action.title}
                       </h3>
-                      <p 
-                        className="mb-4"
-                        style={{ color: ds.text.secondary }}
+                      <div 
+                        className="mb-4 action-description-content"
+                        style={{ color: ds.text.primary }}
                         dangerouslySetInnerHTML={{ __html: action.description }}
                       />
                       {action.action === 'guideline_premium' && (

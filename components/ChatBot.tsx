@@ -6,6 +6,7 @@ import { useDesignSystem } from '@/hooks/useDesignSystem';
 import { useAuth } from '@/contexts/AuthContext';
 import { Campaign, CampaignStatus, getStepFromStatus, getStepLabel } from '@/types';
 import React from 'react';
+// import blueCharacter from '../public/blue.png';
 
 // Utilities for platform label and date handling
 const getPlatformLabel = (platform?: string): string => {

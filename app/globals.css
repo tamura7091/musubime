@@ -121,6 +121,26 @@
     .rdp-root .rdp-day { width: 2.4rem; height: 2.4rem; }
     .rdp-root .rdp-caption_label { font-size: 1.125rem; }
   }
+
+  /* Action description content with clickable links */
+  .action-description-content a {
+    color: #2563eb;
+    text-decoration: underline;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  .action-description-content a:hover {
+    color: #1d4ed8;
+  }
+
+  .dark .action-description-content a {
+    color: #60a5fa;
+  }
+
+  .dark .action-description-content a:hover {
+    color: #93c5fd;
+  }
 }
 
 /* Animations for ChatBot sidebar */
