@@ -471,6 +471,8 @@ class GoogleSheetsService {
       'trial_login_password_dashboard',
       // Influencer-facing notes (markdown) shown on dashboard
       'note_dashboard',
+      // Contact email for mailto links in admin dashboard
+      'contact_email',
       // Chat history for Musubime AI - REMOVED for performance, use getChatHistory() instead
       // 'chat_dashboard'
     ], influencerId, 'campaigns', options);
@@ -1427,6 +1429,122 @@ class GoogleSheetsService {
     } catch (error: any) {
       console.error('❌ Error updating selected influencer status:', error?.message || error);
       return { success: false, error: error?.message || 'Unknown error' };
+    }
+  }
+
+  // Update date_status_updated for campaigns on first login
+  async updateDateStatusUpdatedOnLogin(influencerId: string): Promise<{ success: boolean; updatedCount: number; error?: string }> {
+    try {
+      console.log('🔄 GoogleSheetsService.updateDateStatusUpdatedOnLogin() called');
+      console.log('👤 Influencer ID:', influencerId);
+      
+      // Check if we have write permissions (Service Account required)
+      if (!this.hasServiceAccount) {
+        console.log('⚠️ No Service Account configured - cannot write to Google Sheets');
+        return { 
+          success: false, 
+          updatedCount: 0,
+          error: 'Google Sheets write access requires Service Account credentials.' 
+        };
+      }
+      
+      this.assertConfigured();
+
+      // Fetch all campaigns for this influencer
+      const request: any = {
+        spreadsheetId: this.spreadsheetId,
+        range: 'campaigns!A:ZZ',
+      };
+      
+      const response = await this.sheets.spreadsheets.values.get(request);
+      const rows = response.data.values;
+      
+      if (!rows || rows.length === 0) {
+        return { success: false, updatedCount: 0, error: 'No data found in sheet' };
+      }
+
+      const headers = rows[0] as string[];
+      
+      // Find column indices
+      const idInfluencerIndex = headers.findIndex(h => h === 'id_influencer');
+      const statusDashboardIndex = headers.findIndex(h => h === 'status_dashboard');
+      const dateStatusUpdatedIndex = headers.findIndex(h => h === 'date_status_updated');
+      const idCampaignIndex = headers.findIndex(h => h === 'id_campaign');
+      
+      if (idInfluencerIndex === -1 || statusDashboardIndex === -1 || dateStatusUpdatedIndex === -1) {
+        return { success: false, updatedCount: 0, error: 'Required columns not found' };
+      }
+
+      console.log('📋 Found column indices:', { 
+        idInfluencerIndex, 
+        statusDashboardIndex, 
+        dateStatusUpdatedIndex,
+        idCampaignIndex
+      });
+
+      // Find all campaigns for this influencer where status is "not_started" or empty
+      const updates: { range: string; values: any[][] }[] = [];
+      const currentDateTime = new Date().toISOString();
+      let updatedCount = 0;
+
+      // Skip first 4 rows (header rows) and start from row 5 (index 4)
+      for (let i = 4; i < rows.length; i++) {
+        const row = rows[i];
+        const rowInfluencerId = row[idInfluencerIndex];
+        const rowStatusDashboard = row[statusDashboardIndex] || '';
+        const rowCampaignId = row[idCampaignIndex] || '';
+        
+        // Check if this row matches our criteria
+        if (rowInfluencerId === influencerId && 
+            (rowStatusDashboard === '' || rowStatusDashboard === 'not_started')) {
+          
+          console.log(`📊 Found matching campaign at row ${i + 1}:`, {
+            campaignId: rowCampaignId,
+            influencerId: rowInfluencerId,
+            statusDashboard: rowStatusDashboard || '(empty)',
+          });
+          
+          // Add update for this row
+          const dateRange = `campaigns!${this.columnIndexToLetter(dateStatusUpdatedIndex)}${i + 1}`;
+          updates.push({
+            range: dateRange,
+            values: [[currentDateTime]]
+          });
+          updatedCount++;
+          
+          console.log(`📅 Will update date_status_updated at ${dateRange} to "${currentDateTime}"`);
+        }
+      }
+
+      // Execute the updates if we found any
+      if (updates.length > 0) {
+        const batchUpdateRequest = {
+          spreadsheetId: this.spreadsheetId,
+          requestBody: {
+            valueInputOption: 'RAW',
+            data: updates
+          }
+        };
+
+        console.log('📡 Executing batch update for login date_status_updated with', updates.length, 'updates');
+        
+        try {
+          await this.sheets.spreadsheets.values.batchUpdate(batchUpdateRequest);
+          console.log(`✅ Batch update completed successfully - updated ${updatedCount} campaign(s)`);
+          // Invalidate campaigns-related caches
+          this.invalidateCacheByPrefixes(['campaigns!']);
+        } catch (updateError: any) {
+          console.error('❌ Batch update failed:', updateError?.message || updateError);
+          throw updateError;
+        }
+      } else {
+        console.log('ℹ️ No campaigns found that need date_status_updated update');
+      }
+
+      return { success: true, updatedCount };
+    } catch (error: any) {
+      console.error('❌ Error updating date_status_updated on login:', error?.message || error);
+      return { success: false, updatedCount: 0, error: error?.message || 'Unknown error' };
     }
   }
 

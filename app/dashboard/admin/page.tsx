@@ -27,6 +27,13 @@ export default function AdminDashboard() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [currentRevisionAction, setCurrentRevisionAction] = useState<{update: Update, action: string} | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successModalData, setSuccessModalData] = useState<{
+    influencerName: string;
+    influencerEmail: string;
+    feedbackMessage: string;
+    submissionType: string;
+  } | null>(null);
   const [showAllUpdates, setShowAllUpdates] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'actions' | 'comms' | 'settings'>('dashboard');
@@ -518,6 +525,7 @@ export default function AdminDashboard() {
       'meeting_scheduling': '打ち合わせ予約中',
       'meeting_scheduled': '打ち合わせ予定',
       'contract_pending': '契約書待ち',
+      'trial': 'トライアル中',
       'plan_creating': '構成案作成中',
       'plan_submitted': '構成案確認中',
       'plan_revising': '構成案修正中',
@@ -593,9 +601,6 @@ export default function AdminDashboard() {
       if (result.success) {
         console.log('✅ Admin action completed:', result.message);
         
-        // Show success message (you can implement a toast notification here)
-        alert(result.message);
-        
         // Queue a follow-up action (UI-only) to send email notification later
         try {
           const followupType: 'approval' | 'revision' | null = action.includes('approve') ? 'approval' : action.includes('revise') ? 'revision' : null;
@@ -618,8 +623,31 @@ export default function AdminDashboard() {
           console.warn('Failed to queue follow-up email action');
         }
         
-        // Refresh the updates to show the new status
-        window.location.reload();
+        // If this is a revision request with feedback, show success modal with mailto link
+        if (action.includes('revise') && feedback) {
+          // Find the campaign to get the influencer's email
+          const campaign = allCampaigns.find(c => c.id === update.campaignId);
+          const influencerEmail = campaign?.campaignData?.contact_email || '';
+          
+          console.log('📧 Found campaign for mailto:', {
+            campaignId: update.campaignId,
+            campaign: campaign,
+            email: influencerEmail,
+            campaignData: campaign?.campaignData
+          });
+          
+          setSuccessModalData({
+            influencerName: update.influencerName,
+            influencerEmail: influencerEmail,
+            feedbackMessage: feedback,
+            submissionType: update.submissionType === 'plan' ? '構成案' : '初稿'
+          });
+          setShowSuccessModal(true);
+        } else {
+          // For other actions, show alert and reload immediately
+          alert(result.message);
+          window.location.reload();
+        }
       } else {
         console.error('❌ Admin action failed:', result.error);
         alert(`エラー: ${result.error}`);
@@ -2131,6 +2159,116 @@ export default function AdminDashboard() {
                 onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
               >
                 修正依頼を送信
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal with Mailto Link */}
+      {showSuccessModal && successModalData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="rounded-xl p-6 max-w-md w-full mx-4" style={{ backgroundColor: ds.bg.card }}>
+            <div className="flex items-center mb-4">
+              <div className="mr-3 w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#10b981' }}>
+                <Check size={20} style={{ color: 'white' }} />
+              </div>
+              <h3 className="text-lg font-semibold" style={{ color: ds.text.primary }}>
+                修正依頼を送信しました
+              </h3>
+            </div>
+            
+            <p className="text-sm mb-4" style={{ color: ds.text.secondary }}>
+              {successModalData.influencerName}さんの{successModalData.submissionType}に対する修正依頼がダッシュボードに反映されました。
+            </p>
+
+            <div className="mb-4 p-4 rounded-lg" style={{ backgroundColor: ds.bg.surface }}>
+              <p className="text-sm font-medium mb-2" style={{ color: ds.text.primary }}>
+                メールでも連絡する：
+              </p>
+              {successModalData.influencerEmail ? (
+                <a
+                  href={`mailto:${successModalData.influencerEmail}?subject=${encodeURIComponent(`【Speak】${successModalData.submissionType}の修正依頼`)}&body=${encodeURIComponent(`${successModalData.influencerName}さん\n\nお疲れ様です。\n\nご提出いただいた${successModalData.submissionType}を確認いたしました。\n以下の点について修正をお願いいたします。\n\n${successModalData.feedbackMessage}\n\nご確認のほどよろしくお願いいたします。`)}`}
+                  className="flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full"
+                  style={{
+                    backgroundColor: ds.button.secondary.bg,
+                    color: ds.button.secondary.text,
+                    borderColor: ds.border.primary,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    textDecoration: 'none'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.hover}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.bg}
+                >
+                  <Mail size={16} className="mr-2" />
+                  メールアプリで開く
+                </a>
+              ) : (
+                <div>
+                  <div className="text-sm p-3 rounded-lg mb-3" style={{ 
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    color: ds.text.secondary,
+                    borderColor: 'rgba(239, 68, 68, 0.2)',
+                    borderWidth: '1px',
+                    borderStyle: 'solid'
+                  }}>
+                    <p className="mb-1">⚠️ メールアドレスが登録されていません</p>
+                    <p className="text-xs">Google Sheetの「contact_email」列にメールアドレスを追加してください。</p>
+                  </div>
+                  <div className="p-3 rounded-lg mb-2" style={{
+                    backgroundColor: ds.form.input.bg,
+                    borderColor: ds.form.input.border,
+                    borderWidth: '1px',
+                    borderStyle: 'solid'
+                  }}>
+                    <p className="text-xs mb-1" style={{ color: ds.text.secondary }}>件名：</p>
+                    <p className="text-sm mb-3" style={{ color: ds.text.primary }}>【Speak】{successModalData.submissionType}の修正依頼</p>
+                    <p className="text-xs mb-1" style={{ color: ds.text.secondary }}>本文：</p>
+                    <p className="text-sm whitespace-pre-wrap" style={{ color: ds.text.primary }}>
+                      {`${successModalData.influencerName}さん\n\nお疲れ様です。\n\nご提出いただいた${successModalData.submissionType}を確認いたしました。\n以下の点について修正をお願いいたします。\n\n${successModalData.feedbackMessage}\n\nご確認のほどよろしくお願いいたします。`}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const emailContent = `件名：【Speak】${successModalData.submissionType}の修正依頼\n\n本文：\n${successModalData.influencerName}さん\n\nお疲れ様です。\n\nご提出いただいた${successModalData.submissionType}を確認いたしました。\n以下の点について修正をお願いいたします。\n\n${successModalData.feedbackMessage}\n\nご確認のほどよろしくお願いいたします。`;
+                      navigator.clipboard.writeText(emailContent);
+                      alert('メール内容をコピーしました！');
+                    }}
+                    className="flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full"
+                    style={{
+                      backgroundColor: ds.button.secondary.bg,
+                      color: ds.button.secondary.text,
+                      borderColor: ds.border.primary,
+                      borderWidth: '1px',
+                      borderStyle: 'solid'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.hover}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.secondary.bg}
+                  >
+                    <Copy size={16} className="mr-2" />
+                    メール内容をコピー
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  setSuccessModalData(null);
+                  window.location.reload();
+                }}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: ds.button.primary.bg,
+                  color: ds.button.primary.text
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.hover}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.button.primary.bg}
+              >
+                閉じる
               </button>
             </div>
           </div>

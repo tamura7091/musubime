@@ -6,7 +6,7 @@ const getStatusLabel = (status: CampaignStatus | string): string => {
     meeting_scheduling: '打ち合わせ予約中',
     meeting_scheduled: '打ち合わせ予約済み',
     contract_pending: '契約書待ち',
-    trial: '試用',
+    trial: 'トライアル中',
     plan_creating: '構成案作成中',
     plan_submitted: '構成案確認中',
     plan_revising: '構成案修正中',

@@ -48,6 +48,24 @@ export async function POST(request: NextRequest) {
       const role = user.email?.includes('@usespeak.com') || id === 'admin' ? 'admin' : 'influencer';
       console.log('👤 User authenticated successfully:', { id: user.id, role });
       
+      // Update date_status_updated for campaigns with status "not_started" or empty on login
+      if (role === 'influencer') {
+        console.log('🔄 Checking campaigns for date_status_updated update on login...');
+        try {
+          const updateResult = await googleSheetsService.updateDateStatusUpdatedOnLogin(user.id);
+          if (updateResult.success && updateResult.updatedCount > 0) {
+            console.log(`✅ Updated date_status_updated for ${updateResult.updatedCount} campaign(s) on login`);
+          } else if (updateResult.success && updateResult.updatedCount === 0) {
+            console.log('ℹ️ No campaigns needed date_status_updated update (all have statuses other than not_started/empty)');
+          } else {
+            console.log('⚠️ Failed to update date_status_updated on login:', updateResult.error);
+          }
+        } catch (updateError) {
+          console.error('❌ Error updating date_status_updated on login:', updateError);
+          // Don't fail login if update fails - just log the error
+        }
+      }
+      
       return NextResponse.json({
         id: user.id,
         name: user.name,
