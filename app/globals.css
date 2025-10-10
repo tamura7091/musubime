@@ -141,6 +141,33 @@
   .dark .action-description-content a:hover {
     color: #93c5fd;
   }
+
+  /* Notion-style callout for revision feedback */
+  .revision-callout {
+    background-color: rgba(56, 139, 253, 0.05);
+    border-left: 4px solid #0969da;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    margin-top: 0.5rem;
+  }
+
+  .dark .revision-callout {
+    background-color: rgba(56, 139, 253, 0.08);
+    border-left-color: #388bfd;
+  }
+
+  .revision-callout strong {
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  .revision-content {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-top: 0.5rem;
+  }
 }
 
 /* Animations for ChatBot sidebar */

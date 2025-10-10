@@ -67,6 +67,39 @@ export function useDesignSystem() {
     // Typography
     typography,
     
+    // Alert colors
+    alert: {
+      error: {
+        bg: isDark ? colors.alert.error.bgDark : colors.alert.error.bg,
+        border: colors.alert.error.border,
+        text: isDark ? colors.alert.error.textDark : colors.alert.error.text,
+        icon: colors.alert.error.icon,
+      },
+      warning: {
+        bg: isDark ? colors.alert.warning.bgDark : colors.alert.warning.bg,
+        border: colors.alert.warning.border,
+        text: isDark ? colors.alert.warning.textDark : colors.alert.warning.text,
+        icon: colors.alert.warning.icon,
+      },
+      success: {
+        bg: isDark ? colors.alert.success.bgDark : colors.alert.success.bg,
+        border: colors.alert.success.border,
+        text: isDark ? colors.alert.success.textDark : colors.alert.success.text,
+        icon: colors.alert.success.icon,
+      },
+      info: {
+        bg: isDark ? colors.alert.info.bgDark : colors.alert.info.bg,
+        border: isDark ? colors.alert.info.borderDark : colors.alert.info.border,
+        text: isDark ? colors.alert.info.textDark : colors.alert.info.text,
+        icon: isDark ? colors.alert.info.iconDark : colors.alert.info.icon,
+      },
+    },
+    
+    // Shadow
+    shadow: {
+      card: isDark ? colors.shadow.card.dark : colors.shadow.card.light,
+    },
+    
     // Status colors
     status: {
       not_started: {

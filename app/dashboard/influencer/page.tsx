@@ -227,7 +227,7 @@ export default function InfluencerDashboard() {
         [0];
 
       if (revisionFeedback && revisionFeedback.content) {
-        return `<br/><br/><strong>📝 修正ポイント:</strong><br/>${revisionFeedback.content.replace(/\n/g, '<br/>')}`;
+        return `<br/><br/><div class="revision-callout"><strong>💡 修正ポイント</strong><div class="revision-content">${revisionFeedback.content.replace(/\n/g, '<br/>')}</div></div>`;
       }
 
       return '';
@@ -305,13 +305,14 @@ export default function InfluencerDashboard() {
           guidelineUrl = 'https://usespeak.notion.site/X-1e111dbf830946a4a225c26a2c6deede?source=copy_link';
         }
 
+        const linkColor = ds.text.accent;
         const guidelineLink = guidelineUrl
-          ? `<a href="${guidelineUrl}" target="_blank" style="color: #60a5fa; text-decoration: underline;">ガイドライン</a>`
+          ? `<a href="${guidelineUrl}" target="_blank" style="color: ${linkColor}; text-decoration: underline;">ガイドライン</a>`
           : 'ガイドライン（リンクは下部「ノート」欄をご確認ください）';
 
         return {
           title: 'ガイドラインの確認とプレミアムの試用',
-          description: `1. ${guidelineLink}をご確認ください<br/>2. アプリをダウンロードしてください：<a href="https://apps.apple.com/jp/app/ai%E8%8B%B1%E4%BC%9A%E8%A9%B1%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AF-%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AD%E3%83%B3%E3%82%B0%E7%B7%B4%E7%BF%92%E3%81%A7%E7%99%BA%E9%9F%B3%E3%82%84%E8%8B%B1%E8%AA%9E%E3%82%92%E5%8B%89%E5%BC%B7/id1286609883" target="_blank" style="color: #60a5fa; text-decoration: underline;">iOS</a>、<a href="https://play.google.com/store/apps/details?id=com.speakapp" target="_blank" style="color: #60a5fa; text-decoration: underline;">Android</a><br/>3. 下記の情報でスピークにログインし実際にお試しください`,
+          description: `1. ${guidelineLink}をご確認ください<br/>2. アプリをダウンロードしてください：<a href="https://apps.apple.com/jp/app/ai%E8%8B%B1%E4%BC%9A%E8%A9%B1%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AF-%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AD%E3%83%B3%E3%82%B0%E7%B7%B4%E7%BF%92%E3%81%A7%E7%99%BA%E9%9F%B3%E3%82%84%E8%8B%B1%E8%AA%9E%E3%82%92%E5%8B%89%E5%BC%B7/id1286609883" target="_blank" style="color: ${linkColor}; text-decoration: underline;">iOS</a>、<a href="https://play.google.com/store/apps/details?id=com.speakapp" target="_blank" style="color: ${linkColor}; text-decoration: underline;">Android</a><br/>3. 下記の情報でスピークにログインし実際にお試しください`,
           icon: AlertCircle,
           color: 'blue',
           action: 'guideline_premium',
@@ -333,18 +334,20 @@ export default function InfluencerDashboard() {
         {
           const meetingStatus = getEffectiveMeetingStatus(campaign);
           if (meetingStatus === 'not_scheduled') {
+          const linkColor = ds.text.accent;
           return {
             title: '打ち合わせの予約',
-            description: '<a href="https://calendly.com/speak-naoki/30min-1" target="_blank" style="color: #60a5fa; text-decoration: underline;">こちらから</a>打ち合わせを予約し「予約完了」ボタンをクリックしてください',
+            description: `<a href="https://calendly.com/speak-naoki/30min-1" target="_blank" style="color: ${linkColor}; text-decoration: underline;">こちらから</a>打ち合わせを予約し「予約完了」ボタンをクリックしてください`,
             icon: Calendar,
             color: 'blue',
             action: 'meeting_schedule',
             inputType: 'meeting_schedule'
           };
           } else if (meetingStatus === 'scheduled') {
+          const linkColor = ds.text.accent;
           return {
             title: '打ち合わせへの参加',
-            description: '予約済みの打ち合わせに参加し、完了後に「打ち合わせ完了」ボタンをクリックしてください（打ち合わせのリスケジュールは<a href="https://calendly.com/speak-naoki/30min-1" target="_blank" style="color: #60a5fa; text-decoration: underline;">こちら</a>）',
+            description: `予約済みの打ち合わせに参加し、完了後に「打ち合わせ完了」ボタンをクリックしてください（打ち合わせのリスケジュールは<a href="https://calendly.com/speak-naoki/30min-1" target="_blank" style="color: ${linkColor}; text-decoration: underline;">こちら</a>）`,
             icon: Calendar,
             color: 'blue',
             action: 'meeting_complete',
@@ -352,10 +355,11 @@ export default function InfluencerDashboard() {
           };
           } else if (meetingStatus === 'completed') {
           // Show plan creation action instead (include deadline when available)
+          const linkColor = ds.text.accent;
           const planDue = formatMonthDay(campaign?.schedules?.planSubmissionDate);
           return {
             title: '構成案の作成',
-            description: `こちらのテンプレートを利用し構成案を作成し、リンクを共有してください（<a href="https://docs.google.com/document/d/13Ljg7rR8hsaZflGt3N0sB_g9ad-391G7Nhl4ICwVybg/copy" target="_blank" style="color: #60a5fa; text-decoration: underline;">構成案テンプレート</a>）${planDue ? `。${planDue}までにご提出をお願いします。` : ''}`,
+            description: `こちらのテンプレートを利用し構成案を作成し、リンクを共有してください（<a href="https://docs.google.com/document/d/13Ljg7rR8hsaZflGt3N0sB_g9ad-391G7Nhl4ICwVybg/copy" target="_blank" style="color: ${linkColor}; text-decoration: underline;">構成案テンプレート</a>）${planDue ? `。${planDue}までにご提出をお願いします。` : ''}`,
             icon: AlertCircle,
             color: 'blue',
             action: 'plan',
@@ -368,10 +372,11 @@ export default function InfluencerDashboard() {
       case 'plan_creation':
         // Show different actions based on current status within the step
         if (campaign.status === 'plan_creating') {
+          const linkColor = ds.text.accent;
           const planDue = formatMonthDay(campaign?.schedules?.planSubmissionDate);
           return {
             title: '構成案の作成',
-            description: `こちらのテンプレートを利用し構成案を作成し、リンクを共有してください（<a href="https://docs.google.com/document/d/13Ljg7rR8hsaZflGt3N0sB_g9ad-391G7Nhl4ICwVybg/copy" target="_blank" style="color: #60a5fa; text-decoration: underline;">構成案テンプレート</a>）${planDue ? `。${planDue}までにご提出をお願いします。` : ''}`,
+            description: `こちらのテンプレートを利用し構成案を作成し、リンクを共有してください（<a href="https://docs.google.com/document/d/13Ljg7rR8hsaZflGt3N0sB_g9ad-391G7Nhl4ICwVybg/copy" target="_blank" style="color: ${linkColor}; text-decoration: underline;">構成案テンプレート</a>）${planDue ? `。${planDue}までにご提出をお願いします。` : ''}`,
             icon: AlertCircle,
             color: 'blue',
             action: 'plan',
@@ -509,6 +514,50 @@ export default function InfluencerDashboard() {
     const action = getActionNeeded(campaign);
     return action !== null && action.action !== 'waiting' && action.action !== 'completed';
   }).length;
+
+  // Get current action status label for display
+  const getCurrentActionStatus = (): string => {
+    if (!primaryCampaign) return '対応なし';
+    
+    const status = primaryCampaign.status as CampaignStatus;
+    
+    // Map statuses to current action labels
+    switch (status) {
+      case 'not_started':
+        return '基本情報入力待ち';
+      case 'meeting_scheduling':
+        return '打ち合わせ日程調整中';
+      case 'meeting_scheduled':
+        return '打ち合わせ待ち';
+      case 'contract_pending':
+      case 'trial':
+        return 'ガイドライン確認中';
+      case 'plan_creating':
+        return '構成案作成中';
+      case 'plan_submitted':
+        return '構成案確認待ち';
+      case 'plan_revising':
+        return '構成案修正中';
+      case 'draft_creating':
+        return '初稿作成中';
+      case 'draft_submitted':
+        return '初稿確認待ち';
+      case 'draft_revising':
+        return '初稿修正中';
+      case 'scheduling':
+        return '投稿準備中';
+      case 'scheduled':
+        return '請求書提出待ち';
+      case 'payment_processing':
+        return 'お支払い処理中';
+      case 'completed':
+        return 'プロモーション完了';
+      case 'cancelled':
+        return 'キャンセル済み';
+      default:
+        return 'ステータス確認中';
+    }
+  };
 
   // Calculate progress percentage based on completed steps
   const calculateProgress = (campaign: any) => {
@@ -1319,7 +1368,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
               borderWidth: '1px',
               borderStyle: 'solid',
               backgroundColor: ds.bg.card,
-              boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
+              boxShadow: ds.shadow.card
             }}>
               <div className="flex items-center space-x-3 mb-5">
                 <Settings size={22} style={{ color: ds.text.accent }} />
@@ -1379,15 +1428,15 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
             borderColor: ds.border.primary,
             borderWidth: '1px',
             borderStyle: 'solid',
-            boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
+            boxShadow: ds.shadow.card
           }}>
             <div className="flex items-center space-x-4">
-              <div className="p-3 rounded-xl flex-shrink-0" style={{ backgroundColor: ds.button.primary.bg + '15' }}>
-                <CreditCard size={24} style={{ color: ds.button.primary.bg }} />
+              <div className="p-3 rounded-xl flex-shrink-0" style={{ backgroundColor: ds.status.payment_processing.bg }}>
+                <CreditCard size={24} style={{ color: ds.status.payment_processing.text }} />
               </div>
               <div className="min-w-0 flex-1">
                 <VisibilityToggle>
-                  <p className="text-2xl sm:text-3xl font-semibold mb-1" style={{ color: ds.text.primary, letterSpacing: '-0.01em' }}>
+                  <p className="text-lg sm:text-xl font-semibold mb-1" style={{ color: ds.text.primary, letterSpacing: '-0.01em' }}>
                     {activeCampaigns.length > 0
                       ? (() => {
                           const subtotalExclTax = activeCampaigns.reduce((sum: number, c: any) => sum + (c.contractedPrice || 0), 0);
@@ -1416,17 +1465,17 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
             borderColor: ds.border.primary,
             borderWidth: '1px',
             borderStyle: 'solid',
-            boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
+            boxShadow: ds.shadow.card
           }}>
             <div className="flex items-center space-x-4">
-              <div className="p-3 rounded-xl flex-shrink-0" style={{ backgroundColor: '#f97316' + '15' }}>
-                <Clock size={24} style={{ color: '#f97316' }} />
+              <div className="p-3 rounded-xl flex-shrink-0" style={{ backgroundColor: ds.status.plan_creating.bg }}>
+                <Clock size={24} style={{ color: ds.status.plan_creating.text }} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-2xl sm:text-3xl font-semibold mb-1" style={{ color: ds.text.primary, letterSpacing: '-0.01em' }}>
-                  {pendingActions}
+                <p className="text-lg sm:text-xl font-semibold mb-1" style={{ color: ds.text.primary, letterSpacing: '-0.01em' }}>
+                  {getCurrentActionStatus()}
                 </p>
-                <p className="text-sm font-medium" style={{ color: ds.text.secondary }}>要対応</p>
+                <p className="text-sm font-medium" style={{ color: ds.text.secondary }}>現在の状態</p>
               </div>
             </div>
           </div>
@@ -1436,26 +1485,26 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
             borderColor: ds.border.primary,
             borderWidth: '1px',
             borderStyle: 'solid',
-            boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
+            boxShadow: ds.shadow.card
           }}>
             <div className="flex items-center space-x-4">
               <div className="p-3 rounded-xl flex-shrink-0" style={{ 
                 backgroundColor: nextStepInfo && nextStepInfo.days !== null && nextStepInfo.days < 0 && primaryCampaign?.status !== 'plan_revising' && primaryCampaign?.status !== 'draft_revising'
-                  ? '#ef4444' + '15' 
+                  ? ds.alert.error.bg
                   : nextStepInfo && nextStepInfo.days === 0
-                  ? '#eab308' + '15'
-                  : '#22c55e' + '15' 
+                  ? ds.alert.warning.bg
+                  : ds.alert.success.bg
               }}>
                 {nextStepInfo && nextStepInfo.days !== null && nextStepInfo.days < 0 && primaryCampaign?.status !== 'plan_revising' && primaryCampaign?.status !== 'draft_revising' ? (
-                  <AlertCircle size={24} style={{ color: '#ef4444' }} />
+                  <AlertCircle size={24} style={{ color: ds.alert.error.icon }} />
                 ) : nextStepInfo && nextStepInfo.days === 0 ? (
-                  <Clock size={24} style={{ color: '#eab308' }} />
+                  <Clock size={24} style={{ color: ds.alert.warning.icon }} />
                 ) : (
-                  <CheckCircle size={24} style={{ color: '#22c55e' }} />
+                  <CheckCircle size={24} style={{ color: ds.alert.success.icon }} />
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-2xl sm:text-3xl font-semibold mb-1" style={{ color: ds.text.primary, letterSpacing: '-0.01em' }}>
+                <p className="text-lg sm:text-xl font-semibold mb-1" style={{ color: ds.text.primary, letterSpacing: '-0.01em' }}>
                   {nextStepInfo && nextStepInfo.days !== null ? (
                     nextStepInfo.days > 0 ? `${nextStepInfo.days}日` :
                     nextStepInfo.days === 0 ? '今日' :
@@ -1489,8 +1538,8 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                 <div 
                   className="relative inline-block rounded-2xl px-4 py-3 shadow-sm"
                   style={{ 
-                    backgroundColor: ds.isDark ? '#1e40af25' : '#dbeafe',
-                    borderColor: ds.isDark ? '#60a5fa' : '#93c5fd',
+                    backgroundColor: ds.alert.info.bg,
+                    borderColor: ds.alert.info.border,
                     borderWidth: '1px',
                     borderStyle: 'solid'
                   }}
@@ -1503,7 +1552,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                       height: 0,
                       borderTop: '8px solid transparent',
                       borderBottom: '8px solid transparent',
-                      borderRight: `9px solid ${ds.isDark ? '#60a5fa' : '#93c5fd'}`
+                      borderRight: `9px solid ${ds.alert.info.border}`
                     }}
                   />
                   <div 
@@ -1514,7 +1563,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                       height: 0,
                       borderTop: '7px solid transparent',
                       borderBottom: '7px solid transparent',
-                      borderRight: `8px solid ${ds.isDark ? '#1e40af25' : '#dbeafe'}`
+                      borderRight: `8px solid ${ds.alert.info.bg}`
                     }}
                   />
 
@@ -1534,21 +1583,21 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
               </div>
             ) : isActionRequiredNow(primaryCampaign) && isCurrentStepDueToday(primaryCampaign) ? (
               <div className="mb-5 p-4 rounded-xl" style={{ 
-                backgroundColor: ds.isDark ? '#2d2a1b' : '#fefce8',
-                borderColor: ds.isDark ? '#a16207' : '#fde68a',
+                backgroundColor: ds.alert.warning.bg,
+                borderColor: ds.alert.warning.border,
                 borderWidth: '1px',
                 borderStyle: 'solid'
               }}>
                 <div className="flex items-center gap-3">
-                  <Clock size={18} style={{ color: '#eab308' }} />
+                  <Clock size={18} style={{ color: ds.alert.warning.icon }} />
                   <span className="text-sm font-semibold" style={{ 
-                    color: ds.isDark ? '#fbbf24' : '#a16207'
+                    color: ds.alert.warning.text
                   }}>
                     本日が期限です
                   </span>
                 </div>
                 <p className="text-sm mt-2 ml-7" style={{ 
-                  color: ds.isDark ? '#a16207' : '#713f12'
+                  color: ds.alert.warning.text
                 }}>
                   次のステップの期限が本日となっております。お時間のあるときにご対応をお願いいたします。
                 </p>
@@ -1630,7 +1679,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
               borderColor: ds.border.primary,
               borderWidth: '1px',
               borderStyle: 'solid',
-              boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
+              boxShadow: ds.shadow.card
             }}>
               <h3 className="font-semibold mb-5" style={{ color: ds.text.primary, fontSize: '20px', lineHeight: '1.3' }}>
                 次のステップ
@@ -1690,9 +1739,9 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                   return (
                     <div className="flex items-start space-x-4">
                       <div className="p-3 rounded-lg flex-shrink-0" style={{ 
-                        backgroundColor: '#f97316' + '20',
-                        color: '#f97316',
-                        borderColor: '#f97316' + '30'
+                        backgroundColor: ds.status.plan_creating.bg,
+                        color: ds.status.plan_creating.text,
+                        borderColor: ds.status.plan_creating.border
                       }}>
                         <CreditCard size={24} />
                       </div>
@@ -1717,7 +1766,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                           <a
                             href={`mailto:naoki@usespeak.com?subject=%E9%80%81%E9%87%91%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6%E5%95%8F%E3%81%84%E5%90%88%E3%82%8F%E3%81%9B&body=%E3%82%AD%E3%83%A3%E3%83%B3%E3%83%9A%E3%83%BC%E3%83%B3ID%3A%20${encodeURIComponent(primaryCampaign.id)}`}
                             className="text-sm"
-                            style={{ color: '#60a5fa', textDecoration: 'underline' }}
+                            style={{ color: ds.text.accent, textDecoration: 'underline' }}
                           >
                             送金についてメール
                           </a>
@@ -1730,9 +1779,9 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                 return (
                   <div className="flex items-start space-x-4">
                     <div className="p-3 rounded-lg flex-shrink-0" style={{ 
-                      backgroundColor: '#f97316' + '20',
-                      color: '#f97316',
-                      borderColor: '#f97316' + '30'
+                      backgroundColor: ds.status.plan_creating.bg,
+                      color: ds.status.plan_creating.text,
+                      borderColor: ds.status.plan_creating.border
                     }}>
                       {(() => { const IconComp = getActionIconByType(action.action); return <IconComp size={24} />; })()}
                     </div>
@@ -1992,7 +2041,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                                   href={`https://docs.google.com/spreadsheets/d/1R7FffUOmZtlCo8Cm7TYOVTAixQ7Qz-ax3UC3rpgreVc/copy`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  style={{ color: '#60a5fa', textDecoration: 'underline' }}
+                                  style={{ color: ds.text.accent, textDecoration: 'underline' }}
                                 >
                                   テンプレート
                                 </a>
@@ -2018,7 +2067,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                                   href={`https://docs.google.com/forms/d/e/1FAIpQLSf5LXFdcD77wApBa2KxxoaBlGDGFu4pvIaI9HvfvnhJv-fDsg/viewform?usp=pp_url&entry.503165310=${encodeURIComponent(primaryCampaign.id)}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  style={{ color: '#60a5fa', textDecoration: 'underline' }}
+                                  style={{ color: ds.text.accent, textDecoration: 'underline' }}
                                 >
                                   こちらの
                                 </a>
@@ -2079,7 +2128,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                           <a
                             href={`mailto:naoki@usespeak.com?subject=%E9%80%81%E9%87%91%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6%E5%95%8F%E3%81%84%E5%90%88%E3%82%8F%E3%81%9B&body=%E3%82%AD%E3%83%A3%E3%83%B3%E3%83%9A%E3%83%BC%E3%83%B3ID%3A%20${encodeURIComponent(primaryCampaign.id)}`}
                             className="text-sm"
-                            style={{ color: '#60a5fa', textDecoration: 'underline' }}
+                            style={{ color: ds.text.accent, textDecoration: 'underline' }}
                           >
                             送金について問い合わせる
                           </a>
@@ -2110,11 +2159,11 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
               borderColor: ds.border.primary,
               borderWidth: '1px',
               borderStyle: 'solid',
-              boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
-            }}>
-              <h3 className="font-semibold mb-5" style={{ color: ds.text.primary, fontSize: '20px', lineHeight: '1.3' }}>
-                ノート
-              </h3>
+              boxShadow: ds.shadow.card
+             }}>
+               <h3 className="font-semibold mb-5" style={{ color: ds.text.primary, fontSize: '20px', lineHeight: '1.3' }}>
+                 ノート
+               </h3>
               <div className={`prose prose-sm max-w-none ${ds.isDark ? 'prose-invert' : ''}`} style={{ color: ds.text.primary }}>
                 <ReactMarkdown>
                   {influencerNote}
@@ -2133,7 +2182,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                 borderColor: ds.border.primary,
                 borderWidth: '1px',
                 borderStyle: 'solid',
-                boxShadow: ds.isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.06)'
+                boxShadow: ds.shadow.card
               }}>
                 <h3 className="font-semibold mb-6" style={{ color: ds.text.primary, fontSize: '20px', lineHeight: '1.3' }}>
                   プロモーション詳細
@@ -2439,21 +2488,21 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                   {!primaryCampaign.campaignData?.trial_login_email_dashboard || !primaryCampaign.campaignData?.trial_login_password_dashboard ? (
                     /* Error State */
                     <div className="p-4 rounded-lg" style={{ 
-                      backgroundColor: ds.isDark ? '#2d1b1b' : '#fef2f2', // Dark mode: dark red, Light mode: light red
-                      borderColor: ds.isDark ? '#7f1d1d' : '#fecaca', // Dark mode: darker red, Light mode: red border
+                      backgroundColor: ds.alert.error.bg,
+                      borderColor: ds.alert.error.border,
                       borderWidth: '1px',
                       borderStyle: 'solid'
                     }}>
                       <div className="flex items-center gap-2 mb-2">
-                        <AlertCircle size={16} style={{ color: '#ef4444' }} />
+                        <AlertCircle size={16} style={{ color: ds.alert.error.icon }} />
                         <span className="text-sm font-medium" style={{ 
-                          color: ds.isDark ? '#f87171' : '#dc2626' // Dark mode: lighter red, Light mode: dark red
+                          color: ds.alert.error.text
                         }}>
                           取得に失敗しました
                         </span>
                       </div>
                       <p className="text-xs mb-3" style={{ 
-                        color: ds.isDark ? '#dc2626' : '#7f1d1d' // Dark mode: medium red, Light mode: darker red
+                        color: ds.alert.error.text
                       }}>
                         ログイン情報を取得できませんでした。サポートにお問い合わせください。
                       </p>
@@ -2465,11 +2514,11 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                         }}
                         className="inline-flex items-center px-3 py-1.5 text-xs rounded-lg transition-colors"
                         style={{
-                          backgroundColor: '#dc2626',
+                          backgroundColor: ds.alert.error.border,
                           color: 'white'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.alert.error.text}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.alert.error.border}
                       >
                         <ExternalLink size={12} className="mr-1" />
                         サポートに報告

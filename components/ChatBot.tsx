@@ -1254,22 +1254,22 @@ export default function ChatBot({ className }: ChatBotProps) {
           onClick={() => setIsOpen(true)}
           className="group relative w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl"
           style={{
-            backgroundColor: ds.button.primary.bg,
-            color: ds.button.primary.text,
+            backgroundColor: ds.bg.card,
+            borderColor: ds.border.primary,
+            borderWidth: '1px',
+            borderStyle: 'solid',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = ds.button.primary.hover;
+            e.currentTarget.style.backgroundColor = ds.bg.surface;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = ds.button.primary.bg;
+            e.currentTarget.style.backgroundColor = ds.bg.card;
           }}
         >
-          <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
-          
-          {/* Pulse animation */}
-          <div 
-            className="absolute inset-0 rounded-full animate-pulse opacity-20"
-            style={{ backgroundColor: ds.button.primary.bg }}
+          <img 
+            src="/blue.png" 
+            alt="Blue Assistant" 
+            className="w-6 h-6 sm:w-7 sm:h-7 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
           />
           
           {/* Tooltip */}
@@ -1283,7 +1283,7 @@ export default function ChatBot({ className }: ChatBotProps) {
               borderStyle: 'solid',
             }}
           >
-            AIアシスタントに質問する
+            質問する
           </div>
         </button>
       </div>

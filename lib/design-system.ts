@@ -116,6 +116,52 @@ export const colors = {
     },
   },
   
+  // Alert/notification colors
+  alert: {
+    error: {
+      bg: 'rgba(239, 68, 68, 0.1)',
+      bgDark: 'rgba(239, 68, 68, 0.15)',
+      border: '#ef4444',
+      text: '#dc2626',
+      textDark: '#fca5a5',
+      icon: '#ef4444',
+    },
+    warning: {
+      bg: 'rgba(234, 179, 8, 0.1)',
+      bgDark: 'rgba(234, 179, 8, 0.15)',
+      border: '#eab308',
+      text: '#a16207',
+      textDark: '#fbbf24',
+      icon: '#eab308',
+    },
+    success: {
+      bg: 'rgba(34, 197, 94, 0.1)',
+      bgDark: 'rgba(34, 197, 94, 0.15)',
+      border: '#22c55e',
+      text: '#15803d',
+      textDark: '#86efac',
+      icon: '#22c55e',
+    },
+    info: {
+      bg: 'rgba(59, 130, 246, 0.08)',
+      bgDark: 'rgba(59, 130, 246, 0.15)',
+      border: '#3b82f6',
+      borderDark: '#60a5fa',
+      text: '#1e40af',
+      textDark: '#93c5fd',
+      icon: '#3b82f6',
+      iconDark: '#60a5fa',
+    },
+  },
+  
+  // Card shadows
+  shadow: {
+    card: {
+      light: '0 1px 3px rgba(0, 0, 0, 0.06)',
+      dark: '0 1px 3px rgba(0, 0, 0, 0.3)',
+    },
+  },
+  
   // Form colors
   form: {
     input: {
