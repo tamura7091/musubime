@@ -2201,40 +2201,37 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                     }}
                   >
                     <div className="overflow-x-auto">
-                      <div className="min-w-[1400px]">
+                      <div className="min-w-max">
                         {/* Table Header */}
-                        <div className="grid grid-cols-10 gap-6 px-6 py-3 border-b sticky top-0 z-10" style={{ borderColor: ds.border.secondary, backgroundColor: ds.bg.surface + '80' }}>
-                          <div className="text-sm font-medium whitespace-nowrap min-w-[150px]" style={{ color: ds.text.secondary }}>キャンペーン名</div>
-                          <div className="text-sm font-medium whitespace-nowrap min-w-[120px]" style={{ color: ds.text.secondary }}>プラットフォーム</div>
-                          <div className="text-sm font-medium whitespace-nowrap min-w-[130px]" style={{ color: ds.text.secondary }}>ステータス</div>
-                          <div className="text-sm font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>報酬（税込）</div>
-                          <div className="text-sm font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>構成案提出</div>
-                          <div className="text-sm font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>初稿提出</div>
-                          <div className="text-sm font-medium whitespace-nowrap min-w-[100px]" style={{ color: ds.text.secondary }}>PR投稿</div>
-                          <div className="text-sm font-medium whitespace-nowrap min-w-[80px]" style={{ color: ds.text.secondary }}>構成案リンク</div>
-                          <div className="text-sm font-medium whitespace-nowrap min-w-[80px]" style={{ color: ds.text.secondary }}>初稿リンク</div>
-                          <div className="text-sm font-medium whitespace-nowrap min-w-[80px]" style={{ color: ds.text.secondary }}>PR投稿リンク</div>
+                        <div className="flex gap-4 px-6 py-3 border-b sticky top-0 z-10" style={{ borderColor: ds.border.secondary, backgroundColor: ds.bg.surface + '80' }}>
+                          <div className="text-sm font-medium whitespace-nowrap w-[200px] flex-shrink-0" style={{ color: ds.text.secondary }}>キャンペーン名</div>
+                          <div className="text-sm font-medium whitespace-nowrap w-[160px] flex-shrink-0" style={{ color: ds.text.secondary }}>プラットフォーム</div>
+                          <div className="text-sm font-medium whitespace-nowrap w-[200px] flex-shrink-0" style={{ color: ds.text.secondary }}>ステータス</div>
+                          <div className="text-sm font-medium whitespace-nowrap w-[120px] flex-shrink-0" style={{ color: ds.text.secondary }}>報酬（税込）</div>
+                          <div className="text-sm font-medium whitespace-nowrap w-[100px] flex-shrink-0" style={{ color: ds.text.secondary }}>構成案提出</div>
+                          <div className="text-sm font-medium whitespace-nowrap w-[100px] flex-shrink-0" style={{ color: ds.text.secondary }}>初稿提出</div>
+                          <div className="text-sm font-medium whitespace-nowrap w-[100px] flex-shrink-0" style={{ color: ds.text.secondary }}>PR投稿</div>
+                          <div className="text-sm font-medium whitespace-nowrap w-[120px] flex-shrink-0" style={{ color: ds.text.secondary }}>構成案リンク</div>
+                          <div className="text-sm font-medium whitespace-nowrap w-[120px] flex-shrink-0" style={{ color: ds.text.secondary }}>初稿リンク</div>
+                          <div className="text-sm font-medium whitespace-nowrap w-[120px] flex-shrink-0" style={{ color: ds.text.secondary }}>PR投稿リンク</div>
                         </div>
 
                         {/* Table Rows - All Campaigns */}
                         {sortedForPromotionDetails.map(campaign => (
-                          <div key={campaign.id} className="grid grid-cols-10 gap-6 px-6 py-3 border-b hover:bg-opacity-50" 
+                          <div key={campaign.id} className="flex gap-4 px-6 py-3 border-b hover:bg-opacity-50" 
                                style={{ borderColor: ds.border.secondary }}
                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.bg.surface + '50'}
                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                             
                             {/* Campaign Name */}
-                            <div className="text-sm font-medium min-w-[150px]" style={{ color: ds.text.primary }}>
-                              <div className="min-w-[150px] max-w-[200px]">
-                                <span className="block truncate" title={campaign.title}>
-                                  {campaign.title}
-                                </span>
-                              </div>
+                            <div className="text-sm font-medium w-[200px] flex-shrink-0" style={{ color: ds.text.primary }}>
+                              <span className="block truncate" title={campaign.title}>
+                                {campaign.title}
+                              </span>
                             </div>
 
                             {/* Platform */}
-                            <div className="text-sm flex items-center space-x-2 min-w-[120px]" style={{ color: ds.text.primary }}>
-                              <div className="min-w-[120px] flex items-center space-x-2">
+                            <div className="text-sm flex items-center space-x-2 w-[160px] flex-shrink-0" style={{ color: ds.text.primary }}>
                                 {(() => {
                                   const raw = (campaign.platform || '').toString().trim();
                                   const normalized = raw.toLowerCase();
@@ -2279,18 +2276,30 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                                     </>
                                   );
                                 })()}
-                              </div>
                             </div>
 
                             {/* Status */}
-                            <div className="text-sm min-w-[130px]">
-                              <div className="min-w-[130px]">
+                            <div className="text-sm w-[200px] flex-shrink-0">
                                 <span 
                                   className="px-2 py-1 rounded text-xs font-medium whitespace-nowrap inline-block"
                                   style={{
                                     backgroundColor: ds.status[campaign.status as keyof typeof ds.status]?.bg || ds.status.not_started.bg,
                                     color: ds.status[campaign.status as keyof typeof ds.status]?.text || ds.status.not_started.text
                                   }}
+                                  title={(() => {
+                                    // Generate full status text for tooltip
+                                    if (campaign.status === 'plan_submitted') {
+                                      const logStatus = (campaign as any).campaignData?.log_status;
+                                      const count = getSubmissionCountText(logStatus, 'plan_submitted');
+                                      return count ? `構成案提出済み（${count}）` : '構成案提出済み';
+                                    }
+                                    if (campaign.status === 'draft_submitted') {
+                                      const logStatus = (campaign as any).campaignData?.log_status;
+                                      const count = getSubmissionCountText(logStatus, 'draft_submitted');
+                                      return count ? `初稿提出済み（${count}）` : '初稿提出済み';
+                                    }
+                                    return undefined;
+                                  })()}
                                 >
                                   {campaign.status === 'not_started' && '未開始'}
                                   {campaign.status === 'meeting_scheduling' && '打ち合わせ予約中'}
@@ -2317,12 +2326,10 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                                   {campaign.status === 'completed' && '完了'}
                                   {campaign.status === 'cancelled' && 'キャンセル'}
                                 </span>
-                              </div>
                             </div>
 
                             {/* Price */}
-                            <div className="text-sm font-semibold min-w-[100px]" style={{ color: ds.text.primary }}>
-                              <div className="min-w-[100px] whitespace-nowrap">
+                            <div className="text-sm font-semibold w-[120px] flex-shrink-0 whitespace-nowrap" style={{ color: ds.text.primary }}>
                                 <VisibilityToggle showToggleButton={false}>
                                   {(() => {
                                     const excl = campaign.contractedPrice || 0;
@@ -2330,33 +2337,25 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                                     return formatCurrencySmart(incl);
                                   })()}
                                 </VisibilityToggle>
-                              </div>
                             </div>
 
                             {/* Plan Submission Date */}
-                            <div className="text-sm min-w-[100px]" style={{ color: ds.text.primary }}>
-                              <div className="min-w-[100px] whitespace-nowrap">
+                            <div className="text-sm w-[100px] flex-shrink-0 whitespace-nowrap" style={{ color: ds.text.primary }}>
                                 {formatDate(campaign.schedules?.planSubmissionDate)}
-                              </div>
                             </div>
 
                             {/* Draft Submission Date */}
-                            <div className="text-sm min-w-[100px]" style={{ color: ds.text.primary }}>
-                              <div className="min-w-[100px] whitespace-nowrap">
+                            <div className="text-sm w-[100px] flex-shrink-0 whitespace-nowrap" style={{ color: ds.text.primary }}>
                                 {formatDate(campaign.schedules?.draftSubmissionDate)}
-                              </div>
                             </div>
 
                             {/* PR Launch Date */}
-                            <div className="text-sm min-w-[100px]" style={{ color: ds.text.primary }}>
-                              <div className="min-w-[100px] whitespace-nowrap">
+                            <div className="text-sm w-[100px] flex-shrink-0 whitespace-nowrap" style={{ color: ds.text.primary }}>
                                 {formatDate(campaign.schedules?.liveDate)}
-                              </div>
                             </div>
 
                             {/* Plan Link */}
-                            <div className="text-sm">
-                              <div className="min-w-[60px] text-center">
+                            <div className="text-sm w-[120px] flex-shrink-0 text-center">
                                 {campaign.campaignData?.url_plan && campaign.campaignData.url_plan.trim() !== '' ? (
                                   <a
                                     href={getAbsoluteUrl(campaign.campaignData.url_plan)}
@@ -2370,12 +2369,10 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                                 ) : (
                                   <span style={{ color: ds.text.secondary }}>-</span>
                                 )}
-                              </div>
                             </div>
 
                             {/* Draft Link */}
-                            <div className="text-sm">
-                              <div className="min-w-[60px] text-center">
+                            <div className="text-sm w-[120px] flex-shrink-0 text-center">
                                 {campaign.campaignData?.url_draft && campaign.campaignData.url_draft.trim() !== '' ? (
                                   <a
                                     href={getAbsoluteUrl(campaign.campaignData.url_draft)}
@@ -2389,12 +2386,10 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                                 ) : (
                                   <span style={{ color: ds.text.secondary }}>-</span>
                                 )}
-                              </div>
                             </div>
 
                             {/* PR Content Link */}
-                            <div className="text-sm">
-                              <div className="min-w-[60px] text-center">
+                            <div className="text-sm w-[120px] flex-shrink-0 text-center">
                                 {campaign.campaignData?.url_content && campaign.campaignData.url_content.trim() !== '' ? (
                                   <a
                                     href={getAbsoluteUrl(campaign.campaignData.url_content)}
@@ -2408,7 +2403,6 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                                 ) : (
                                   <span style={{ color: ds.text.secondary }}>-</span>
                                 )}
-                              </div>
                             </div>
                           </div>
                         ))}
