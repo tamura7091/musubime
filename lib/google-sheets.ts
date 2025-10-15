@@ -462,6 +462,8 @@ class GoogleSheetsService {
       'date_status_updated',
       // Include feedback JSON so dashboards can show revision requests
       'message_dashboard',
+      // Status change log for tracking submission counts
+      'log_status',
       // URLs needed for dashboard submission links
       'url_plan',
       'url_draft',
@@ -710,6 +712,8 @@ class GoogleSheetsService {
             console.log(`📝 Campaign ${row['id_campaign']}: message_dashboard = "${msgDashboard}" (type: ${typeof msgDashboard})`);
             return msgDashboard;
           })(),
+          // Status change log (JSON)
+          log_status: row['log_status'],
           // Notes for influencer dashboard (markdown)
           note_dashboard: row['note_dashboard'],
           // Chat history for Musubime AI (JSON)
@@ -1044,15 +1048,60 @@ class GoogleSheetsService {
       const currentDateTime = new Date().toISOString(); // Full ISO timestamp with date and time
       const currentDate = currentDateTime.split('T')[0]; // YYYY-MM-DD format for date-only fields
 
-      // Update status_dashboard
+      // Get current status before updating (for log_status)
       const statusDashboardIndex = headers.findIndex(header => header === 'status_dashboard');
+      const oldStatus = statusDashboardIndex !== -1 ? rows[campaignRowIndex][statusDashboardIndex] : '';
+
+      // Update status_dashboard
       if (statusDashboardIndex !== -1) {
         const statusRange = `campaigns!${this.columnIndexToLetter(statusDashboardIndex)}${campaignRowIndex + 1}`;
         updates.push({
           range: statusRange,
           values: [[newStatus]]
         });
-        console.log(`📊 Updating status_dashboard at ${statusRange} to "${newStatus}"`);
+        console.log(`📊 Updating status_dashboard at ${statusRange} from "${oldStatus}" to "${newStatus}"`);
+      }
+
+      // Update log_status with status change history (CB column)
+      const logStatusIndex = headers.findIndex(header => header === 'log_status');
+      if (logStatusIndex !== -1) {
+        // Get existing log_status content
+        const existingLog = rows[campaignRowIndex][logStatusIndex] || '';
+        let logArray: any[] = [];
+        
+        // Parse existing JSON if it exists
+        if (existingLog && existingLog.trim()) {
+          try {
+            logArray = JSON.parse(existingLog);
+            if (!Array.isArray(logArray)) {
+              logArray = [];
+            }
+          } catch (parseError) {
+            console.log('⚠️ Failed to parse existing log_status JSON, starting fresh');
+            logArray = [];
+          }
+        }
+        
+        // Add new log entry
+        const logEntry = {
+          timestamp: currentDateTime,
+          old_status: oldStatus || 'undefined',
+          new_status: newStatus,
+          changed_by: 'system' // Could be enhanced to track user who made the change
+        };
+        logArray.push(logEntry);
+        
+        // Convert back to JSON string
+        const updatedLogJson = JSON.stringify(logArray);
+        
+        const logRange = `campaigns!${this.columnIndexToLetter(logStatusIndex)}${campaignRowIndex + 1}`;
+        updates.push({
+          range: logRange,
+          values: [[updatedLogJson]]
+        });
+        console.log(`📝 Updating log_status at ${logRange} with new entry:`, logEntry);
+      } else {
+        console.log('⚠️ log_status column not found in sheet headers');
       }
 
       // Update date_status_updated with full timestamp (date + time)

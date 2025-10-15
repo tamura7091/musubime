@@ -1,5 +1,6 @@
 import { Campaign, getStepFromStatus, getStepLabel } from '@/types';
 import StatusBadge from './StatusBadge';
+import { getSubmissionCountText } from '@/lib/submission-utils';
 // Removed demo helpers; provide minimal labels locally
 const getPlatformLabel = (platform: string) => {
   const map: Record<string, string> = {
@@ -27,7 +28,7 @@ const getPlatformIcon = (platform: string) => {
   return map[platform] || '📱';
 };
 
-const getNextStep = (status: string) => {
+const getNextStep = (status: string, campaign?: Campaign) => {
   const map: Record<string, string> = {
     not_started: 'プロモーション開始の準備をしています',
     meeting_scheduling: '打ち合わせの予約をお待ちください',
@@ -46,7 +47,19 @@ const getNextStep = (status: string) => {
     completed: 'プロモーション完了',
     cancelled: 'キャンペーンキャンセル済み',
   };
-  return map[status] || 'ステータスを確認中です';
+  
+  let baseMessage = map[status] || 'ステータスを確認中です';
+  
+  // Add submission count for submitted statuses
+  if (campaign && (status === 'plan_submitted' || status === 'draft_submitted')) {
+    const logStatus = (campaign as any).campaignData?.log_status;
+    const count = getSubmissionCountText(logStatus, status);
+    if (count) {
+      baseMessage += `（${count}）`;
+    }
+  }
+  
+  return baseMessage;
 };
 import { Calendar, ExternalLink, ChevronRight, ChevronDown, User } from 'lucide-react';
 import { useState } from 'react';
@@ -176,7 +189,7 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
               {campaign.status === 'not_started' ? (
                 <div>
                   <p className="mb-2" style={{ color: ds.text.secondary }}>
-                    {getNextStep(campaign.status)}
+                    {getNextStep(campaign.status, campaign)}
                   </p>
                   <button
                     onClick={(e) => {
@@ -196,7 +209,7 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
                 </div>
               ) : (
                 <p style={{ color: ds.text.secondary }}>
-                  {getNextStep(campaign.status)}
+                  {getNextStep(campaign.status, campaign)}
                 </p>
               )}
             </div>

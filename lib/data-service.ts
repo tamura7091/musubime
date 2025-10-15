@@ -1,5 +1,6 @@
 import { Campaign, User, Update } from '@/types';
 import { googleSheetsService } from './google-sheets';
+import { getSubmissionCount, getSubmissionCountText } from './submission-utils';
 // Removed demo data dependencies
 
 class DataService {
@@ -73,6 +74,8 @@ class DataService {
           })),
           notes: campaign.notes,
           campaignData: (campaign as any).campaignData,
+          meetingStatus: (campaign as any).meetingStatus,
+          meetingLink: (campaign as any).meetingLink,
         }));
       } catch (error) {
         console.error('❌ Failed to fetch campaigns from Google Sheets:', error);
@@ -117,6 +120,8 @@ class DataService {
           })),
           notes: campaign.notes,
           campaignData: (campaign as any).campaignData,
+          meetingStatus: (campaign as any).meetingStatus,
+          meetingLink: (campaign as any).meetingLink,
         }));
       } catch (error) {
         console.error('❌ Failed to fetch user campaigns from Google Sheets:', error);
@@ -144,7 +149,8 @@ class DataService {
           'url_plan',
           'url_draft',
           'url_content',
-          'message_dashboard'
+          'message_dashboard',
+          'log_status'
         ], undefined, 'campaigns', { forceRefresh: opts?.forceRefresh });
         
         console.log(`📊 Fetched ${rawData.length} rows from Google Sheets for updates`);
@@ -161,6 +167,7 @@ class DataService {
           const urlPlan = row['url_plan'];
           const urlDraft = row['url_draft'];
           const urlContent = row['url_content'];
+          const logStatus = row['log_status'];
           
           // Skip rows without essential data
           if (!campaignId || !influencerId || !statusDashboard || !dateStatusUpdated) {
@@ -202,7 +209,10 @@ class DataService {
           // Generate update message based on mapped status
           switch (mappedStatus) {
             case 'plan_submitted':
-              updateMessage = `${influencerName}さんから構成案が提出されました`;
+              const planSubmissionCount = this.getSubmissionCountText(logStatus, 'plan_submitted');
+              updateMessage = planSubmissionCount 
+                ? `${influencerName}さんから構成案が提出されました（${planSubmissionCount}）`
+                : `${influencerName}さんから構成案が提出されました`;
               updateType = 'submission';
               submissionUrl = urlPlan;
               submissionType = 'plan';
@@ -214,7 +224,10 @@ class DataService {
               updateType = 'approval';
               break;
             case 'draft_submitted':
-              updateMessage = `${influencerName}さんから初稿が提出されました`;
+              const draftSubmissionCount = this.getSubmissionCountText(logStatus, 'draft_submitted');
+              updateMessage = draftSubmissionCount 
+                ? `${influencerName}さんから初稿が提出されました（${draftSubmissionCount}）`
+                : `${influencerName}さんから初稿が提出されました`;
               updateType = 'submission';
               submissionUrl = urlDraft;
               submissionType = 'draft';
@@ -257,6 +270,7 @@ class DataService {
                 'not_started': '未開始',
                 'meeting_scheduling': '打ち合わせ予約中',
                 'meeting_scheduled': '打ち合わせ予定',
+                'trial': 'トライアル中',
                 'contract_pending': '契約書待ち',
                 'plan_creating': '構成案作成中',
                 'plan_submitted': '構成案確認中',
@@ -349,6 +363,16 @@ class DataService {
   // Check if we're using real Google Sheets data
   isUsingGoogleSheets(): boolean {
     return this.useGoogleSheets;
+  }
+
+  // Calculate submission count from log_status
+  getSubmissionCount(logStatus?: string, targetStatus?: string): number {
+    return getSubmissionCount(logStatus, targetStatus);
+  }
+
+  // Get submission count text in Japanese
+  getSubmissionCountText(logStatus?: string, targetStatus?: string): string {
+    return getSubmissionCountText(logStatus, targetStatus);
   }
 }
 

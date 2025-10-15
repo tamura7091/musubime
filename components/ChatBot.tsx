@@ -599,6 +599,7 @@ export default function ChatBot({ className }: ChatBotProps) {
       not_started: '未開始',
       meeting_scheduling: '打ち合わせ予約中',
       meeting_scheduled: '打ち合わせ予定',
+      trial: 'トライアル中',
       contract_pending: '契約書待ち',
       plan_creating: '構成案作成中',
       plan_submitted: '構成案確認中',
@@ -1252,7 +1253,7 @@ export default function ChatBot({ className }: ChatBotProps) {
       <div className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[60] ${className || ''}`}>
         <button
           onClick={() => setIsOpen(true)}
-          className="group relative w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl"
+          className="group relative w-16 h-16 sm:w-18 sm:h-18 rounded-full shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl"
           style={{
             backgroundColor: ds.bg.card,
             borderColor: ds.border.primary,
@@ -1269,7 +1270,7 @@ export default function ChatBot({ className }: ChatBotProps) {
           <img 
             src="/blue.png" 
             alt="Blue Assistant" 
-            className="w-6 h-6 sm:w-7 sm:h-7 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+            className="w-10 h-10 sm:w-12 sm:h-12 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
           />
           
           {/* Tooltip */}

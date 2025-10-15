@@ -1691,7 +1691,7 @@ export default function AdminDashboard() {
                             </span>
                           </div>
                           <p className="text-xs mb-0.5" style={{ color: ds.text.secondary }}>
-                            {u.submissionType === 'plan' ? '構成案が提出されました' : u.submissionType === 'draft' ? '初稿が提出されました' : '提出がありました'}
+                            {u.message.replace(`${u.influencerName}さんから`, '').replace(`${u.influencerName}さんの`, '')}
                           </p>
                           <p className="text-xs" style={{ color: ds.text.secondary }}>{formatTimeAgo(u.timestamp)}</p>
                         </div>

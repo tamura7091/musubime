@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { CampaignStatus, getStepFromStatus } from '@/types';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
 import { formatAbbreviatedCurrency } from '@/lib/design-system';
+import { getSubmissionCountText } from '@/lib/submission-utils';
 // import blueCharacter from '../../public/blue.png';
 
 export default function InfluencerDashboard() {
@@ -2297,10 +2298,18 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                                   {campaign.status === 'contract_pending' && '契約書待ち'}
                                   {campaign.status === 'trial' && 'アプリトライアル'}
                                   {campaign.status === 'plan_creating' && '構成案作成中'}
-                                  {campaign.status === 'plan_submitted' && '構成案提出済み'}
+                                  {campaign.status === 'plan_submitted' && (() => {
+                                    const logStatus = (campaign as any).campaignData?.log_status;
+                                    const count = getSubmissionCountText(logStatus, 'plan_submitted');
+                                    return count ? `構成案提出済み（${count}）` : '構成案提出済み';
+                                  })()}
                                   {campaign.status === 'plan_revising' && '構成案修正中'}
                                   {campaign.status === 'draft_creating' && '初稿作成中'}
-                                  {campaign.status === 'draft_submitted' && '初稿提出済み'}
+                                  {campaign.status === 'draft_submitted' && (() => {
+                                    const logStatus = (campaign as any).campaignData?.log_status;
+                                    const count = getSubmissionCountText(logStatus, 'draft_submitted');
+                                    return count ? `初稿提出済み（${count}）` : '初稿提出済み';
+                                  })()}
                                   {campaign.status === 'draft_revising' && '初稿修正中'}
                                   {campaign.status === 'scheduling' && '投稿準備中'}
                                   {campaign.status === 'scheduled' && '投稿済み'}
