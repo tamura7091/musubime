@@ -187,6 +187,7 @@ export interface Campaign {
     trial_login_password_dashboard?: string;
     date_status_updated?: string;
     message_dashboard?: string;
+    log_events?: string;
     note_dashboard?: string;
     chat_dashboard?: string;
   };
@@ -211,4 +212,40 @@ export interface Update {
 export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
+}
+
+// Request types for influencer-initiated change requests
+export type RequestType = 
+  | 'plan_date_change'     // 構成案提出日の変更申請
+  | 'draft_date_change'    // 初稿提出日の変更申請
+  | 'live_date_change';    // 投稿日の変更申請
+
+export type RequestStatus =
+  | 'pending'             // 承認待ち
+  | 'approved'            // 承認済み
+  | 'rejected';           // 却下
+
+export interface ChangeRequest {
+  id: string;
+  campaignId: string;
+  influencerId: string;
+  influencerName: string;
+  type: RequestType;
+  title: string;           // 申請のタイトル（例：「構成案の変更申請」）
+  description: string;     // 申請の詳細内容
+  requestedChanges: {      // 要求される変更内容
+    field: string;         // 変更対象のフィールド（例：'planUrl', 'liveDate'）
+    currentValue?: string; // 現在の値
+    newValue: string;      // 新しい値
+  }[];
+  status: RequestStatus;
+  createdAt: Date;
+  updatedAt: Date;
+  // 管理者の対応
+  adminResponse?: {
+    adminId: string;
+    adminName: string;
+    comment: string;       // 承認/却下のコメント
+    respondedAt: Date;
+  };
 }

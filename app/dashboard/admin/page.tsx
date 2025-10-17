@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Users, TrendingUp, Clock, AlertCircle, Search, Filter, User, Tag, ChevronUp, ChevronDown, ExternalLink, Check, X, RefreshCw, Mail, Settings, Copy } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Campaign, Update } from '@/types';
+import { Campaign, Update, ChangeRequest } from '@/types';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
 import { formatAbbreviatedCurrency, colors } from '@/lib/design-system';
 import CommsPanel from '@/components/CommsPanel';
@@ -22,6 +22,7 @@ export default function AdminDashboard() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [allCampaigns, setAllCampaigns] = useState<Campaign[]>([]);
   const [updates, setUpdates] = useState<Update[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<ChangeRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingActions, setProcessingActions] = useState<Set<string>>(new Set());
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -102,6 +103,16 @@ export default function AdminDashboard() {
       } else {
         console.error('❌ Manual refresh: Failed to fetch updates:', updatesResponse.status);
       }
+
+      // Fetch pending requests
+      const requestsResponse = await fetchWithTimeout(`/api/requests?status=pending&t=${Date.now()}`);
+      if (requestsResponse.ok) {
+        const requestsData = await requestsResponse.json();
+        console.log('✅ Manual refresh: Pending requests loaded:', requestsData.requests?.length || 0);
+        setPendingRequests(requestsData.requests || []);
+      } else {
+        console.error('❌ Manual refresh: Failed to fetch requests:', requestsResponse.status);
+      }
     } catch (error) {
       console.error('❌ Manual refresh: Error fetching data:', error);
     } finally {
@@ -111,9 +122,17 @@ export default function AdminDashboard() {
 
   // Fetch campaigns and updates from API - must be before early returns
   useEffect(() => {
+    console.log('🔍 useEffect for fetchData triggered. isAuthLoading:', isAuthLoading, 'user:', user?.email, 'role:', user?.role);
+    
     // Only fetch after auth has resolved and user is confirmed admin
-    if (isAuthLoading) return;
-    if (!user || user.role !== 'admin') return;
+    if (isAuthLoading) {
+      console.log('⏳ Auth still loading, skipping fetch');
+      return;
+    }
+    if (!user || user.role !== 'admin') {
+      console.log('❌ User not admin or not logged in, skipping fetch');
+      return;
+    }
 
     const fetchData = async () => {
       try {
@@ -121,15 +140,18 @@ export default function AdminDashboard() {
         setLoading(true);
 
         const ts = Date.now();
-        const [campaignsResponse, updatesResponse] = await Promise.all([
+        const [campaignsResponse, updatesResponse, requestsResponse] = await Promise.all([
           fetchWithTimeout(`/api/campaigns?t=${ts}`),
-          fetchWithTimeout(`/api/updates?t=${ts}`)
+          fetchWithTimeout(`/api/updates?t=${ts}`),
+          fetchWithTimeout(`/api/requests?status=pending&t=${ts}`)
         ]);
 
         if (campaignsResponse.ok) {
           const campaigns = await campaignsResponse.json();
           console.log('✅ Campaigns loaded:', campaigns.length);
+          console.log('📊 First 3 campaigns:', campaigns.slice(0, 3));
           setAllCampaigns(campaigns);
+          console.log('✅ setAllCampaigns called with', campaigns.length, 'campaigns');
         } else {
           console.error('❌ Failed to fetch campaigns:', campaignsResponse.status);
         }
@@ -141,6 +163,14 @@ export default function AdminDashboard() {
         } else {
           console.error('❌ Failed to fetch updates:', updatesResponse.status);
         }
+
+        if (requestsResponse.ok) {
+          const requestsData = await requestsResponse.json();
+          console.log('✅ Pending requests loaded:', requestsData.requests?.length || 0);
+          setPendingRequests(requestsData.requests || []);
+        } else {
+          console.error('❌ Failed to fetch requests:', requestsResponse.status);
+        }
       } catch (error) {
         console.error('❌ Error fetching data:', error);
       } finally {
@@ -149,7 +179,15 @@ export default function AdminDashboard() {
     };
 
     fetchData();
-  }, [user?.role, isAuthLoading]);
+  }, [user, isAuthLoading]);
+
+  // Debug: Log whenever allCampaigns changes
+  useEffect(() => {
+    console.log('🔄 allCampaigns state updated. Length:', allCampaigns.length);
+    if (allCampaigns.length > 0) {
+      console.log('📊 Sample campaign:', allCampaigns[0]);
+    }
+  }, [allCampaigns]);
 
   // Load queued follow-up actions from localStorage on mount
   useEffect(() => {
@@ -232,6 +270,9 @@ export default function AdminDashboard() {
 
   // Filter and sort campaigns
   const filteredCampaigns = useMemo(() => {
+    console.log('🔍 Filtering campaigns. allCampaigns.length:', allCampaigns.length);
+    console.log('🔍 Filters:', { searchTerm, statusFilter, platformFilter });
+    
     const filtered = allCampaigns.filter(campaign => {
       const influencerName = campaign.influencerName || campaign.title || '';
       const matchesSearch = influencerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -256,6 +297,8 @@ export default function AdminDashboard() {
       
       return matchesSearch && matchesStatus && matchesPlatform;
     });
+    
+    console.log('🔍 Filtered campaigns count:', filtered.length);
     
     return sortCampaigns(filtered);
   }, [allCampaigns, searchTerm, statusFilter, platformFilter, sortField, sortDirection]);
@@ -1631,6 +1674,175 @@ export default function AdminDashboard() {
           </div>
         ) : activeTab === 'actions' ? (
           <div className="space-y-6">
+            {/* 承認待ちの申請 */}
+            {pendingRequests.length > 0 && (
+              <div className="rounded-lg p-4 sm:p-5" style={{ 
+                backgroundColor: ds.bg.card,
+                borderColor: ds.border.primary,
+                borderWidth: '1px',
+                borderStyle: 'solid'
+              }}>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-5 h-5 rounded-md flex items-center justify-center" style={{ backgroundColor: '#fef3c7' }}>
+                    <AlertCircle size={12} style={{ color: '#f59e0b' }} />
+                  </div>
+                  <h3 className="font-medium" style={{ 
+                    color: ds.text.primary, 
+                    fontSize: `${ds.typography.heading.h3.fontSize}px`,
+                    lineHeight: ds.typography.heading.h3.lineHeight,
+                    fontWeight: ds.typography.heading.h3.fontWeight
+                  }}>
+                    承認待ちの申請 ({pendingRequests.length}件)
+                  </h3>
+                </div>
+                
+                <div className="space-y-3">
+                  {pendingRequests.map(request => {
+                    const getRequestTypeLabel = (type: string) => {
+                      switch (type) {
+                        case 'plan_date_change': return '構成案提出日変更';
+                        case 'draft_date_change': return '初稿提出日変更';
+                        case 'live_date_change': return '投稿日変更';
+                        default: return '変更申請';
+                      }
+                    };
+
+                    return (
+                      <div key={request.id} className="p-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: '#f59e0b' }}></div>
+                              <p className="font-medium truncate" style={{ 
+                                color: ds.text.primary,
+                                fontSize: `${ds.typography.text.sm.fontSize}px`,
+                                lineHeight: ds.typography.text.sm.lineHeight
+                              }}>
+                                {request.influencerName}
+                              </p>
+                              <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ 
+                                backgroundColor: '#fef3c7',
+                                color: '#92400e'
+                              }}>
+                                {getRequestTypeLabel(request.type)}
+                              </span>
+                            </div>
+                            <p className="text-xs mb-0.5" style={{ color: ds.text.secondary }}>
+                              {request.description}
+                            </p>
+                            {request.requestedChanges.map((change, idx) => (
+                              <p key={idx} className="text-xs" style={{ color: ds.text.accent }}>
+                                {change.currentValue && `${change.currentValue} → `}{change.newValue}
+                              </p>
+                            ))}
+                          </div>
+                          
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              onClick={async () => {
+                                if (!user) return;
+                                const comment = prompt('承認コメント（任意）:');
+                                if (comment === null) return;
+                                
+                                setProcessingActions(prev => new Set(prev).add(request.id));
+                                try {
+                                  const response = await fetch('/api/requests', {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      requestId: request.id,
+                                      status: 'approved',
+                                      adminId: user.id,
+                                      adminName: user.name,
+                                      comment: comment || '承認されました',
+                                    }),
+                                  });
+
+                                  if (response.ok) {
+                                    alert('申請を承認しました');
+                                    refreshData();
+                                  } else {
+                                    const errorData = await response.json().catch(() => ({}));
+                                    console.error('申請処理エラー:', errorData);
+                                    alert(`申請の処理に失敗しました: ${errorData.details || errorData.error || '不明なエラー'}`);
+                                  }
+                                } catch (error) {
+                                  console.error('Error approving request:', error);
+                                  alert('エラーが発生しました');
+                                } finally {
+                                  setProcessingActions(prev => {
+                                    const newSet = new Set(prev);
+                                    newSet.delete(request.id);
+                                    return newSet;
+                                  });
+                                }
+                              }}
+                              disabled={processingActions.has(request.id)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                              style={{ backgroundColor: colors.status.emerald[500], color: 'white' }}
+                              onMouseEnter={(e) => !processingActions.has(request.id) && (e.currentTarget.style.backgroundColor = colors.status.emerald[600])}
+                              onMouseLeave={(e) => !processingActions.has(request.id) && (e.currentTarget.style.backgroundColor = colors.status.emerald[500])}
+                            >
+                              <Check size={12} />
+                              承認
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (!user) return;
+                                const comment = prompt('却下理由:');
+                                if (!comment) return;
+                                
+                                setProcessingActions(prev => new Set(prev).add(request.id));
+                                try {
+                                  const response = await fetch('/api/requests', {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      requestId: request.id,
+                                      status: 'rejected',
+                                      adminId: user.id,
+                                      adminName: user.name,
+                                      comment,
+                                    }),
+                                  });
+
+                                  if (response.ok) {
+                                    alert('申請を却下しました');
+                                    refreshData();
+                                  } else {
+                                    const errorData = await response.json().catch(() => ({}));
+                                    console.error('申請処理エラー:', errorData);
+                                    alert(`申請の処理に失敗しました: ${errorData.details || errorData.error || '不明なエラー'}`);
+                                  }
+                                } catch (error) {
+                                  console.error('Error rejecting request:', error);
+                                  alert('エラーが発生しました');
+                                } finally {
+                                  setProcessingActions(prev => {
+                                    const newSet = new Set(prev);
+                                    newSet.delete(request.id);
+                                    return newSet;
+                                  });
+                                }
+                              }}
+                              disabled={processingActions.has(request.id)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                              style={{ backgroundColor: colors.status.orange[500], color: 'white' }}
+                              onMouseEnter={(e) => !processingActions.has(request.id) && (e.currentTarget.style.backgroundColor = colors.status.orange[600])}
+                              onMouseLeave={(e) => !processingActions.has(request.id) && (e.currentTarget.style.backgroundColor = colors.status.orange[500])}
+                            >
+                              <X size={12} />
+                              却下
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* 要対応の提出物 */}
             <div className="rounded-lg p-4 sm:p-5" style={{ 
               backgroundColor: ds.bg.card,

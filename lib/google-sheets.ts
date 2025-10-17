@@ -464,6 +464,8 @@ class GoogleSheetsService {
       'message_dashboard',
       // Status change log for tracking submission counts
       'log_status',
+      // Log events for change requests and other events
+      'log_events',
       // URLs needed for dashboard submission links
       'url_plan',
       'url_draft',
@@ -714,6 +716,8 @@ class GoogleSheetsService {
           })(),
           // Status change log (JSON)
           log_status: row['log_status'],
+          // Event log including change requests (JSON)
+          log_events: row['log_events'],
           // Notes for influencer dashboard (markdown)
           note_dashboard: row['note_dashboard'],
           // Chat history for Musubime AI (JSON)
@@ -978,7 +982,7 @@ class GoogleSheetsService {
     newStatus: string,
     submittedUrl?: string,
     urlType?: 'plan' | 'draft' | 'content',
-    messageData?: { type: string; content: string; timestamp: string }
+    messageData?: { type: string; content: string; timestamp: string; log_events?: string }
   ): Promise<{ success: boolean; error?: string }> {
     try {
       console.log('🔄 GoogleSheetsService.updateCampaignStatus() called');
@@ -1148,6 +1152,21 @@ class GoogleSheetsService {
             values: [[updatedJson]]
           });
           console.log(`💬 Updating message_dashboard at ${messageRange} with new message:`, messageData);
+        }
+
+        // Update log_events if provided
+        if (messageData.log_events) {
+          const logEventsIndex = headers.findIndex(header => header === 'log_events');
+          if (logEventsIndex !== -1) {
+            const logEventsRange = `campaigns!${this.columnIndexToLetter(logEventsIndex)}${campaignRowIndex + 1}`;
+            updates.push({
+              range: logEventsRange,
+              values: [[messageData.log_events]]
+            });
+            console.log(`📝 Updating log_events at ${logEventsRange}`);
+          } else {
+            console.log('⚠️ log_events column not found in sheet headers');
+          }
         }
       }
 
