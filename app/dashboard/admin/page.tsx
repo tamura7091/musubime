@@ -517,6 +517,32 @@ export default function AdminDashboard() {
     }
   };
 
+  // Parse and format comma-separated dates
+  const parseAndFormatMultipleDates = (dateString: string | null | undefined): string => {
+    if (!dateString || dateString.trim() === '') return '未定';
+    
+    // Split by comma and trim each date
+    const dates = dateString.split(',').map(d => d.trim()).filter(Boolean);
+    
+    if (dates.length === 0) return '未定';
+    if (dates.length === 1) return parseAndFormatDate(dates[0]);
+    
+    // Format each date and join with separator
+    const formattedDates = dates.map(d => parseAndFormatDate(d)).filter(d => d !== '未定');
+    
+    if (formattedDates.length === 0) return '未定';
+    
+    return formattedDates.join(', ');
+  };
+
+  // Parse comma-separated URLs into array
+  const parseMultipleUrls = (urlString: string | null | undefined): string[] => {
+    if (!urlString || urlString.trim() === '') return [];
+    
+    // Split by comma and trim each URL
+    return urlString.split(',').map(u => u.trim()).filter(Boolean);
+  };
+
   // Map platform codes to Japanese names
   const mapPlatformToJapanese = (platform: string): string => {
     const platformMap: { [key: string]: string } = {
@@ -1520,7 +1546,7 @@ export default function AdminDashboard() {
                               <td className="py-3 px-4 h-16">
                                 <div className="flex items-center h-full">
                                   <span className="text-sm truncate" style={{ color: ds.text.secondary }}>
-                                    {parseAndFormatDate(campaign.schedules?.liveDate)}
+                                    {parseAndFormatMultipleDates(campaign.schedules?.liveDate)}
                                   </span>
                                 </div>
                               </td>
@@ -1540,50 +1566,113 @@ export default function AdminDashboard() {
                               </td>
                               <td className="py-3 px-4 h-16">
                                 <div className="flex items-center h-full">
-                                  {campaign.campaignData?.url_plan ? (
-                                    <a
-                                      href={campaign.campaignData.url_plan}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-sm text-blue-500 hover:text-blue-700 underline"
-                                    >
-                                      リンク
-                                    </a>
-                                  ) : (
-                                    <span className="text-sm" style={{ color: ds.text.secondary }}>-</span>
-                                  )}
+                                  {(() => {
+                                    const urls = parseMultipleUrls(campaign.campaignData?.url_plan);
+                                    if (urls.length === 0) {
+                                      return <span className="text-sm" style={{ color: ds.text.secondary }}>-</span>;
+                                    }
+                                    if (urls.length === 1) {
+                                      return (
+                                        <a
+                                          href={urls[0]}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-sm text-blue-500 hover:text-blue-700 underline"
+                                        >
+                                          リンク
+                                        </a>
+                                      );
+                                    }
+                                    return (
+                                      <div className="flex flex-wrap gap-1">
+                                        {urls.map((url, idx) => (
+                                          <a
+                                            key={idx}
+                                            href={url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-sm text-blue-500 hover:text-blue-700 underline"
+                                          >
+                                            #{idx + 1}
+                                          </a>
+                                        ))}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               </td>
                               <td className="py-3 px-4 h-16">
                                 <div className="flex items-center h-full">
-                                  {campaign.campaignData?.url_draft ? (
-                                    <a
-                                      href={campaign.campaignData.url_draft}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-sm text-blue-500 hover:text-blue-700 underline"
-                                    >
-                                      リンク
-                                    </a>
-                                  ) : (
-                                    <span className="text-sm" style={{ color: ds.text.secondary }}>-</span>
-                                  )}
+                                  {(() => {
+                                    const urls = parseMultipleUrls(campaign.campaignData?.url_draft);
+                                    if (urls.length === 0) {
+                                      return <span className="text-sm" style={{ color: ds.text.secondary }}>-</span>;
+                                    }
+                                    if (urls.length === 1) {
+                                      return (
+                                        <a
+                                          href={urls[0]}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-sm text-blue-500 hover:text-blue-700 underline"
+                                        >
+                                          リンク
+                                        </a>
+                                      );
+                                    }
+                                    return (
+                                      <div className="flex flex-wrap gap-1">
+                                        {urls.map((url, idx) => (
+                                          <a
+                                            key={idx}
+                                            href={url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-sm text-blue-500 hover:text-blue-700 underline"
+                                          >
+                                            #{idx + 1}
+                                          </a>
+                                        ))}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               </td>
                               <td className="py-3 px-4 h-16">
                                 <div className="flex items-center h-full">
-                                  {campaign.campaignData?.url_content ? (
-                                    <a
-                                      href={campaign.campaignData.url_content}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-sm text-blue-500 hover:text-blue-700 underline"
-                                    >
-                                      リンク
-                                    </a>
-                                  ) : (
-                                    <span className="text-sm" style={{ color: ds.text.secondary }}>-</span>
-                                  )}
+                                  {(() => {
+                                    const urls = parseMultipleUrls(campaign.campaignData?.url_content);
+                                    if (urls.length === 0) {
+                                      return <span className="text-sm" style={{ color: ds.text.secondary }}>-</span>;
+                                    }
+                                    if (urls.length === 1) {
+                                      return (
+                                        <a
+                                          href={urls[0]}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-sm text-blue-500 hover:text-blue-700 underline"
+                                        >
+                                          リンク
+                                        </a>
+                                      );
+                                    }
+                                    return (
+                                      <div className="flex flex-wrap gap-1">
+                                        {urls.map((url, idx) => (
+                                          <a
+                                            key={idx}
+                                            href={url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-sm text-blue-500 hover:text-blue-700 underline"
+                                          >
+                                            #{idx + 1}
+                                          </a>
+                                        ))}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               </td>
                           </tr>
