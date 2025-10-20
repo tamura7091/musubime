@@ -30,7 +30,7 @@ export default function InfluencerDashboard() {
   };
   const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
-  // Redirect unauthenticated users or non-influencers
+  // Redirect unauthenticated users or non-influencers (admins can access)
   useEffect(() => {
     // Wait for auth loading to complete before redirecting
     if (isAuthLoading) return;
@@ -39,7 +39,8 @@ export default function InfluencerDashboard() {
       router.replace('/login');
       return;
     }
-    if (user && user.role !== 'influencer') {
+    // Allow admins to view the influencer dashboard, but redirect other non-influencers
+    if (user && user.role !== 'influencer' && user.role !== 'admin') {
       router.replace('/dashboard');
     }
   }, [user, isAuthLoading, router]);
@@ -800,34 +801,34 @@ export default function InfluencerDashboard() {
     return urlString.split(',').map(u => u.trim()).filter(Boolean).length;
   };
 
-  // Get the most active campaign for status display
-  // For long-term contract users, select the youngest numbered not_started campaign
+  // Get the NEXT campaign for status display
+  // Select the campaign with the lowest ID number that has status "not_started"
+  // This represents the next campaign the influencer needs to work on
   const primaryCampaign = (() => {
-    // Check if this is a long-term contract user
-    const isLongTermContract = userCampaigns.some(c => c.isLongTermContract);
+    // Find all active not_started campaigns (these are the ones to work on next)
+    const notStartedCampaigns = activeCampaigns.filter(c => c.status === 'not_started');
     
-    if (isLongTermContract) {
-      // Find all not_started campaigns
-      const notStartedCampaigns = userCampaigns.filter(c => c.status === 'not_started');
+    if (notStartedCampaigns.length > 0) {
+      // Sort by campaign number (lowest/youngest number first)
+      const sorted = notStartedCampaigns.sort((a, b) => {
+        const numA = extractCampaignNumber(a.id);
+        const numB = extractCampaignNumber(b.id);
+        return numA - numB; // ascending order (lowest first)
+      });
       
-      if (notStartedCampaigns.length > 0) {
-        // Sort by campaign number (youngest/lowest number first)
-        const sorted = notStartedCampaigns.sort((a, b) => {
-          const numA = extractCampaignNumber(a.id);
-          const numB = extractCampaignNumber(b.id);
-          return numA - numB; // ascending order (youngest first)
-        });
-        
-        console.log('📋 Long-term contract: Selected campaign', sorted[0].id, 'as primary campaign');
-        return sorted[0];
-      }
-      
-      // If no not_started campaigns, fall back to normal logic
-      console.log('📋 Long-term contract: No not_started campaigns, using normal logic');
+      console.log('📋 Selected NEXT campaign', sorted[0].id, 'as primary campaign (lowest number among not_started)');
+      return sorted[0];
     }
     
-    // Default logic for non-long-term contracts or when no not_started campaigns
-    return activeCampaigns[0] || userCampaigns[0];
+    // If no not_started campaigns, show the first active campaign (currently in progress)
+    if (activeCampaigns.length > 0) {
+      console.log('📋 No not_started campaigns, showing first active campaign:', activeCampaigns[0].id);
+      return activeCampaigns[0];
+    }
+    
+    // Fallback: any campaign
+    console.log('📋 No active campaigns, showing any campaign:', userCampaigns[0]?.id);
+    return userCampaigns[0];
   })();
 
   // Find the first non-empty influencer note across all campaigns and append default links
@@ -1382,7 +1383,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                     color: ds.text.secondary,
                     fontSize: `${ds.typography.text.sm.fontSize}px`
                   }}>
-                    {primaryCampaign.id}
+                    進行中のPR：{primaryCampaign.id}
                   </p>
                 )}
               </div>
@@ -2117,7 +2118,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                                   onChange={(val) => setUrlInputs(prev => ({ ...prev, [primaryCampaign.id]: val }))}
                                   onPendingValueChange={(val) => setPendingUrlInputs(prev => ({ ...prev, [primaryCampaign.id]: val }))}
                                   placeholder="コンテンツのURLを入力"
-                                  label="URLを追加"
+                                  label="別のURLを追加"
                                   maxItems={20}
                                 />
                               </>
