@@ -33,6 +33,17 @@ export async function POST(request: NextRequest) {
     const normalizedPrice = typeof price === 'string' ? price.replace(/\D/g, '') : '';
     const safeRepurposable = repurposable === 'yes' ? 'TRUE' : 'FALSE';
 
+    // Check if this is a long-term contract user
+    const campaigns = await googleSheetsService.getCampaigns(undefined, { forceRefresh: true });
+    const currentCampaign = campaigns.find(c => c.id === campaignId);
+    const isLongTermContract = currentCampaign?.isLongTermContract;
+
+    console.log('🔍 Campaign info:', { 
+      campaignId, 
+      isLongTermContract,
+      totalCampaigns: campaigns.length 
+    });
+
     // Build update payload; avoid overwriting platform if not provided by the inline form
     const updateData: Record<string, string> = {
       contact_email: email || '',
@@ -53,6 +64,55 @@ export async function POST(request: NextRequest) {
 
     // Find and update the campaign row
     const result = await googleSheetsService.updateCampaignOnboarding(campaignId, updateData);
+
+    // For long-term contracts, update quarterly dates for all not_started campaigns
+    if (isLongTermContract && result.success) {
+      try {
+        console.log('📅 Long-term contract detected, updating quarterly dates for all not_started campaigns');
+        
+        // Get the influencer ID from the current campaign
+        const influencerId = currentCampaign.influencerId;
+        
+        // Find all campaigns for this influencer
+        const influencerCampaigns = campaigns.filter(c => c.influencerId === influencerId);
+        
+        // Find not_started campaigns (excluding the one we just updated to 'trial')
+        const notStartedCampaigns = influencerCampaigns
+          .filter(c => c.status === 'not_started' && c.id !== campaignId)
+          .sort((a, b) => {
+            // Extract campaign numbers and sort ascending (youngest first)
+            const numA = parseInt((a.id.match(/_(\d+)$/) || ['', '0'])[1], 10);
+            const numB = parseInt((b.id.match(/_(\d+)$/) || ['', '0'])[1], 10);
+            return numA - numB;
+          });
+        
+        console.log(`📋 Found ${notStartedCampaigns.length} not_started campaigns to update`);
+        
+        if (notStartedCampaigns.length > 0) {
+          // Calculate quarterly dates starting from the uploaded date
+          const baseDate = uploadDate ? new Date(uploadDate) : new Date();
+          const quarterlyDates = await googleSheetsService.calculateQuarterlyDates(baseDate, notStartedCampaigns.length);
+          
+          console.log('📅 Calculated quarterly dates:', quarterlyDates);
+          
+          // Update each not_started campaign with its quarterly date
+          for (let i = 0; i < notStartedCampaigns.length; i++) {
+            const campaign = notStartedCampaigns[i];
+            const quarterDate = quarterlyDates[i];
+            
+            await googleSheetsService.updateCampaignOnboarding(campaign.id, {
+              date_live: quarterDate,
+              date_status_updated: new Date().toISOString()
+            });
+            
+            console.log(`✅ Updated campaign ${campaign.id} with date_live: ${quarterDate}`);
+          }
+        }
+      } catch (quarterError) {
+        console.error('⚠️ Failed to update quarterly dates:', quarterError);
+        // Don't fail the main request if quarterly update fails
+      }
+    }
 
     if (result.success) {
       console.log('✅ Campaign onboarding completed successfully');

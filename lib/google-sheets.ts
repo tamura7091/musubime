@@ -477,6 +477,8 @@ class GoogleSheetsService {
       'note_dashboard',
       // Contact email for mailto links in admin dashboard
       'contact_email',
+      // Long-term contract flag for quarterly campaigns
+      'is_long_term_contract',
       // Chat history for Musubime AI - REMOVED for performance, use getChatHistory() instead
       // 'chat_dashboard'
     ], influencerId, 'campaigns', options);
@@ -640,7 +642,7 @@ class GoogleSheetsService {
       }, {} as any));
     }
     
-    return validData.map((row, index) => {
+    const campaigns = validData.map((row, index) => {
               // Debug date_status_updated values from Google Sheets
         if (row['date_status_updated']) {
           console.log('📅 date_status_updated found:', {
@@ -702,6 +704,9 @@ class GoogleSheetsService {
         referenceLinks: this.parseLinks(row['url_plan'] || ''),
         notes: row['notes'] || row['status_notes'] || '',
         
+        // Long-term contract flag
+        isLongTermContract: row['is_long_term_contract'] === 'TRUE',
+        
         // Additional campaign data
         campaignData: {
           id_promo: row['id_promo'],
@@ -724,6 +729,7 @@ class GoogleSheetsService {
           chat_dashboard: row['chat_dashboard'],
           group: row['group'],
           followers: row['followers'],
+          spend_jpy: row['spend_jpy'],
           spend_usd: row['spend_usd'],
           imp_est: row['imp_est'],
           imp_actual: row['imp_actual'],
@@ -774,9 +780,16 @@ class GoogleSheetsService {
           // Trial login credentials
           trial_login_email_dashboard: row['trial_login_email_dashboard'],
           trial_login_password_dashboard: row['trial_login_password_dashboard'],
+          // Long-term contract flag
+          is_long_term_contract: row['is_long_term_contract'],
         }
       };
     });
+
+    // Auto-populate quarterly dates for long-term contracts with empty date_live
+    await this.autoPopulateLongTermContractDates(campaigns);
+
+    return campaigns;
   }
 
   // Get chat history for a specific campaign (lazy loaded for performance)
@@ -932,6 +945,134 @@ class GoogleSheetsService {
     
     const parsed = parseInt(cleaned, 10);
     return isNaN(parsed) ? 0 : parsed;
+  }
+
+  /**
+   * Calculate the next quarterly campaign dates (1/1, 4/1, 8/1)
+   * Returns an array of dates starting from the next quarter after the given date
+   * @param fromDate - The reference date (usually today or campaign completion date)
+   * @param count - Number of quarterly dates to generate
+   * @returns Array of ISO date strings (YYYY-MM-DD format)
+   */
+  async calculateQuarterlyDates(fromDate: Date, count: number): Promise<string[]> {
+    return this.getNextQuarterlyDates(fromDate, count);
+  }
+
+  private getNextQuarterlyDates(fromDate: Date, count: number): string[] {
+    const quarterMonths = [1, 4, 8]; // Jan 1, April 1, August 1
+    const dates: string[] = [];
+    
+    const year = fromDate.getFullYear();
+    const month = fromDate.getMonth() + 1; // getMonth() is 0-indexed
+    const day = fromDate.getDate();
+    
+    let currentYear = year;
+    let quarterIndex = 0;
+    
+    // Find the next quarter after fromDate
+    for (let i = 0; i < quarterMonths.length; i++) {
+      if (month < quarterMonths[i] || (month === quarterMonths[i] && day < 1)) {
+        quarterIndex = i;
+        break;
+      }
+      // If we're past all quarters this year, start with Jan 1 next year
+      if (i === quarterMonths.length - 1) {
+        quarterIndex = 0;
+        currentYear++;
+      }
+    }
+    
+    // Generate the requested number of quarterly dates
+    for (let i = 0; i < count; i++) {
+      const quarterMonth = quarterMonths[quarterIndex];
+      const dateStr = `${currentYear}-${String(quarterMonth).padStart(2, '0')}-01`;
+      dates.push(dateStr);
+      
+      // Move to next quarter
+      quarterIndex++;
+      if (quarterIndex >= quarterMonths.length) {
+        quarterIndex = 0;
+        currentYear++;
+      }
+    }
+    
+    console.log(`📅 Generated ${count} quarterly dates from ${fromDate.toISOString().split('T')[0]}:`, dates);
+    return dates;
+  }
+
+  /**
+   * Auto-populate quarterly dates for long-term contracts with empty date_live
+   * This runs when campaigns are loaded from the sheet
+   */
+  private async autoPopulateLongTermContractDates(campaigns: any[]): Promise<void> {
+    try {
+      // Group campaigns by influencer
+      const campaignsByInfluencer = new Map<string, any[]>();
+      
+      for (const campaign of campaigns) {
+        const influencerId = campaign.influencerId;
+        if (!campaignsByInfluencer.has(influencerId)) {
+          campaignsByInfluencer.set(influencerId, []);
+        }
+        campaignsByInfluencer.get(influencerId)!.push(campaign);
+      }
+
+      // Process each influencer's campaigns
+      for (const [influencerId, influencerCampaigns] of Array.from(campaignsByInfluencer.entries())) {
+        // Check if this is a long-term contract influencer
+        const hasLongTermContract = influencerCampaigns.some((c: any) => c.isLongTermContract);
+        
+        if (!hasLongTermContract) continue;
+
+        console.log(`📅 Processing long-term contract for influencer: ${influencerId}`);
+
+        // Find campaigns with empty date_live
+        const campaignsWithEmptyDates = influencerCampaigns
+          .filter((c: any) => !c.schedules.liveDate || c.schedules.liveDate.trim() === '')
+          .sort((a: any, b: any) => {
+            // Sort by campaign number (youngest first)
+            const numA = parseInt((a.id.match(/_(\d+)$/) || ['', '0'])[1], 10);
+            const numB = parseInt((b.id.match(/_(\d+)$/) || ['', '0'])[1], 10);
+            return numA - numB;
+          });
+
+        if (campaignsWithEmptyDates.length === 0) {
+          console.log(`✅ All campaigns for ${influencerId} already have date_live`);
+          continue;
+        }
+
+        console.log(`📋 Found ${campaignsWithEmptyDates.length} campaigns with empty date_live for ${influencerId}`);
+
+        // Calculate quarterly dates starting from today
+        const today = new Date();
+        const quarterlyDates = this.getNextQuarterlyDates(today, campaignsWithEmptyDates.length);
+
+        console.log(`📅 Auto-assigning quarterly dates:`, quarterlyDates);
+
+        // Update each campaign in the sheet
+        for (let i = 0; i < campaignsWithEmptyDates.length; i++) {
+          const campaign = campaignsWithEmptyDates[i];
+          const quarterDate = quarterlyDates[i];
+
+          try {
+            await this.updateCampaignOnboarding(campaign.id, {
+              date_live: quarterDate,
+              date_status_updated: new Date().toISOString()
+            });
+
+            // Update the in-memory campaign object
+            campaign.schedules.liveDate = quarterDate;
+
+            console.log(`✅ Auto-assigned date_live for campaign ${campaign.id}: ${quarterDate}`);
+          } catch (error) {
+            console.error(`❌ Failed to auto-assign date for campaign ${campaign.id}:`, error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('⚠️ Error in autoPopulateLongTermContractDates:', error);
+      // Don't throw - this is a background operation
+    }
   }
 
   // Parse date string to ISO string, handling various date formats

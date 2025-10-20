@@ -63,7 +63,7 @@ const getNextStep = (status: string, campaign?: Campaign) => {
 };
 import { Calendar, ExternalLink, ChevronRight, ChevronDown, User } from 'lucide-react';
 import { useState } from 'react';
-import OnboardingSurvey from './OnboardingSurvey';
+import OnboardingSurveyInline from './OnboardingSurveyInline';
 import VisibilityToggle from './VisibilityToggle';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
 import { formatAbbreviatedCurrency } from '@/lib/design-system';
@@ -71,9 +71,10 @@ import { formatAbbreviatedCurrency } from '@/lib/design-system';
 interface CampaignCardProps {
   campaign: Campaign;
   showInfluencer?: boolean;
+  hasPreviousCampaigns?: boolean;
 }
 
-export default function CampaignCard({ campaign, showInfluencer = false }: CampaignCardProps) {
+export default function CampaignCard({ campaign, showInfluencer = false, hasPreviousCampaigns = false }: CampaignCardProps) {
   const ds = useDesignSystem();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
@@ -314,7 +315,7 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
 
       {/* Onboarding Survey Modal */}
       {showSurvey && (
-        <OnboardingSurvey
+        <OnboardingSurveyInline
           campaignId={campaign.id}
           onComplete={() => {
             setShowSurvey(false);
@@ -322,6 +323,10 @@ export default function CampaignCard({ campaign, showInfluencer = false }: Campa
             window.location.reload();
           }}
           onCancel={() => setShowSurvey(false)}
+          hasPreviousCampaigns={hasPreviousCampaigns}
+          isModal={true}
+          defaultPrice={(campaign.campaignData?.spend_jpy) || (campaign.contractedPrice ?? undefined)}
+          defaultUploadDate={campaign.isLongTermContract ? (campaign.schedules?.liveDate || undefined) : undefined}
         />
       )}
     </div>

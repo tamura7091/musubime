@@ -5,12 +5,18 @@ import { ChevronLeft, ChevronRight, Check, Calendar } from 'lucide-react';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
 import DatePicker from './DatePicker';
 import Modal from './Modal';
+import MultiItemInput from './MultiItemInput';
 
 interface OnboardingSurveyInlineProps {
   campaignId: string;
   onComplete: () => void;
   embedded?: boolean;
   defaultPrice?: number | string;
+  hasPreviousCampaigns?: boolean;
+  defaultUploadDate?: string; // For long-term contracts, prefill with date_live
+  // Modal mode props
+  onCancel?: () => void;
+  isModal?: boolean;
 }
 
 interface SurveyData {
@@ -24,20 +30,22 @@ interface SurveyData {
   repurposable: 'yes' | 'no';
 }
 
-export default function OnboardingSurveyInline({ campaignId, onComplete, embedded = false, defaultPrice }: OnboardingSurveyInlineProps) {
+export default function OnboardingSurveyInline({ campaignId, onComplete, embedded = false, defaultPrice, hasPreviousCampaigns = false, defaultUploadDate, onCancel, isModal = false }: OnboardingSurveyInlineProps) {
   const ds = useDesignSystem();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showDateConfirmation, setShowDateConfirmation] = useState(false);
+  const [dateConfirmationShown, setDateConfirmationShown] = useState(false); // Track if confirmation has been shown
   const [pendingDateValue, setPendingDateValue] = useState<string>('');
   const [emailError, setEmailError] = useState<string>('');
+  const [pendingUploadDate, setPendingUploadDate] = useState<string>(''); // Track unfilled date input
   const [surveyData, setSurveyData] = useState<SurveyData>({
     platform: '',
     contractName: '',
     email: '',
     price: '',
-    uploadDate: '',
+    uploadDate: defaultUploadDate || '',
     planSubmissionDate: '',
     draftSubmissionDate: '',
     repurposable: 'yes'
@@ -51,10 +59,10 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
     return String(Math.round(numeric));
   })();
 
-  const steps: Array<{
+  const allSteps: Array<{
     title: string;
     field: keyof SurveyData;
-    type: 'text' | 'email' | 'number' | 'date' | 'select';
+    type: 'text' | 'email' | 'number' | 'date' | 'select' | 'multi-date';
     placeholder?: string;
     options?: Array<{ value: string; label: string }>;
     description?: string;
@@ -67,7 +75,7 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
       description: '契約される個人名または法人名をご記入ください'
     },
     {
-      title: '連絡可能なメールアドレス',
+      title: '契約書をお送りするメールアドレス',
       field: 'email',
       type: 'email',
       placeholder: 'example@email.com',
@@ -83,8 +91,8 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
     {
       title: 'PRアップロード日',
       field: 'uploadDate',
-      type: 'date',
-      description: '1月キャンペーンのPRをされるかたは1/1~1/4のみを選択してください。（一部例外を除く）'
+      type: 'multi-date',
+      description: '投稿予定日を入力してください。ポッドキャストなど複数回に分けて投稿する場合は「複数の投稿日を追加」ボタンで追加できます。'
     },
     {
       title: '初稿提出日',
@@ -110,6 +118,11 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
     }
   ];
 
+  // Skip contractName and email steps if influencer has previous campaigns
+  const steps = hasPreviousCampaigns
+    ? allSteps.filter(step => step.field !== 'contractName' && step.field !== 'email')
+    : allSteps;
+
   const handleInputChange = (field: keyof SurveyData, value: string) => {
     if (field === 'price') {
       // Digits only and format with commas
@@ -119,12 +132,13 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
       return;
     }
 
-    if (field === 'uploadDate' && value) {
+    if (field === 'uploadDate' && value && !dateConfirmationShown) {
       // Check if the selected date is one of the allowed dates for 2026 campaign
       const allowedDates = ['2026-01-01', '2026-01-02', '2026-01-03'];
       if (!allowedDates.includes(value)) {
         setPendingDateValue(value);
         setShowDateConfirmation(true);
+        setDateConfirmationShown(true); // Mark as shown
         return;
       }
     }
@@ -142,6 +156,14 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
   };
 
   const handleNext = () => {
+    // If on multi-date step and there's a pending value, add it first
+    if (currentStepData.type === 'multi-date' && currentStepData.field === 'uploadDate' && pendingUploadDate.trim()) {
+      const existingDates = surveyData.uploadDate ? surveyData.uploadDate.split(',').map(d => d.trim()).filter(Boolean) : [];
+      const updatedDates = [...existingDates, pendingUploadDate.trim()];
+      setSurveyData(prev => ({ ...prev, uploadDate: updatedDates.join(',') }));
+      setPendingUploadDate('');
+    }
+    
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     }
@@ -167,6 +189,15 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setErrorMessage(null);
+    
+    // If there's a pending upload date, add it before submitting
+    let finalSurveyData = { ...surveyData };
+    if (pendingUploadDate.trim()) {
+      const existingDates = surveyData.uploadDate ? surveyData.uploadDate.split(',').map(d => d.trim()).filter(Boolean) : [];
+      const updatedDates = [...existingDates, pendingUploadDate.trim()];
+      finalSurveyData.uploadDate = updatedDates.join(',');
+    }
+    
     try {
       const response = await fetch('/api/campaigns/onboarding', {
         method: 'POST',
@@ -175,7 +206,7 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
         },
         body: JSON.stringify({
           campaignId,
-          ...surveyData
+          ...finalSurveyData
         }),
       });
 
@@ -207,7 +238,13 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
   const currentStepData = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
   const currentValue = surveyData[currentStepData.field as keyof SurveyData];
-  const canProceed = currentValue !== '' && (currentStepData.field !== 'email' || (isValidEmail(currentValue) && !emailError));
+  
+  // For multi-date fields, also check if there's a pending value in the input
+  const effectiveValue = currentStepData.type === 'multi-date' && currentStepData.field === 'uploadDate'
+    ? (currentValue || pendingUploadDate)
+    : currentValue;
+  
+  const canProceed = effectiveValue !== '' && (currentStepData.field !== 'email' || (isValidEmail(currentValue) && !emailError));
 
   const handleEnterKey = (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter') return;
@@ -219,7 +256,7 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
     }
   };
 
-  return (
+  const content = (
     <div
       style={embedded ? undefined : { backgroundColor: ds.bg.card, borderColor: ds.border.primary }}
       className={embedded ? "pt-2" : "border rounded-lg p-4"}
@@ -296,6 +333,16 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
               </option>
             ))}
           </select>
+        ) : currentStepData.type === 'multi-date' ? (
+          <div>
+            <MultiItemInput
+              type="date"
+              value={surveyData[currentStepData.field as keyof SurveyData] as string}
+              onChange={(val) => handleInputChange(currentStepData.field as keyof SurveyData, val)}
+              label="複数の投稿日を追加"
+              onPendingValueChange={(val) => setPendingUploadDate(val)}
+            />
+          </div>
         ) : currentStepData.type === 'date' ? (
           <div onKeyDown={handleEnterKey}>
             <DatePicker
@@ -479,4 +526,30 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
       {/* Price edit warning removed per requirements */}
     </div>
   );
+
+  // If modal mode, wrap in modal overlay
+  if (isModal) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4" style={{ backgroundColor: ds.bg.card }}>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold" style={{ color: ds.text.primary }}>基本情報入力</h2>
+            {onCancel && (
+              <button
+                onClick={onCancel}
+                className="hover:opacity-70 transition-opacity"
+                style={{ color: ds.text.secondary }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {content}
+        </div>
+      </div>
+    );
+  }
+
+  return content;
 }

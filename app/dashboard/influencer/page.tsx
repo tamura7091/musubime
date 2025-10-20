@@ -3,8 +3,8 @@
 import { useAuth } from '@/contexts/AuthContext';
 import CampaignCard from '@/components/CampaignCard';
 import StatusSection from '@/components/StatusSection';
-import OnboardingSurvey from '@/components/OnboardingSurvey';
 import OnboardingSurveyInline from '@/components/OnboardingSurveyInline';
+import MultiItemInput from '@/components/MultiItemInput';
 import { TrendingUp, Clock, CheckCircle, Calendar, ExternalLink, Settings, Bug, AlertCircle, ClipboardList, FileText, FileEdit, Video, Megaphone, CreditCard, Hourglass, XCircle, Copy, ClipboardCheck, RefreshCw } from 'lucide-react';
 import VisibilityToggle from '@/components/VisibilityToggle';
 import { AmountVisibilityProvider } from '@/contexts/AmountVisibilityContext';
@@ -50,6 +50,7 @@ export default function InfluencerDashboard() {
   const [paymentCheckboxes, setPaymentCheckboxes] = useState<{[key: string]: {invoice: boolean, form: boolean}}>({});
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [urlInputs, setUrlInputs] = useState<{[key: string]: string}>({});
+  const [pendingUrlInputs, setPendingUrlInputs] = useState<{[key: string]: string}>({});
   const [schedulingCheckboxes, setSchedulingCheckboxes] = useState<{[key: string]: {summary: boolean, comment: boolean}}>({});
   const [isLoading, setIsLoading] = useState(true);
   const [paymentWaiting, setPaymentWaiting] = useState<{[key: string]: boolean}>({});
@@ -323,7 +324,7 @@ export default function InfluencerDashboard() {
       case 'not_started':
         return {
           title: '基本情報の入力',
-          description: 'プロモーション開始前に、基本情報を入力してください。契約書の作成とスケジュール調整に使用されます。',
+          description: 'プロモーション開始前に、基本情報を入力してください。',
           icon: AlertCircle,
           color: 'blue',
           action: 'onboarding',
@@ -775,8 +776,59 @@ export default function InfluencerDashboard() {
     return '';
   };
 
+  // Helper function to extract campaign number from id (e.g., "id_3" → 3)
+  const extractCampaignNumber = (campaignId: string): number => {
+    const match = campaignId.match(/_(\d+)$/);
+    return match ? parseInt(match[1], 10) : 0;
+  };
+
+  // Helper function to format multiple dates (comma-separated)
+  const formatMultipleDates = (dateString: string | null | undefined): string => {
+    if (!dateString || dateString.trim() === '') return '未設定';
+    
+    const dates = dateString.split(',').map(d => d.trim()).filter(Boolean);
+    if (dates.length === 0) return '未設定';
+    if (dates.length === 1) return formatDate(dates[0]);
+    
+    // Show all dates separated by commas
+    return dates.map(d => formatDate(d)).join(', ');
+  };
+
+  // Helper function to count multiple URLs (comma-separated)
+  const countUrls = (urlString: string | null | undefined): number => {
+    if (!urlString || urlString.trim() === '') return 0;
+    return urlString.split(',').map(u => u.trim()).filter(Boolean).length;
+  };
+
   // Get the most active campaign for status display
-  const primaryCampaign = activeCampaigns[0] || userCampaigns[0];
+  // For long-term contract users, select the youngest numbered not_started campaign
+  const primaryCampaign = (() => {
+    // Check if this is a long-term contract user
+    const isLongTermContract = userCampaigns.some(c => c.isLongTermContract);
+    
+    if (isLongTermContract) {
+      // Find all not_started campaigns
+      const notStartedCampaigns = userCampaigns.filter(c => c.status === 'not_started');
+      
+      if (notStartedCampaigns.length > 0) {
+        // Sort by campaign number (youngest/lowest number first)
+        const sorted = notStartedCampaigns.sort((a, b) => {
+          const numA = extractCampaignNumber(a.id);
+          const numB = extractCampaignNumber(b.id);
+          return numA - numB; // ascending order (youngest first)
+        });
+        
+        console.log('📋 Long-term contract: Selected campaign', sorted[0].id, 'as primary campaign');
+        return sorted[0];
+      }
+      
+      // If no not_started campaigns, fall back to normal logic
+      console.log('📋 Long-term contract: No not_started campaigns, using normal logic');
+    }
+    
+    // Default logic for non-long-term contracts or when no not_started campaigns
+    return activeCampaigns[0] || userCampaigns[0];
+  })();
 
   // Find the first non-empty influencer note across all campaigns and append default links
   const influencerNote: string = (() => {
@@ -1105,9 +1157,25 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
   };
 
   const handleUrlSubmission = async (campaignId: string, currentStatus: string) => {
-    const url = urlInputs[campaignId] || '';
+    // Get both added URLs and pending URL
+    const addedUrls = urlInputs[campaignId] || '';
+    const pendingUrl = pendingUrlInputs[campaignId] || '';
     
-    if (!url.trim()) {
+    // Combine added URLs with pending URL if it exists
+    let finalUrl = addedUrls;
+    if (pendingUrl.trim()) {
+      // If there are already added URLs, append the pending one
+      if (addedUrls.trim()) {
+        const urlsArray = addedUrls.split(',').map(u => u.trim()).filter(Boolean);
+        urlsArray.push(pendingUrl.trim());
+        finalUrl = urlsArray.join(',');
+      } else {
+        // If no added URLs yet, just use the pending one
+        finalUrl = pendingUrl.trim();
+      }
+    }
+    
+    if (!finalUrl.trim()) {
       alert('URLを入力してください');
       return;
     }
@@ -1149,7 +1217,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
       // Scheduling step transitions
       'scheduling': {
         nextStatus: 'scheduled',
-        confirmMessage: 'コンテンツをスケジュールしましたか？',
+        confirmMessage: 'すべてのコンテンツを投稿しましたか？（複数ある場合はすべて確認してください）',
         urlType: 'content'
       }
     };
@@ -1170,7 +1238,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
             campaignId,
             influencerId: user?.id,
             newStatus: transition.nextStatus,
-            submittedUrl: url,
+            submittedUrl: finalUrl,
             urlType: transition.urlType
           }),
         });
@@ -1194,8 +1262,9 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
             )
           );
           
-          // Clear the URL input
+          // Clear the URL input and pending input
           setUrlInputs(prev => ({ ...prev, [campaignId]: '' }));
+          setPendingUrlInputs(prev => ({ ...prev, [campaignId]: '' }));
           
           // Do not auto-advance; we remain at scheduled until payment step is triggered
         } else {
@@ -1293,20 +1362,30 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
     <AmountVisibilityProvider>
       <div className="min-h-screen" style={{ backgroundColor: ds.bg.primary }}>
       <div className="max-w-7xl mx-auto mobile-padding">
-        <div className="mb-8 sm:mb-12">
+        <div className="mb-6 sm:mb-8">
           {/* Responsive Header Layout */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-3">
             {/* Greeting Section with Refresh Button */}
             <div className="flex-1 min-w-0 flex items-center gap-4">
-              <h1 className="font-bold truncate" style={{ 
-                color: ds.text.primary,
-                fontSize: '32px',
-                lineHeight: '1.2',
-                fontWeight: 700,
-                letterSpacing: '-0.02em'
-              }}>
-                {user.name}さんのスピークPR情報
-              </h1>
+              <div className="flex flex-col">
+                <h1 className="font-bold truncate" style={{ 
+                  color: ds.text.primary,
+                  fontSize: '32px',
+                  lineHeight: '1.2',
+                  fontWeight: 700,
+                  letterSpacing: '-0.02em'
+                }}>
+                  {user.name}さんのスピークPR情報
+                </h1>
+                {primaryCampaign && (
+                  <p className="text-sm mt-1" style={{ 
+                    color: ds.text.secondary,
+                    fontSize: `${ds.typography.text.sm.fontSize}px`
+                  }}>
+                    {primaryCampaign.id}
+                  </p>
+                )}
+              </div>
               
               {/* Refresh Button */}
               <button
@@ -1363,7 +1442,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
 
         {/* Debug Card - Only for demo accounts */}
         {showDebugCard && (user.id === 'actre_vlog_yt' || user.id === 'eigatube_yt') && (
-          <div className="mb-8 sm:mb-12">
+          <div className="mb-6 sm:mb-8">
             <div className="rounded-2xl p-5 sm:p-7" style={{ 
               borderColor: ds.border.primary,
               borderWidth: '1px',
@@ -1423,7 +1502,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
         )}
 
         {/* Stats Overview */}
-        <div className="mobile-grid mb-8 sm:mb-12">
+        <div className="mobile-grid mb-6 sm:mb-8">
           <div className="rounded-2xl p-5 sm:p-7 transition-all hover:scale-[1.02]" style={{ 
             backgroundColor: ds.bg.card,
             borderColor: ds.border.primary,
@@ -1521,7 +1600,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
 
         {/* Action Section */}
         {primaryCampaign && (
-          <div className="mb-8 sm:mb-12">
+          <div className="mb-6 sm:mb-8">
             
             {/* Warning Message for Behind Schedule */}
             {isActionRequiredNow(primaryCampaign) && isCurrentStepBehindSchedule(primaryCampaign) ? (
@@ -1652,10 +1731,10 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                     {(() => {
                       const planDueForMsg = formatMonthDay(primaryCampaign?.schedules?.planSubmissionDate);
                       const messages: Record<string, string> = {
-                        not_started: 'はじめまして！ぼくがご案内します。まずは基本情報のご入力からいっしょに進めましょう😊',
-                        meeting_scheduling: 'ご入力ありがとうございます。つぎは打ち合わせの日程をいっしょに決めましょう📅',
+                        not_started: 'はじめまして！まずは基本情報のご入力からいっしょに進めましょう😊',
+                        meeting_scheduling: 'ご入力ありがとうございます。つぎは打ち合わせの日程を決めましょう📅',
                         meeting_scheduled: 'ご予約ありがとうございます。当日お会いできるのを楽しみにしています！📅',
-                        trial: '順調です。ガイドラインのチェックとプレミアムアカウントの体験もいってみましょう✨',
+                        trial: '順調です。ガイドラインのチェックとプレミアムアカウントの体験をお願いします✨',
                         plan_creating: `打ち合わせおつかれさまでした。${planDueForMsg ? `${planDueForMsg}までに` : ''}構成案のご提出をお願いします！`,
                         plan_submitted: '構成案ありがとうございます。いま確認中です。もう少しだけお待ちください🔎',
                         plan_revising: 'フィードバックをお届けしました。 修正のご対応をお願いできますか？',
@@ -1873,9 +1952,44 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                                 </div>
                               </div>
                             ) : (
-                              <p className="text-xs" style={{ color: ds.text.secondary }}>
-                                ログイン情報が見つからない場合は、ページ下部の「プレミアムアカウント」をご確認ください。
-                              </p>
+                              /* Error State - No Premium Account */
+                              <div className="p-3 rounded-lg" style={{ 
+                                backgroundColor: ds.alert.error.bg,
+                                borderColor: ds.alert.error.border,
+                                borderWidth: '1px',
+                                borderStyle: 'solid'
+                              }}>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <AlertCircle size={16} style={{ color: ds.alert.error.icon }} />
+                                  <span className="text-sm font-medium" style={{ 
+                                    color: ds.alert.error.text
+                                  }}>
+                                    取得に失敗しました
+                                  </span>
+                                </div>
+                                <p className="text-xs mb-3" style={{ 
+                                  color: ds.alert.error.text
+                                }}>
+                                  ログイン情報を取得できませんでした。サポートにお問い合わせください。
+                                </p>
+                                <button
+                                  onClick={() => {
+                                    const subject = encodeURIComponent('プレミアムアカウント情報取得エラー');
+                                    const body = encodeURIComponent(`キャンペーンID: ${primaryCampaign.id}\nエラー内容: ログイン情報（trial_login_email_dashboard, trial_login_password_dashboard）が取得できませんでした。`);
+                                    window.open(`mailto:partnerships_jp@usespeak.com?subject=${subject}&body=${body}`, '_blank');
+                                  }}
+                                  className="inline-flex items-center px-3 py-1.5 text-xs rounded-lg transition-colors"
+                                  style={{
+                                    backgroundColor: ds.alert.error.border,
+                                    color: 'white'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ds.alert.error.text}
+                                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ds.alert.error.border}
+                                >
+                                  <ExternalLink size={12} className="mr-1" />
+                                  サポートに報告
+                                </button>
+                              </div>
                             )}
                           </div>
 
@@ -1988,33 +2102,71 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                               </label>
                             </div>
                           )}
-                          <div className="flex items-center space-x-3">
-                            <input
-                              type="url"
-                              placeholder="URLを入力してください"
-                              value={urlInputs[primaryCampaign.id] || ''}
-                              onChange={(e) => setUrlInputs(prev => ({ ...prev, [primaryCampaign.id]: e.target.value }))}
-                              className="flex-1 px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent border transition-all"
-                              style={{ 
-                                backgroundColor: ds.form.input.bg,
-                                borderColor: ds.form.input.border,
-                                color: ds.text.primary,
-                                borderWidth: '1px',
-                                borderStyle: 'solid'
-                              }}
-                            />
+                          <div className="space-y-3">
+                            {/* Use MultiItemInput only for content scheduling (publish action) */}
+                            {action.action === 'publish' ? (
+                              <>
+                                <p className="text-sm" style={{ color: ds.text.secondary }}>
+                                  投稿したコンテンツのURLを入力してください。ショート動画やポッドキャストなど複数のコンテンツがある場合は「別のURLを追加」ボタンを押して複数URLをご共有ください。
+
+
+                                </p>
+                                <MultiItemInput
+                                  type="url"
+                                  value={urlInputs[primaryCampaign.id] || ''}
+                                  onChange={(val) => setUrlInputs(prev => ({ ...prev, [primaryCampaign.id]: val }))}
+                                  onPendingValueChange={(val) => setPendingUrlInputs(prev => ({ ...prev, [primaryCampaign.id]: val }))}
+                                  placeholder="コンテンツのURLを入力"
+                                  label="URLを追加"
+                                  maxItems={20}
+                                />
+                              </>
+                            ) : (
+                              /* Regular single URL input for plan/draft submissions */
+                              <input
+                                type="url"
+                                value={urlInputs[primaryCampaign.id] || ''}
+                                onChange={(e) => setUrlInputs(prev => ({ ...prev, [primaryCampaign.id]: e.target.value }))}
+                                placeholder="URLを入力してください"
+                                style={{
+                                  backgroundColor: ds.form.input.bg,
+                                  borderColor: ds.form.input.border,
+                                  color: ds.text.primary,
+                                  borderWidth: '1px',
+                                  borderStyle: 'solid',
+                                  outline: 'none',
+                                }}
+                                className="w-full p-3 rounded-lg focus:ring-2 focus:border-transparent"
+                                onFocus={(e) => {
+                                  e.target.style.borderColor = ds.form.input.focus.ring;
+                                  e.target.style.boxShadow = `0 0 0 2px ${ds.form.input.focus.ring}`;
+                                }}
+                                onBlur={(e) => {
+                                  e.target.style.borderColor = ds.form.input.border;
+                                  e.target.style.boxShadow = 'none';
+                                }}
+                              />
+                            )}
                             <button 
                               onClick={() => handleUrlSubmission(primaryCampaign.id, primaryCampaign.status)}
-                              disabled={!!urlSubmitting[primaryCampaign.id]}
-                              className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
+                              disabled={
+                                !!urlSubmitting[primaryCampaign.id] || 
+                                (!urlInputs[primaryCampaign.id]?.trim() && !pendingUrlInputs[primaryCampaign.id]?.trim())
+                              }
+                              className="px-8 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
                               style={{ 
                                 backgroundColor: ds.button.primary.bg,
                                 color: ds.button.primary.text
                               }}
-                              onMouseEnter={(e) => !urlSubmitting[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.hover)}
+                              onMouseEnter={(e) => {
+                                const hasUrl = urlInputs[primaryCampaign.id]?.trim() || pendingUrlInputs[primaryCampaign.id]?.trim();
+                                if (!urlSubmitting[primaryCampaign.id] && hasUrl) {
+                                  e.currentTarget.style.backgroundColor = ds.button.primary.hover;
+                                }
+                              }}
                               onMouseLeave={(e) => !urlSubmitting[primaryCampaign.id] && (e.currentTarget.style.backgroundColor = ds.button.primary.bg)}
                             >
-                              {urlSubmitting[primaryCampaign.id] ? '送信中...' : '提出'}
+                              {urlSubmitting[primaryCampaign.id] ? '送信中...' : action.action === 'publish' ? 'すべて提出' : '提出'}
                             </button>
                           </div>
                         </div>
@@ -2103,7 +2255,9 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                               refreshData();
                             }}
                             embedded
-                            defaultPrice={primaryCampaign.contractedPrice}
+                            defaultPrice={primaryCampaign.campaignData?.spend_jpy || primaryCampaign.contractedPrice}
+                            hasPreviousCampaigns={campaigns.length > 1}
+                            defaultUploadDate={primaryCampaign.isLongTermContract ? (primaryCampaign.schedules?.liveDate || undefined) : undefined}
                           />
                         </div>
                       )}
@@ -2147,14 +2301,14 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
 
         {/* Status Section */}
         {primaryCampaign && (
-          <div className="mb-8 sm:mb-12">
+          <div className="mb-6 sm:mb-8">
             <StatusSection campaign={primaryCampaign} />
           </div>
         )}
 
         {/* Notes Section - Always show with default links */}
         {primaryCampaign && (
-          <div className="mb-8 sm:mb-12">
+          <div className="mb-6 sm:mb-8">
             <div className="rounded-2xl p-5 sm:p-7" style={{ 
               backgroundColor: ds.bg.card,
               borderColor: ds.border.primary,
@@ -2175,7 +2329,7 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
         )}
 
                 {/* All Campaigns */}
-        <div className="mb-8 sm:mb-12">
+        <div className="mb-6 sm:mb-8">
           {sortedForPromotionDetails.length > 0 ? (
             <div className="space-y-4">
               <div className="rounded-2xl p-5 sm:p-7" style={{ 
@@ -2350,8 +2504,10 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
                             </div>
 
                             {/* PR Launch Date */}
-                            <div className="text-sm w-[100px] flex-shrink-0 whitespace-nowrap" style={{ color: ds.text.primary }}>
-                                {formatDate(campaign.schedules?.liveDate)}
+                            <div className="text-sm w-[100px] flex-shrink-0" style={{ color: ds.text.primary }}>
+                                <div className="truncate" title={formatMultipleDates(campaign.schedules?.liveDate)}>
+                                  {formatMultipleDates(campaign.schedules?.liveDate)}
+                                </div>
                             </div>
 
                             {/* Plan Link */}
@@ -2390,19 +2546,65 @@ ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
 
                             {/* PR Content Link */}
                             <div className="text-sm w-[120px] flex-shrink-0 text-center">
-                                {campaign.campaignData?.url_content && campaign.campaignData.url_content.trim() !== '' ? (
-                                  <a
-                                    href={getAbsoluteUrl(campaign.campaignData.url_content)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center hover:underline"
-                                    style={{ color: ds.text.accent }}
-                                  >
-                                    <ExternalLink size={12} />
-                                  </a>
-                                ) : (
-                                  <span style={{ color: ds.text.secondary }}>-</span>
-                                )}
+                                {(() => {
+                                  const urlCount = countUrls(campaign.campaignData?.url_content);
+                                  if (urlCount === 0) {
+                                    return <span style={{ color: ds.text.secondary }}>-</span>;
+                                  }
+                                  
+                                  const urls = (campaign.campaignData?.url_content || '').split(',').map((u: string) => u.trim()).filter(Boolean);
+                                  
+                                  if (urlCount === 1) {
+                                    return (
+                                      <a
+                                        href={getAbsoluteUrl(urls[0])}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center hover:underline"
+                                        style={{ color: ds.text.accent }}
+                                      >
+                                        <ExternalLink size={12} />
+                                      </a>
+                                    );
+                                  }
+                                  
+                                  // Multiple URLs - show count with dropdown
+                                  return (
+                                    <div className="inline-flex items-center gap-1">
+                                      <span className="text-xs font-medium" style={{ color: ds.text.primary }}>
+                                        {urlCount}件
+                                      </span>
+                                      <div className="relative group">
+                                        <ExternalLink size={12} style={{ color: ds.text.accent }} className="cursor-pointer" />
+                                        <div 
+                                          className="absolute right-0 top-full mt-1 p-2 rounded-lg shadow-lg z-50 hidden group-hover:block whitespace-nowrap"
+                                          style={{ 
+                                            backgroundColor: ds.bg.card,
+                                            borderColor: ds.border.primary,
+                                            borderWidth: '1px',
+                                            borderStyle: 'solid'
+                                          }}
+                                        >
+                                          <div className="space-y-1">
+                                            {urls.map((url: string, idx: number) => (
+                                              <a
+                                                key={idx}
+                                                href={getAbsoluteUrl(url)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-2 px-2 py-1 rounded hover:bg-opacity-10 text-xs"
+                                                style={{ color: ds.text.accent }}
+                                              >
+                                                <ExternalLink size={10} />
+                                                <span>エピソード {idx + 1}</span>
+                                              </a>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
                             </div>
                           </div>
                         ))}

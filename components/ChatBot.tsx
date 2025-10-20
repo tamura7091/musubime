@@ -6,6 +6,7 @@ import { useDesignSystem } from '@/hooks/useDesignSystem';
 import { useAuth } from '@/contexts/AuthContext';
 import { Campaign, CampaignStatus, getStepFromStatus, getStepLabel } from '@/types';
 import React from 'react';
+import RequestMessage, { getDefaultRequestOptions } from './RequestMessage';
 // import blueCharacter from '../public/blue.png';
 
 // Utilities for platform label and date handling
@@ -218,9 +219,9 @@ interface Message {
   sender: 'user' | 'bot';
   timestamp: Date;
   interactive?: {
-    type: 'options';
+    type: 'options' | 'request';
     question: string;
-    options: InteractiveOption[];
+    options?: InteractiveOption[];
   };
 }
 
@@ -277,6 +278,10 @@ export default function ChatBot({ className }: ChatBotProps) {
 
   // Quick question chips with expected inquiries for relevance matching
   const quickQuestions = [
+    {
+      label: '変更申請を送る',
+      keywords: ['変更', '申請', '構成案', '投稿日', '日程', '修正', 'リクエスト'],
+    },
     {
       label: '報酬受け取り手続きの方法',
       keywords: ['報酬', '受け取り', '手続き', '方法', '支払い', '請求書', 'フォーム', '送金'],
@@ -1084,6 +1089,23 @@ export default function ChatBot({ className }: ChatBotProps) {
     setMessages(prev => [...prev, userMessage]);
     scrollToBottom();
 
+    // Special handling for change request
+    if (label.includes('変更申請')) {
+      const requestMessage: Message = {
+        id: `${Date.now()}_request`,
+        content: '',
+        sender: 'bot',
+        timestamp: new Date(),
+        interactive: {
+          type: 'request',
+          question: 'どのような変更申請をご希望ですか？',
+        },
+      };
+      setMessages(prev => [...prev, requestMessage]);
+      scrollToBottom();
+      return;
+    }
+
     // Special handling for payment procedure - show interactive confirmation first
     if (label.includes('報酬受け取り手続きの方法')) {
       const primary = pickPrimaryCampaign(campaigns);
@@ -1553,8 +1575,86 @@ export default function ChatBot({ className }: ChatBotProps) {
               </div>
               
               <div className={`flex-1 max-w-[85%] sm:max-w-[80%] ${message.sender === 'user' ? 'text-right' : ''}`}>
-                {/* Interactive component */}
-                {message.interactive && message.interactive.type === 'options' && (
+                {/* Interactive request component */}
+                {message.interactive && message.interactive.type === 'request' && (
+                  <RequestMessage
+                    question={message.interactive.question}
+                    options={getDefaultRequestOptions()}
+                    onSubmit={async (data) => {
+                      // ユーザーの選択を表示
+                      const userResponse: Message = {
+                        id: `${Date.now()}_user_request`,
+                        content: `${data.title}を申請しました`,
+                        sender: 'user',
+                        timestamp: new Date(),
+                      };
+                      setMessages(prev => [...prev, userResponse]);
+                      scrollToBottom();
+
+                      try {
+                        // 申請を送信
+                        const primary = pickPrimaryCampaign(campaigns);
+                        if (!primary) {
+                          addBotMessageWithTyping('キャンペーン情報が取得できませんでした。');
+                          return;
+                        }
+
+                        const requestedChanges = [];
+                        if (data.type === 'plan_date_change' && data.fields.newDate) {
+                          requestedChanges.push({
+                            field: 'planDate',
+                            currentValue: primary.schedules?.planSubmissionDate || '',
+                            newValue: data.fields.newDate,
+                          });
+                        } else if (data.type === 'draft_date_change' && data.fields.newDate) {
+                          requestedChanges.push({
+                            field: 'draftDate',
+                            currentValue: primary.schedules?.draftSubmissionDate || '',
+                            newValue: data.fields.newDate,
+                          });
+                        } else if (data.type === 'live_date_change' && data.fields.newDate) {
+                          requestedChanges.push({
+                            field: 'liveDate',
+                            currentValue: primary.schedules?.liveDate || '',
+                            newValue: data.fields.newDate,
+                          });
+                        }
+
+                        const response = await fetch('/api/requests', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            campaignId: primary.id,
+                            influencerId: user?.id,
+                            influencerName: user?.name,
+                            type: data.type,
+                            title: data.title,
+                            description: data.description,
+                            requestedChanges,
+                          }),
+                        });
+
+                        if (response.ok) {
+                          const result = await response.json();
+                          addBotMessageWithTyping(
+                            `申請が正常に送信されました。\n\n**申請内容：**\n- ${data.title}\n\n管理者の承認をお待ちください。承認されると自動的に反映されます。`
+                          );
+                        } else {
+                          addBotMessageWithTyping('申請の送信に失敗しました。しばらくしてから再度お試しください。');
+                        }
+                      } catch (error) {
+                        console.error('Failed to submit request:', error);
+                        addBotMessageWithTyping('申請の送信中にエラーが発生しました。');
+                      }
+                    }}
+                    onCancel={() => {
+                      addBotMessageWithTyping('申請をキャンセルしました。他にお手伝いできることがあればお知らせください。');
+                    }}
+                  />
+                )}
+
+                {/* Interactive options component */}
+                {message.interactive && message.interactive.type === 'options' && message.interactive.options && (
                   <div
                     className="inline-block px-4 py-3 rounded-2xl text-sm chat-bubble-bot"
                     style={{

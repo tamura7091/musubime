@@ -271,7 +271,7 @@ musubime/
 │   ├── CampaignCard.tsx        # Campaign detail display
 │   ├── Modal.tsx               # Modal dialogs
 │   ├── Navigation.tsx          # Top navigation bar
-│   ├── OnboardingSurvey*.tsx   # Survey components
+│   ├── OnboardingSurveyInline.tsx # Survey component (modal & inline)
 │   ├── StatusBadge.tsx         # Status indicators
 │   ├── StatusSection.tsx       # Workflow visualization
 │   └── Tooltip.tsx             # Interactive tooltips

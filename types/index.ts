@@ -133,6 +133,7 @@ export interface Campaign {
   meetingLink?: string;
   meetingCompleted?: boolean;
   meetingStatus?: 'not_scheduled' | 'scheduling' | 'scheduled' | 'completed';
+  isLongTermContract?: boolean;
   createdAt: Date;
   updatedAt: Date;
   campaignData?: {
@@ -142,6 +143,7 @@ export interface Campaign {
     url_content?: string;
     group?: string;
     followers?: string;
+    spend_jpy?: string;
     spend_usd?: string;
     imp_est?: string;
     imp_actual?: string;
@@ -190,6 +192,7 @@ export interface Campaign {
     log_events?: string;
     note_dashboard?: string;
     chat_dashboard?: string;
+    is_long_term_contract?: string;
   };
 }
 
