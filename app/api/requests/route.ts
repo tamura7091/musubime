@@ -7,6 +7,8 @@ import { ChangeRequest, RequestType, RequestStatus } from '@/types';
  * インフルエンサーからの変更申請の作成、取得、更新を管理します。
  */
 
+export const dynamic = 'force-dynamic';
+
 // GET: 申請一覧の取得
 export async function GET(request: NextRequest) {
   try {
