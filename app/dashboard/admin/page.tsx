@@ -620,7 +620,26 @@ export default function AdminDashboard() {
       if (update.submissionType === 'plan') {
         const submittedLink = getAbsoluteUrl(update.submissionUrl);
         if (submittedLink) {
-          defaultFeedback = `構成案のご提出をありがとうございました！チームで確認しいくつかコメントをさせていただきましたのでご提出いただいたリンクからご確認をよろしくお願いいたします：${submittedLink}`;
+          defaultFeedback = `${update.influencerName}様
+
+お世話になっております。
+
+ご提出いただいた構成案を確認いたしました。ご丁寧に制作いただきありがとうございます！
+いくつかコメントを追加いたしましたのでご確認をお願いします：${submittedLink}
+
+よろしくお願いいたします。`;
+        }
+      } else if (update.submissionType === 'draft') {
+        const submittedLink = getAbsoluteUrl(update.submissionUrl);
+        if (submittedLink) {
+          defaultFeedback = `${update.influencerName}様
+
+お世話になっております。
+
+ご提出いただいた初稿を確認いたしました。ご丁寧に制作いただきありがとうございます！
+いくつかコメントを追加いたしましたのでご確認をお願いします：${submittedLink}
+
+よろしくお願いいたします。`;
         }
       }
       setFeedbackMessage(defaultFeedback);
@@ -2489,7 +2508,7 @@ export default function AdminDashboard() {
               </p>
               {successModalData.influencerEmail ? (
                 <a
-                  href={`mailto:${successModalData.influencerEmail}?subject=${encodeURIComponent(`【Speak】${successModalData.submissionType}の修正依頼`)}&body=${encodeURIComponent(`${successModalData.influencerName}さん\n\nお疲れ様です。\n\nご提出いただいた${successModalData.submissionType}を確認いたしました。\n以下の点について修正をお願いいたします。\n\n${successModalData.feedbackMessage}\n\nご確認のほどよろしくお願いいたします。`)}`}
+                  href={`mailto:${successModalData.influencerEmail}?subject=${encodeURIComponent(`【Speak】${successModalData.submissionType}の修正依頼`)}&body=${encodeURIComponent(successModalData.feedbackMessage)}`}
                   className="flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full"
                   style={{
                     backgroundColor: ds.button.secondary.bg,
