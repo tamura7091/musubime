@@ -893,13 +893,82 @@ export default function InfluencerDashboard() {
       }
     });
     
+    // Collect submitted URLs from all campaigns
+    const submittedUrlsSection: string[] = [];
+    
+    // Group campaigns by platform for better organization
+    const campaignsByPlatform = new Map<string, any[]>();
+    ongoingCampaigns.forEach(campaign => {
+      const platformLabel = getPlatformLabel(String(campaign.platform || ''));
+      if (!campaignsByPlatform.has(platformLabel)) {
+        campaignsByPlatform.set(platformLabel, []);
+      }
+      campaignsByPlatform.get(platformLabel)!.push(campaign);
+    });
+    
+    // Add submitted URLs for each platform
+    campaignsByPlatform.forEach((platformCampaigns, platformLabel) => {
+      const planUrls: string[] = [];
+      const draftUrls: string[] = [];
+      const contentUrls: string[] = [];
+      
+      platformCampaigns.forEach(campaign => {
+        const urlPlan = campaign.campaignData?.url_plan;
+        const urlDraft = campaign.campaignData?.url_draft;
+        const urlContent = campaign.campaignData?.url_content;
+        
+        if (urlPlan && urlPlan.trim()) {
+          urlPlan.split(',').forEach((url: string) => {
+            const trimmedUrl = url.trim();
+            if (trimmedUrl && !planUrls.includes(trimmedUrl)) {
+              planUrls.push(trimmedUrl);
+            }
+          });
+        }
+        
+        if (urlDraft && urlDraft.trim()) {
+          urlDraft.split(',').forEach((url: string) => {
+            const trimmedUrl = url.trim();
+            if (trimmedUrl && !draftUrls.includes(trimmedUrl)) {
+              draftUrls.push(trimmedUrl);
+            }
+          });
+        }
+        
+        if (urlContent && urlContent.trim()) {
+          urlContent.split(',').forEach((url: string) => {
+            const trimmedUrl = url.trim();
+            if (trimmedUrl && !contentUrls.includes(trimmedUrl)) {
+              contentUrls.push(trimmedUrl);
+            }
+          });
+        }
+      });
+      
+      // Add to submitted URLs section with platform label if multiple platforms
+      const platformPrefix = campaignsByPlatform.size > 1 ? `【${platformLabel}】` : '';
+      
+      planUrls.forEach((url, idx) => {
+        submittedUrlsSection.push(`- [${platformPrefix}構成案${planUrls.length > 1 ? ` ${idx + 1}` : ''}](${url})`);
+      });
+      
+      draftUrls.forEach((url, idx) => {
+        submittedUrlsSection.push(`- [${platformPrefix}初稿${draftUrls.length > 1 ? ` ${idx + 1}` : ''}](${url})`);
+      });
+      
+      contentUrls.forEach((url, idx) => {
+        submittedUrlsSection.push(`- [${platformPrefix}投稿済みコンテンツ${contentUrls.length > 1 ? ` ${idx + 1}` : ''}](${url})`);
+      });
+    });
+    
     // Build default links section in markdown
     const defaultLinks = `### リンク集
 
 ${guidelineItems.join('\n')}
 - [ミーティング予約](https://calendly.com/d/cr8t-qt7-v8r/influencer-sync)
 - [構成案テンプレート](https://docs.google.com/document/d/13Ljg7rR8hsaZflGt3N0sB_g9ad-391G7Nhl4ICwVybg/copy)
-- [請求書テンプレート](https://docs.google.com/spreadsheets/d/1R7FffUOmZtlCo8Cm7TYOVTAixQ7Qz-ax3UC3rpgreVc/copy)`;
+- [請求書テンプレート](https://docs.google.com/spreadsheets/d/1R7FffUOmZtlCo8Cm7TYOVTAixQ7Qz-ax3UC3rpgreVc/copy)
+${submittedUrlsSection.length > 0 ? '\n\n#### 提出済みのリンク\n' + submittedUrlsSection.join('\n') : ''}`;
     
     // Combine custom note with default links
     return customNote ? `${customNote}\n\n${defaultLinks}` : defaultLinks;
