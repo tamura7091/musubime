@@ -280,42 +280,48 @@ export default function InfluencerDashboard() {
     switch (currentStep) {
       case 'contract': {
         // After basic info submission (オンライン契約ステップ)、ask to review guidelines and try premium
-        const platform = String(campaign.platform || '').toLowerCase();
-        let guidelineUrl = '';
-        if (platform === 'youtube_long' || platform === 'yt') {
-          guidelineUrl = 'https://usespeak.notion.site/YouTube-4-0-5b88f1ad34ed45f3aaeca324af039665?source=copy_link';
-        } else if (
-          platform === 'podcast' || platform === 'pc'
-        ) {
-          guidelineUrl = 'https://usespeak.notion.site/Podcast-224792ec2f1080f2a7d5fce804ce4b93?source=copy_link';
-        } else if ([
-          'youtube_short',
-          'short_video',
-          'instagram_reel',
-          'tiktok',
-          'sv',
-          'tt',
-          'yts',
-          'igr'
-        ].includes(platform)) {
-          guidelineUrl = 'https://usespeak.notion.site/1b3792ec2f10800f9f94e476a87c06f1?source=copy_link';
-        } else if ([
-          'x_twitter',
-          'twitter',
-          'tw',
-          'x'
-        ].includes(platform)) {
-          guidelineUrl = 'https://usespeak.notion.site/X-1e111dbf830946a4a225c26a2c6deede?source=copy_link';
-        }
-
+        // Get all unique platforms from ongoing campaigns (not completed)
+        const ongoingCampaigns = campaigns.filter(c => c.status !== 'completed');
+        const uniquePlatforms = Array.from(new Set(ongoingCampaigns.map(c => String(c.platform || '').toLowerCase())));
+        
         const linkColor = ds.text.accent;
-        const guidelineLink = guidelineUrl
-          ? `<a href="${guidelineUrl}" target="_blank" style="color: ${linkColor}; text-decoration: underline;">ガイドライン</a>`
+        
+        // Generate guideline links for all unique platforms
+        const guidelineLinks: string[] = [];
+        const seenUrls = new Set<string>();
+        
+        uniquePlatforms.forEach(platform => {
+          let url = '';
+          let label = '';
+          
+          if (platform === 'youtube_long' || platform === 'yt') {
+            url = 'https://usespeak.notion.site/YouTube-4-0-5b88f1ad34ed45f3aaeca324af039665?source=copy_link';
+            label = 'YouTube';
+          } else if (platform === 'podcast' || platform === 'pc') {
+            url = 'https://usespeak.notion.site/Podcast-224792ec2f1080f2a7d5fce804ce4b93?source=copy_link';
+            label = 'Podcast';
+          } else if (['youtube_short', 'short_video', 'instagram_reel', 'tiktok', 'sv', 'tt', 'yts', 'igr'].includes(platform)) {
+            url = 'https://usespeak.notion.site/1b3792ec2f10800f9f94e476a87c06f1?source=copy_link';
+            label = 'ショート動画';
+          } else if (['x_twitter', 'twitter', 'tw', 'x'].includes(platform)) {
+            url = 'https://usespeak.notion.site/X-1e111dbf830946a4a225c26a2c6deede?source=copy_link';
+            label = 'X/Twitter';
+          }
+          
+          // Only add if we have a URL and haven't seen it yet
+          if (url && !seenUrls.has(url)) {
+            seenUrls.add(url);
+            guidelineLinks.push(`<a href="${url}" target="_blank" style="color: ${linkColor}; text-decoration: underline;">${label}ガイドライン</a>`);
+          }
+        });
+        
+        const guidelineText = guidelineLinks.length > 0 
+          ? guidelineLinks.join('、')
           : 'ガイドライン（リンクは下部「ノート」欄をご確認ください）';
 
         return {
           title: 'ガイドラインの確認とプレミアムの試用',
-          description: `1. ${guidelineLink}をご確認ください<br/>2. アプリをダウンロードしてください：<a href="https://apps.apple.com/jp/app/ai%E8%8B%B1%E4%BC%9A%E8%A9%B1%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AF-%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AD%E3%83%B3%E3%82%B0%E7%B7%B4%E7%BF%92%E3%81%A7%E7%99%BA%E9%9F%B3%E3%82%84%E8%8B%B1%E8%AA%9E%E3%82%92%E5%8B%89%E5%BC%B7/id1286609883" target="_blank" style="color: ${linkColor}; text-decoration: underline;">iOS</a>、<a href="https://play.google.com/store/apps/details?id=com.speakapp" target="_blank" style="color: ${linkColor}; text-decoration: underline;">Android</a><br/>3. 下記の情報でスピークにログインし実際にお試しください`,
+          description: `1. ${guidelineText}をご確認ください<br/>2. アプリをダウンロードしてください：<a href="https://apps.apple.com/jp/app/ai%E8%8B%B1%E4%BC%9A%E8%A9%B1%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AF-%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AD%E3%83%B3%E3%82%B0%E7%B7%B4%E7%BF%92%E3%81%A7%E7%99%BA%E9%9F%B3%E3%82%84%E8%8B%B1%E8%AA%9E%E3%82%92%E5%8B%89%E5%BC%B7/id1286609883" target="_blank" style="color: ${linkColor}; text-decoration: underline;">iOS</a>、<a href="https://play.google.com/store/apps/details?id=com.speakapp" target="_blank" style="color: ${linkColor}; text-decoration: underline;">Android</a><br/>3. 下記の情報でスピークにログインし実際にお試しください`,
           icon: AlertCircle,
           color: 'blue',
           action: 'guideline_premium',
@@ -843,13 +849,41 @@ export default function InfluencerDashboard() {
       }
     }
     
-    // Get guideline URL based on platform
-    const guidelineUrl = primaryCampaign ? getGuidelineUrl(primaryCampaign.platform as string) : '';
+    // Get all guideline URLs from all ongoing campaigns (not completed)
+    const ongoingCampaigns = campaigns.filter(c => c.status !== 'completed');
+    const uniquePlatforms = Array.from(new Set(ongoingCampaigns.map(c => String(c.platform || '').toLowerCase())));
+    
+    // Generate guideline links for all unique platforms
+    const guidelineItems: string[] = [];
+    const seenUrls = new Set<string>();
+    
+    uniquePlatforms.forEach(platform => {
+      const url = getGuidelineUrl(platform);
+      if (url && !seenUrls.has(url)) {
+        seenUrls.add(url);
+        let label = 'ガイドライン';
+        
+        // Add platform-specific label when there are multiple platforms
+        if (uniquePlatforms.length > 1) {
+          if (platform === 'youtube_long' || platform === 'yt') {
+            label = 'YouTubeガイドライン';
+          } else if (platform === 'podcast' || platform === 'pc') {
+            label = 'Podcastガイドライン';
+          } else if (['youtube_short', 'short_video', 'instagram_reel', 'tiktok', 'sv', 'tt', 'yts', 'igr'].includes(platform)) {
+            label = 'ショート動画ガイドライン';
+          } else if (['x_twitter', 'twitter', 'tw', 'x'].includes(platform)) {
+            label = 'X/Twitterガイドライン';
+          }
+        }
+        
+        guidelineItems.push(`- [${label}](${url})`);
+      }
+    });
     
     // Build default links section in markdown
     const defaultLinks = `### リンク集
 
-${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
+${guidelineItems.join('\n')}
 - [ミーティング予約](https://calendly.com/d/cr8t-qt7-v8r/influencer-sync)
 - [構成案テンプレート](https://docs.google.com/document/d/13Ljg7rR8hsaZflGt3N0sB_g9ad-391G7Nhl4ICwVybg/copy)
 - [請求書テンプレート](https://docs.google.com/spreadsheets/d/1R7FffUOmZtlCo8Cm7TYOVTAixQ7Qz-ax3UC3rpgreVc/copy)`;
