@@ -340,7 +340,7 @@ export default function InfluencerDashboard() {
           const linkColor = ds.text.accent;
           return {
             title: '打ち合わせの予約',
-            description: `<a href="https://calendly.com/speak-naoki/30min-1" target="_blank" style="color: ${linkColor}; text-decoration: underline;">こちらから</a>打ち合わせを予約し「予約完了」ボタンをクリックしてください`,
+            description: `<a href="https://calendly.com/d/cr8t-qt7-v8r/influencer-sync" target="_blank" style="color: ${linkColor}; text-decoration: underline;">こちらから</a>打ち合わせを予約し「予約完了」ボタンをクリックしてください`,
             icon: Calendar,
             color: 'blue',
             action: 'meeting_schedule',
@@ -350,7 +350,7 @@ export default function InfluencerDashboard() {
           const linkColor = ds.text.accent;
           return {
             title: '打ち合わせへの参加',
-            description: `予約済みの打ち合わせに参加し、完了後に「打ち合わせ完了」ボタンをクリックしてください（打ち合わせのリスケジュールは<a href="https://calendly.com/speak-naoki/30min-1" target="_blank" style="color: ${linkColor}; text-decoration: underline;">こちら</a>）`,
+            description: `予約済みの打ち合わせに参加し、完了後に「打ち合わせ完了」ボタンをクリックしてください（打ち合わせのリスケジュールは<a href="https://calendly.com/d/cr8t-qt7-v8r/influencer-sync" target="_blank" style="color: ${linkColor}; text-decoration: underline;">こちら</a>）`,
             icon: Calendar,
             color: 'blue',
             action: 'meeting_complete',
@@ -850,6 +850,7 @@ export default function InfluencerDashboard() {
     const defaultLinks = `### リンク集
 
 ${guidelineUrl ? `- [ガイドライン](${guidelineUrl})` : ''}
+- [ミーティング予約](https://calendly.com/d/cr8t-qt7-v8r/influencer-sync)
 - [構成案テンプレート](https://docs.google.com/document/d/13Ljg7rR8hsaZflGt3N0sB_g9ad-391G7Nhl4ICwVybg/copy)
 - [請求書テンプレート](https://docs.google.com/spreadsheets/d/1R7FffUOmZtlCo8Cm7TYOVTAixQ7Qz-ax3UC3rpgreVc/copy)`;
     
