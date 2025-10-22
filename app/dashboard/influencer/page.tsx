@@ -783,6 +783,19 @@ export default function InfluencerDashboard() {
     return '';
   };
 
+  // Helper function to get platform label for display
+  const getPlatformLabel = (platform: string | undefined): string => {
+    if (!platform) return 'Unknown';
+    const platformLower = String(platform).toLowerCase();
+    if (platformLower === 'youtube_long' || platformLower === 'yt') return 'YouTube';
+    if (platformLower === 'podcast' || platformLower === 'pc') return 'Podcast';
+    if (['youtube_short', 'short_video', 'instagram_reel', 'tiktok', 'sv', 'tt', 'yts', 'igr'].includes(platformLower)) {
+      return 'ショート動画';
+    }
+    if (['x_twitter', 'twitter', 'tw', 'x'].includes(platformLower)) return 'X/Twitter';
+    return platform;
+  };
+
   // Helper function to extract campaign number from id (e.g., "id_3" → 3)
   const extractCampaignNumber = (campaignId: string): number => {
     const match = campaignId.match(/_(\d+)$/);
@@ -1193,27 +1206,69 @@ ${guidelineItems.join('\n')}
   };
 
   const handleUrlSubmission = async (campaignId: string, currentStatus: string) => {
-    // Get both added URLs and pending URL
-    const addedUrls = urlInputs[campaignId] || '';
-    const pendingUrl = pendingUrlInputs[campaignId] || '';
-    
-    // Combine added URLs with pending URL if it exists
-    let finalUrl = addedUrls;
-    if (pendingUrl.trim()) {
-      // If there are already added URLs, append the pending one
-      if (addedUrls.trim()) {
-        const urlsArray = addedUrls.split(',').map(u => u.trim()).filter(Boolean);
-        urlsArray.push(pendingUrl.trim());
-        finalUrl = urlsArray.join(',');
-      } else {
-        // If no added URLs yet, just use the pending one
-        finalUrl = pendingUrl.trim();
+    // Define step-based status transitions first to know urlType
+    const stepTransitions: {[key: string]: {nextStatus: string, confirmMessage: string, urlType: 'plan' | 'draft' | 'content'}} = {
+      'plan_creating': {
+        nextStatus: 'plan_submitted',
+        confirmMessage: 'リンクを知っている人が編集できる設定になっていますか？',
+        urlType: 'plan'
+      },
+      'plan_revising': {
+        nextStatus: 'plan_submitted',
+        confirmMessage: 'リンクを知っている人が編集できる設定になっていますか？',
+        urlType: 'plan'
+      },
+      'draft_creating': {
+        nextStatus: 'draft_submitted',
+        confirmMessage: '初稿を提出しますか？',
+        urlType: 'draft'
+      },
+      'draft_revising': {
+        nextStatus: 'draft_submitted',
+        confirmMessage: '修正版初稿を提出しますか？',
+        urlType: 'draft'
+      },
+      'scheduling': {
+        nextStatus: 'scheduled',
+        confirmMessage: 'すべてのコンテンツを投稿しましたか？（複数ある場合はすべて確認してください）',
+        urlType: 'content'
       }
-    }
+    };
     
-    if (!finalUrl.trim()) {
-      alert('URLを入力してください');
-      return;
+    const transition = stepTransitions[currentStatus];
+    if (!transition) return;
+    
+    // Find all campaigns that need the same type of URL submission
+    const relevantStatuses = Object.keys(stepTransitions).filter(
+      status => stepTransitions[status].urlType === transition.urlType
+    );
+    
+    const campaignsNeedingSameSubmission = campaigns.filter(c => 
+      relevantStatuses.includes(c.status) && c.status !== 'completed'
+    );
+    
+    // If there are multiple campaigns, check that all have URLs entered
+    if (campaignsNeedingSameSubmission.length > 1) {
+      const missingUrls = campaignsNeedingSameSubmission.filter(c => {
+        const addedUrls = urlInputs[c.id] || '';
+        const pendingUrl = pendingUrlInputs[c.id] || '';
+        return !addedUrls.trim() && !pendingUrl.trim();
+      });
+      
+      if (missingUrls.length > 0) {
+        const platformNames = missingUrls.map(c => getPlatformLabel(String(c.platform || ''))).join('、');
+        alert(`以下のプラットフォームのURLを入力してください：${platformNames}`);
+        return;
+      }
+    } else {
+      // Single campaign - check if URL is entered
+      const addedUrls = urlInputs[campaignId] || '';
+      const pendingUrl = pendingUrlInputs[campaignId] || '';
+      
+      if (!addedUrls.trim() && !pendingUrl.trim()) {
+        alert('URLを入力してください');
+        return;
+      }
     }
 
     // For content scheduling, check if required checkboxes are ticked
@@ -1226,98 +1281,95 @@ ${guidelineItems.join('\n')}
       }
     }
 
-    // Define step-based status transitions
-    const stepTransitions: {[key: string]: {nextStatus: string, confirmMessage: string, urlType: 'plan' | 'draft' | 'content'}} = {
-      // Plan creation step transitions
-      'plan_creating': {
-        nextStatus: 'plan_submitted',
-        confirmMessage: 'リンクを知っている人が編集できる設定になっていますか？',
-        urlType: 'plan'
-      },
-      'plan_revising': {
-        nextStatus: 'plan_submitted',
-        confirmMessage: 'リンクを知っている人が編集できる設定になっていますか？',
-        urlType: 'plan'
-      },
-      // Draft creation step transitions
-      'draft_creating': {
-        nextStatus: 'draft_submitted',
-        confirmMessage: '初稿を提出しますか？',
-        urlType: 'draft'
-      },
-      'draft_revising': {
-        nextStatus: 'draft_submitted',
-        confirmMessage: '修正版初稿を提出しますか？',
-        urlType: 'draft'
-      },
-      // Scheduling step transitions
-      'scheduling': {
-        nextStatus: 'scheduled',
-        confirmMessage: 'すべてのコンテンツを投稿しましたか？（複数ある場合はすべて確認してください）',
-        urlType: 'content'
-      }
-    };
-
-    const transition = stepTransitions[currentStatus];
-    if (!transition) return;
-
     if (window.confirm(transition.confirmMessage)) {
       try {
-        setUrlSubmitting(prev => ({ ...prev, [campaignId]: true }));
-        // Update Google Sheets via API
-        const response = await fetch('/api/campaigns/update', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            campaignId,
-            influencerId: user?.id,
-            newStatus: transition.nextStatus,
-            submittedUrl: finalUrl,
-            urlType: transition.urlType
-          }),
+        // Set all relevant campaigns as submitting
+        const submittingStates: {[key: string]: boolean} = {};
+        campaignsNeedingSameSubmission.forEach(c => {
+          submittingStates[c.id] = true;
         });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
+        setUrlSubmitting(prev => ({ ...prev, ...submittingStates }));
         
-        if (result.success) {
-          console.log('✅ Campaign updated successfully in Google Sheets');
+        // Submit each campaign individually
+        const updatePromises = campaignsNeedingSameSubmission.map(async (campaign) => {
+          const addedUrls = urlInputs[campaign.id] || '';
+          const pendingUrl = pendingUrlInputs[campaign.id] || '';
           
-          // Update local state
-          // Persist status as 'scheduled' and do NOT auto-advance to payment here
+          // Combine added URLs with pending URL
+          let finalUrl = addedUrls;
+          if (pendingUrl.trim()) {
+            if (addedUrls.trim()) {
+              const urlsArray = addedUrls.split(',').map(u => u.trim()).filter(Boolean);
+              urlsArray.push(pendingUrl.trim());
+              finalUrl = urlsArray.join(',');
+            } else {
+              finalUrl = pendingUrl.trim();
+            }
+          }
+          
+          const response = await fetch('/api/campaigns/update', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              campaignId: campaign.id,
+              influencerId: user?.id,
+              newStatus: transition.nextStatus,
+              submittedUrl: finalUrl,
+              urlType: transition.urlType
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error for ${campaign.id}! status: ${response.status}`);
+          }
+
+          return await response.json();
+        });
+        
+        const results = await Promise.all(updatePromises);
+        
+        if (results.every(r => r.success)) {
+          console.log('✅ All campaigns updated successfully');
+          
+          // Update local state for all campaigns
           setCampaigns(prevCampaigns => 
             prevCampaigns.map(campaign => 
-              campaign.id === campaignId 
+              campaignsNeedingSameSubmission.find(c => c.id === campaign.id)
                 ? { ...campaign, status: transition.nextStatus as CampaignStatus }
                 : campaign
             )
           );
           
-          // Clear the URL input and pending input
-          setUrlInputs(prev => ({ ...prev, [campaignId]: '' }));
-          setPendingUrlInputs(prev => ({ ...prev, [campaignId]: '' }));
-          
-          // Do not auto-advance; we remain at scheduled until payment step is triggered
+          // Clear URL inputs for all campaigns
+          const clearedInputs: {[key: string]: string} = {};
+          campaignsNeedingSameSubmission.forEach(c => {
+            clearedInputs[c.id] = '';
+          });
+          setUrlInputs(prev => ({ ...prev, ...clearedInputs }));
+          setPendingUrlInputs(prev => ({ ...prev, ...clearedInputs }));
         } else {
-          console.error('❌ Failed to update campaign:', result.error);
+          console.error('❌ Some campaigns failed to update');
+          const failedResults = results.filter(r => !r.success);
+          const errorMessages = failedResults.map(r => r.error).join(', ');
           
-          // Show specific error message for authentication issues
-          if (result.error?.includes('Service Account') || result.error?.includes('write access not configured')) {
+          if (errorMessages.includes('Service Account') || errorMessages.includes('write access not configured')) {
             alert('Google Sheetsの書き込み権限が設定されていません。管理者にお問い合わせください。');
           } else {
-            alert('更新に失敗しました。もう一度お試しください。');
+            alert('一部のキャンペーンの更新に失敗しました。もう一度お試しください。');
           }
         }
       } catch (error) {
-        console.error('❌ Error updating campaign:', error);
-        alert('更新に失敗しました。もう一度お試しください。');
+        console.error('❌ Error updating campaigns:', error);
+        alert('エラーが発生しました。もう一度お試しください。');
       } finally {
-        setUrlSubmitting(prev => ({ ...prev, [campaignId]: false }));
+        // Clear submitting states
+        const clearedSubmitting: {[key: string]: boolean} = {};
+        campaignsNeedingSameSubmission.forEach(c => {
+          clearedSubmitting[c.id] = false;
+        });
+        setUrlSubmitting(prev => ({ ...prev, ...clearedSubmitting }));
       }
     }
   };
@@ -2139,50 +2191,129 @@ ${guidelineItems.join('\n')}
                             </div>
                           )}
                           <div className="space-y-3">
-                            {/* Use MultiItemInput only for content scheduling (publish action) */}
-                            {action.action === 'publish' ? (
-                              <>
-                                <p className="text-sm" style={{ color: ds.text.secondary }}>
-                                  投稿したコンテンツのURLを入力してください。ショート動画やポッドキャストなど複数のコンテンツがある場合は「別のURLを追加」ボタンを押して複数URLをご共有ください。
-
-
-                                </p>
-                                <MultiItemInput
-                                  type="url"
-                                  value={urlInputs[primaryCampaign.id] || ''}
-                                  onChange={(val) => setUrlInputs(prev => ({ ...prev, [primaryCampaign.id]: val }))}
-                                  onPendingValueChange={(val) => setPendingUrlInputs(prev => ({ ...prev, [primaryCampaign.id]: val }))}
-                                  placeholder="コンテンツのURLを入力"
-                                  label="別のURLを追加"
-                                  maxItems={20}
-                                />
-                              </>
-                            ) : (
-                              /* Regular single URL input for plan/draft submissions */
-                              <input
-                                type="url"
-                                value={urlInputs[primaryCampaign.id] || ''}
-                                onChange={(e) => setUrlInputs(prev => ({ ...prev, [primaryCampaign.id]: e.target.value }))}
-                                placeholder="URLを入力してください"
-                                style={{
-                                  backgroundColor: ds.form.input.bg,
-                                  borderColor: ds.form.input.border,
-                                  color: ds.text.primary,
-                                  borderWidth: '1px',
-                                  borderStyle: 'solid',
-                                  outline: 'none',
-                                }}
-                                className="w-full p-3 rounded-lg focus:ring-2 focus:border-transparent"
-                                onFocus={(e) => {
-                                  e.target.style.borderColor = ds.form.input.focus.ring;
-                                  e.target.style.boxShadow = `0 0 0 2px ${ds.form.input.focus.ring}`;
-                                }}
-                                onBlur={(e) => {
-                                  e.target.style.borderColor = ds.form.input.border;
-                                  e.target.style.boxShadow = 'none';
-                                }}
-                              />
-                            )}
+                            {/* Detect if there are multiple campaigns needing URL submission */}
+                            {(() => {
+                              const currentStatus = primaryCampaign.status;
+                              const stepTransitions: {[key: string]: {urlType: 'plan' | 'draft' | 'content'}} = {
+                                'plan_creating': { urlType: 'plan' },
+                                'plan_revising': { urlType: 'plan' },
+                                'draft_creating': { urlType: 'draft' },
+                                'draft_revising': { urlType: 'draft' },
+                                'scheduling': { urlType: 'content' }
+                              };
+                              
+                              const transition = stepTransitions[currentStatus];
+                              const relevantStatuses = transition ? Object.keys(stepTransitions).filter(
+                                status => stepTransitions[status].urlType === transition.urlType
+                              ) : [];
+                              
+                              const campaignsNeedingSameSubmission = relevantStatuses.length > 0 
+                                ? campaigns.filter(c => relevantStatuses.includes(c.status) && c.status !== 'completed')
+                                : [primaryCampaign];
+                              
+                              const isMultipleCampaigns = campaignsNeedingSameSubmission.length > 1;
+                              
+                              if (action.action === 'publish') {
+                                // Content scheduling - show multiple URL input with platform labels if needed
+                                return (
+                                  <>
+                                    <p className="text-sm" style={{ color: ds.text.secondary }}>
+                                      投稿したコンテンツのURLを入力してください。{isMultipleCampaigns && '各プラットフォームごとに'}ショート動画やポッドキャストなど複数のコンテンツがある場合は「別のURLを追加」ボタンを押して複数URLをご共有ください。
+                                    </p>
+                                    {isMultipleCampaigns ? (
+                                      <div className="space-y-4">
+                                        {campaignsNeedingSameSubmission.map(campaign => (
+                                          <div key={campaign.id} className="space-y-2">
+                                            <label className="text-sm font-medium" style={{ color: ds.text.primary }}>
+                                              【{getPlatformLabel(String(campaign.platform || ''))}】のURL
+                                            </label>
+                                            <MultiItemInput
+                                              type="url"
+                                              value={urlInputs[campaign.id] || ''}
+                                              onChange={(val) => setUrlInputs(prev => ({ ...prev, [campaign.id]: val }))}
+                                              onPendingValueChange={(val) => setPendingUrlInputs(prev => ({ ...prev, [campaign.id]: val }))}
+                                              placeholder={`${getPlatformLabel(String(campaign.platform || ''))}のコンテンツURLを入力`}
+                                              label="別のURLを追加"
+                                              maxItems={20}
+                                            />
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <MultiItemInput
+                                        type="url"
+                                        value={urlInputs[primaryCampaign.id] || ''}
+                                        onChange={(val) => setUrlInputs(prev => ({ ...prev, [primaryCampaign.id]: val }))}
+                                        onPendingValueChange={(val) => setPendingUrlInputs(prev => ({ ...prev, [primaryCampaign.id]: val }))}
+                                        placeholder="コンテンツのURLを入力"
+                                        label="別のURLを追加"
+                                        maxItems={20}
+                                      />
+                                    )}
+                                  </>
+                                );
+                              } else {
+                                // Plan/draft submissions - show platform-specific inputs if multiple campaigns
+                                return isMultipleCampaigns ? (
+                                  <div className="space-y-4">
+                                    {campaignsNeedingSameSubmission.map(campaign => (
+                                      <div key={campaign.id} className="space-y-2">
+                                        <label className="text-sm font-medium" style={{ color: ds.text.primary }}>
+                                          【{getPlatformLabel(String(campaign.platform || ''))}】のURL
+                                        </label>
+                                        <input
+                                          type="url"
+                                          value={urlInputs[campaign.id] || ''}
+                                          onChange={(e) => setUrlInputs(prev => ({ ...prev, [campaign.id]: e.target.value }))}
+                                          placeholder={`${getPlatformLabel(String(campaign.platform || ''))}のURLを入力してください`}
+                                          style={{
+                                            backgroundColor: ds.form.input.bg,
+                                            borderColor: ds.form.input.border,
+                                            color: ds.text.primary,
+                                            borderWidth: '1px',
+                                            borderStyle: 'solid',
+                                            outline: 'none',
+                                          }}
+                                          className="w-full p-3 rounded-lg focus:ring-2 focus:border-transparent"
+                                          onFocus={(e) => {
+                                            e.target.style.borderColor = ds.form.input.focus.ring;
+                                            e.target.style.boxShadow = `0 0 0 2px ${ds.form.input.focus.ring}`;
+                                          }}
+                                          onBlur={(e) => {
+                                            e.target.style.borderColor = ds.form.input.border;
+                                            e.target.style.boxShadow = 'none';
+                                          }}
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <input
+                                    type="url"
+                                    value={urlInputs[primaryCampaign.id] || ''}
+                                    onChange={(e) => setUrlInputs(prev => ({ ...prev, [primaryCampaign.id]: e.target.value }))}
+                                    placeholder="URLを入力してください"
+                                    style={{
+                                      backgroundColor: ds.form.input.bg,
+                                      borderColor: ds.form.input.border,
+                                      color: ds.text.primary,
+                                      borderWidth: '1px',
+                                      borderStyle: 'solid',
+                                      outline: 'none',
+                                    }}
+                                    className="w-full p-3 rounded-lg focus:ring-2 focus:border-transparent"
+                                    onFocus={(e) => {
+                                      e.target.style.borderColor = ds.form.input.focus.ring;
+                                      e.target.style.boxShadow = `0 0 0 2px ${ds.form.input.focus.ring}`;
+                                    }}
+                                    onBlur={(e) => {
+                                      e.target.style.borderColor = ds.form.input.border;
+                                      e.target.style.boxShadow = 'none';
+                                    }}
+                                  />
+                                );
+                              }
+                            })()}
                             <button 
                               onClick={() => handleUrlSubmission(primaryCampaign.id, primaryCampaign.status)}
                               disabled={
