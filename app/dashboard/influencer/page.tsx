@@ -1534,14 +1534,19 @@ ${submittedUrlsSection.length > 0 ? '\n\n#### 提出済みのリンク\n' + subm
                 }}>
                   {user.name}さんのスピークPR情報
                 </h1>
-                {primaryCampaign && (
-                  <p className="text-sm mt-1" style={{ 
-                    color: ds.text.secondary,
-                    fontSize: `${ds.typography.text.sm.fontSize}px`
-                  }}>
-                    進行中のPR：{primaryCampaign.id}
-                  </p>
-                )}
+                {(() => {
+                  const ongoingCampaigns = campaigns.filter(c => c.status !== 'completed');
+                  if (ongoingCampaigns.length === 0) return null;
+                  
+                  return (
+                    <p className="text-sm mt-1" style={{ 
+                      color: ds.text.secondary,
+                      fontSize: `${ds.typography.text.sm.fontSize}px`
+                    }}>
+                      進行中のPR：{ongoingCampaigns.map(c => c.id).join('、')}
+                    </p>
+                  );
+                })()}
               </div>
               
               {/* Refresh Button */}
@@ -1901,7 +1906,7 @@ ${submittedUrlsSection.length > 0 ? '\n\n#### 提出済みのリンク\n' + subm
                         scheduling: 'ここまでおつかれさまです。つぎは投稿準備へ。いっしょに進めましょう📣',
                         scheduled: '投稿ありがとうございます。すごく良かったです！送金手続きを進めますね💰',
                         payment_processing: '送金を開始しました。着金までいっしょに少々お待ちください⏳',
-                        completed: 'ご協力ありがとうございました。今回も素敵でした！またご一緒できる日を楽しみにしています🎉',
+                        completed: 'ご協力ありがとうございました。またご一緒できる日を楽しみにしています🎉',
                         cancelled: 'ご対応ありがとうございました。また機会があればうれしいです！',
                       };
                       return messages[primaryCampaign.status] || 'いい感じです！';
