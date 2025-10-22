@@ -238,7 +238,20 @@ class GoogleSheetsService {
           // cached is already an array of normalized row objects
           let cachedRows: any[] = cached.slice(0);
           if (influencerId) {
-            cachedRows = cachedRows.filter((row: any) => row['id_influencer'] === influencerId);
+            // Check if influencerId is an email address (contains @)
+            const isEmail = influencerId.includes('@');
+            
+            if (isEmail) {
+              // Filter by contact_email
+              cachedRows = cachedRows.filter((row: any) => 
+                row['contact_email']?.toLowerCase() === influencerId.toLowerCase()
+              );
+              console.log(`🔍 Filtered cached rows by contact_email ${influencerId}: ${cachedRows.length} rows`);
+            } else {
+              // Filter by id_influencer (original behavior)
+              cachedRows = cachedRows.filter((row: any) => row['id_influencer'] === influencerId);
+              console.log(`🔍 Filtered cached rows by id_influencer ${influencerId}: ${cachedRows.length} rows`);
+            }
             // Cache the filtered result for faster subsequent access
             this.setCache(filteredCacheKey, cachedRows);
           }
@@ -308,10 +321,27 @@ class GoogleSheetsService {
       
       // Filter by influencer if specified
       if (influencerId) {
-        const influencerIdIndex = headers.findIndex(header => header === 'id_influencer');
-        if (influencerIdIndex !== -1) {
-          filteredRows = filteredRows.filter((row: any) => row[influencerIdIndex] === influencerId);
-          console.log(`🔍 Filtered rows for influencer ${influencerId}: ${filteredRows.length} rows`);
+        // Check if influencerId is an email address (contains @)
+        const isEmail = influencerId.includes('@');
+        
+        if (isEmail) {
+          // Filter by contact_email
+          const contactEmailIndex = headers.findIndex(header => header === 'contact_email');
+          if (contactEmailIndex !== -1) {
+            filteredRows = filteredRows.filter((row: any) => 
+              row[contactEmailIndex]?.toLowerCase() === influencerId.toLowerCase()
+            );
+            console.log(`🔍 Filtered rows by contact_email ${influencerId}: ${filteredRows.length} rows`);
+          } else {
+            console.log('⚠️ contact_email column not found in sheet');
+          }
+        } else {
+          // Filter by id_influencer (original behavior)
+          const influencerIdIndex = headers.findIndex(header => header === 'id_influencer');
+          if (influencerIdIndex !== -1) {
+            filteredRows = filteredRows.filter((row: any) => row[influencerIdIndex] === influencerId);
+            console.log(`🔍 Filtered rows by id_influencer ${influencerId}: ${filteredRows.length} rows`);
+          }
         }
       }
       
@@ -340,9 +370,22 @@ class GoogleSheetsService {
         
         // Also cache the filtered result if influencerId was provided
         if (influencerId) {
-          const filteredObjects = normalizedObjects.filter((row: any) => row['id_influencer'] === influencerId);
+          // Check if influencerId is an email address (contains @)
+          const isEmail = influencerId.includes('@');
+          
+          let filteredObjects;
+          if (isEmail) {
+            // Filter by contact_email
+            filteredObjects = normalizedObjects.filter((row: any) => 
+              row['contact_email']?.toLowerCase() === influencerId.toLowerCase()
+            );
+            console.log(`💾 Cached ${filteredObjects.length} rows by contact_email ${influencerId}`);
+          } else {
+            // Filter by id_influencer (original behavior)
+            filteredObjects = normalizedObjects.filter((row: any) => row['id_influencer'] === influencerId);
+            console.log(`💾 Cached ${filteredObjects.length} rows by id_influencer ${influencerId}`);
+          }
           this.setCache(filteredCacheKey, filteredObjects);
-          console.log(`💾 Cached ${filteredObjects.length} rows for influencer ${influencerId}`);
         }
       }
 
@@ -1169,15 +1212,19 @@ class GoogleSheetsService {
       // Find the row index for the campaign
       let campaignRowIndex = -1;
       const idCampaignIndex = headers.findIndex(header => header === 'id_campaign');
+      const contactEmailIndex = headers.findIndex(header => header === 'contact_email');
+      const statusDashboardIndex = headers.findIndex(header => header === 'status_dashboard');
       
       if (idCampaignIndex === -1) {
         return { success: false, error: 'id_campaign column not found' };
       }
 
       // Skip first 4 rows (rows 2-5) and start from row 5 (index 4)
+      let contactEmail = '';
       for (let i = 4; i < rows.length; i++) {
         if (rows[i][idCampaignIndex] === campaignId) {
           campaignRowIndex = i;
+          contactEmail = contactEmailIndex !== -1 ? (rows[i][contactEmailIndex] || '') : '';
           break;
         }
       }
@@ -1187,6 +1234,33 @@ class GoogleSheetsService {
       }
 
       console.log(`📋 Found campaign at row ${campaignRowIndex + 1}`);
+      console.log('📧 Contact email:', contactEmail);
+
+      // Find all campaigns with the same contact_email that are not completed (for status updates)
+      const targetRowIndices: number[] = [];
+      
+      if (contactEmail && contactEmailIndex !== -1 && statusDashboardIndex !== -1) {
+        console.log('🔍 Finding all campaigns with same contact_email (not completed) for status update...');
+        
+        for (let i = 4; i < rows.length; i++) {
+          const rowEmail = rows[i][contactEmailIndex] || '';
+          const rowStatus = rows[i][statusDashboardIndex] || '';
+          const rowCampaignId = rows[i][idCampaignIndex] || '';
+          
+          // Match by email (case-insensitive) and exclude completed campaigns
+          if (rowEmail && rowEmail.toLowerCase() === contactEmail.toLowerCase() && 
+              rowStatus.toLowerCase() !== 'completed') {
+            targetRowIndices.push(i);
+            console.log(`  ✓ Found matching campaign: ${rowCampaignId} (row ${i + 1}, status: ${rowStatus})`);
+          }
+        }
+        
+        console.log(`📊 Total campaigns to update status: ${targetRowIndices.length}`);
+      } else {
+        // If no contact_email or columns not found, just update the single campaign
+        console.log('⚠️ No contact_email found or columns missing, updating single campaign only');
+        targetRowIndices.push(campaignRowIndex);
+      }
 
       // Prepare the update data
       const updates: { range: string; values: any[][] }[] = [];
@@ -1194,70 +1268,78 @@ class GoogleSheetsService {
       const currentDate = currentDateTime.split('T')[0]; // YYYY-MM-DD format for date-only fields
 
       // Get current status before updating (for log_status)
-      const statusDashboardIndex = headers.findIndex(header => header === 'status_dashboard');
       const oldStatus = statusDashboardIndex !== -1 ? rows[campaignRowIndex][statusDashboardIndex] : '';
 
-      // Update status_dashboard
-      if (statusDashboardIndex !== -1) {
-        const statusRange = `campaigns!${this.columnIndexToLetter(statusDashboardIndex)}${campaignRowIndex + 1}`;
-        updates.push({
-          range: statusRange,
-          values: [[newStatus]]
-        });
-        console.log(`📊 Updating status_dashboard at ${statusRange} from "${oldStatus}" to "${newStatus}"`);
-      }
-
-      // Update log_status with status change history (CB column)
+      // Update status_dashboard, log_status, and date_status_updated for all campaigns with same email
       const logStatusIndex = headers.findIndex(header => header === 'log_status');
-      if (logStatusIndex !== -1) {
-        // Get existing log_status content
-        const existingLog = rows[campaignRowIndex][logStatusIndex] || '';
-        let logArray: any[] = [];
+      const dateStatusUpdatedIndex = headers.findIndex(header => header === 'date_status_updated');
+      
+      for (const rowIndex of targetRowIndices) {
+        const targetRowNumber = rowIndex + 1;
+        const currentRowOldStatus = statusDashboardIndex !== -1 ? rows[rowIndex][statusDashboardIndex] : '';
         
-        // Parse existing JSON if it exists
-        if (existingLog && existingLog.trim()) {
-          try {
-            logArray = JSON.parse(existingLog);
-            if (!Array.isArray(logArray)) {
+        // Update status_dashboard
+        if (statusDashboardIndex !== -1) {
+          const statusRange = `campaigns!${this.columnIndexToLetter(statusDashboardIndex)}${targetRowNumber}`;
+          updates.push({
+            range: statusRange,
+            values: [[newStatus]]
+          });
+          console.log(`📊 Updating status_dashboard at ${statusRange} from "${currentRowOldStatus}" to "${newStatus}"`);
+        }
+
+        // Update log_status with status change history
+        if (logStatusIndex !== -1) {
+          // Get existing log_status content for this specific row
+          const existingLog = rows[rowIndex][logStatusIndex] || '';
+          let logArray: any[] = [];
+          
+          // Parse existing JSON if it exists
+          if (existingLog && existingLog.trim()) {
+            try {
+              logArray = JSON.parse(existingLog);
+              if (!Array.isArray(logArray)) {
+                logArray = [];
+              }
+            } catch (parseError) {
+              console.log(`⚠️ Failed to parse existing log_status JSON for row ${targetRowNumber}, starting fresh`);
               logArray = [];
             }
-          } catch (parseError) {
-            console.log('⚠️ Failed to parse existing log_status JSON, starting fresh');
-            logArray = [];
           }
+          
+          // Add new log entry
+          const logEntry = {
+            timestamp: currentDateTime,
+            old_status: currentRowOldStatus || 'undefined',
+            new_status: newStatus,
+            changed_by: 'system'
+          };
+          logArray.push(logEntry);
+          
+          // Convert back to JSON string
+          const updatedLogJson = JSON.stringify(logArray);
+          
+          const logRange = `campaigns!${this.columnIndexToLetter(logStatusIndex)}${targetRowNumber}`;
+          updates.push({
+            range: logRange,
+            values: [[updatedLogJson]]
+          });
+          console.log(`📝 Updating log_status at ${logRange} with new entry:`, logEntry);
         }
-        
-        // Add new log entry
-        const logEntry = {
-          timestamp: currentDateTime,
-          old_status: oldStatus || 'undefined',
-          new_status: newStatus,
-          changed_by: 'system' // Could be enhanced to track user who made the change
-        };
-        logArray.push(logEntry);
-        
-        // Convert back to JSON string
-        const updatedLogJson = JSON.stringify(logArray);
-        
-        const logRange = `campaigns!${this.columnIndexToLetter(logStatusIndex)}${campaignRowIndex + 1}`;
-        updates.push({
-          range: logRange,
-          values: [[updatedLogJson]]
-        });
-        console.log(`📝 Updating log_status at ${logRange} with new entry:`, logEntry);
-      } else {
-        console.log('⚠️ log_status column not found in sheet headers');
-      }
 
-      // Update date_status_updated with full timestamp (date + time)
-      const dateStatusUpdatedIndex = headers.findIndex(header => header === 'date_status_updated');
-      if (dateStatusUpdatedIndex !== -1) {
-        const dateRange = `campaigns!${this.columnIndexToLetter(dateStatusUpdatedIndex)}${campaignRowIndex + 1}`;
-        updates.push({
-          range: dateRange,
-          values: [[currentDateTime]] // Use full timestamp instead of just date
-        });
-        console.log(`📅 Updating date_status_updated at ${dateRange} to "${currentDateTime}"`);
+        // Update date_status_updated with full timestamp
+        if (dateStatusUpdatedIndex !== -1) {
+          const dateRange = `campaigns!${this.columnIndexToLetter(dateStatusUpdatedIndex)}${targetRowNumber}`;
+          updates.push({
+            range: dateRange,
+            values: [[currentDateTime]]
+          });
+          console.log(`📅 Updating date_status_updated at ${dateRange} to "${currentDateTime}"`);
+        }
+      }
+      
+      if (logStatusIndex === -1) {
+        console.log('⚠️ log_status column not found in sheet headers');
       }
 
       // Update message_dashboard with JSON data if provided
@@ -1337,40 +1419,49 @@ class GoogleSheetsService {
         }
       }
 
-      // Update date fields based on status
+      // Update date fields based on status for all campaigns with same email
       if (newStatus === 'plan_submitted') {
         const datePlanIndex = headers.findIndex(header => header === 'date_plan');
         if (datePlanIndex !== -1) {
-          const dateRange = `campaigns!${this.columnIndexToLetter(datePlanIndex)}${campaignRowIndex + 1}`;
-          updates.push({
-            range: dateRange,
-            values: [[currentDate]]
-          });
-          console.log(`📅 Updating date_plan at ${dateRange} to "${currentDate}"`);
+          for (const rowIndex of targetRowIndices) {
+            const targetRowNumber = rowIndex + 1;
+            const dateRange = `campaigns!${this.columnIndexToLetter(datePlanIndex)}${targetRowNumber}`;
+            updates.push({
+              range: dateRange,
+              values: [[currentDate]]
+            });
+            console.log(`📅 Updating date_plan at ${dateRange} to "${currentDate}"`);
+          }
         }
       }
 
       if (newStatus === 'draft_submitted') {
         const dateDraftIndex = headers.findIndex(header => header === 'date_draft');
         if (dateDraftIndex !== -1) {
-          const dateRange = `campaigns!${this.columnIndexToLetter(dateDraftIndex)}${campaignRowIndex + 1}`;
-          updates.push({
-            range: dateRange,
-            values: [[currentDate]]
-          });
-          console.log(`📅 Updating date_draft at ${dateRange} to "${currentDate}"`);
+          for (const rowIndex of targetRowIndices) {
+            const targetRowNumber = rowIndex + 1;
+            const dateRange = `campaigns!${this.columnIndexToLetter(dateDraftIndex)}${targetRowNumber}`;
+            updates.push({
+              range: dateRange,
+              values: [[currentDate]]
+            });
+            console.log(`📅 Updating date_draft at ${dateRange} to "${currentDate}"`);
+          }
         }
       }
 
       if (newStatus === 'scheduled') {
         const dateLiveIndex = headers.findIndex(header => header === 'date_live');
         if (dateLiveIndex !== -1) {
-          const dateRange = `campaigns!${this.columnIndexToLetter(dateLiveIndex)}${campaignRowIndex + 1}`;
-          updates.push({
-            range: dateRange,
-            values: [[currentDate]]
-          });
-          console.log(`📅 Updating date_live at ${dateRange} to "${currentDate}"`);
+          for (const rowIndex of targetRowIndices) {
+            const targetRowNumber = rowIndex + 1;
+            const dateRange = `campaigns!${this.columnIndexToLetter(dateLiveIndex)}${targetRowNumber}`;
+            updates.push({
+              range: dateRange,
+              values: [[currentDate]]
+            });
+            console.log(`📅 Updating date_live at ${dateRange} to "${currentDate}"`);
+          }
         }
       }
 
@@ -1451,28 +1542,61 @@ class GoogleSheetsService {
 
       // Find row index for campaign; data starts at row index 4 (5th row in sheet)
       const idCampaignIndex = headers.findIndex(h => h === 'id_campaign');
+      const contactEmailIndex = headers.findIndex(h => h === 'contact_email');
+      const statusDashboardIndex = headers.findIndex(h => h === 'status_dashboard');
+      
       if (idCampaignIndex === -1) {
         return { success: false, error: 'id_campaign column not found' };
       }
 
-      let sheetRowIndex = -1;
+      // Find the current campaign row to get its contact_email
+      let currentCampaignRow = -1;
+      let contactEmail = '';
+      
       for (let i = 4; i < rows.length; i++) {
         if (rows[i][idCampaignIndex] === campaignId) {
-          sheetRowIndex = i;
+          currentCampaignRow = i;
+          contactEmail = contactEmailIndex !== -1 ? (rows[i][contactEmailIndex] || '') : '';
           break;
         }
       }
 
-      if (sheetRowIndex === -1) {
+      if (currentCampaignRow === -1) {
         console.error('❌ Campaign not found:', campaignId);
         return { success: false, error: `Campaign with ID ${campaignId} not found` };
       }
 
-      console.log('📋 Found campaign at sheet row:', sheetRowIndex + 1);
+      console.log('📋 Found campaign at sheet row:', currentCampaignRow + 1);
+      console.log('📧 Contact email:', contactEmail);
 
-      // Build updates dynamically from headers
+      // Find all campaigns with the same contact_email that are not completed
+      const targetRowIndices: number[] = [];
+      
+      if (contactEmail && contactEmailIndex !== -1 && statusDashboardIndex !== -1) {
+        console.log('🔍 Finding all campaigns with same contact_email (not completed)...');
+        
+        for (let i = 4; i < rows.length; i++) {
+          const rowEmail = rows[i][contactEmailIndex] || '';
+          const rowStatus = rows[i][statusDashboardIndex] || '';
+          const rowCampaignId = rows[i][idCampaignIndex] || '';
+          
+          // Match by email (case-insensitive) and exclude completed campaigns
+          if (rowEmail && rowEmail.toLowerCase() === contactEmail.toLowerCase() && 
+              rowStatus.toLowerCase() !== 'completed') {
+            targetRowIndices.push(i);
+            console.log(`  ✓ Found matching campaign: ${rowCampaignId} (row ${i + 1}, status: ${rowStatus})`);
+          }
+        }
+        
+        console.log(`📊 Total campaigns to update: ${targetRowIndices.length}`);
+      } else {
+        // If no contact_email or columns not found, just update the single campaign
+        console.log('⚠️ No contact_email found or columns missing, updating single campaign only');
+        targetRowIndices.push(currentCampaignRow);
+      }
+
+      // Build updates dynamically from headers for all target campaigns
       const updates: Array<{ range: string; values: any[][] }> = [];
-      const targetRowNumber = sheetRowIndex + 1; // 1-based
 
       const desiredColumns = [
         'platform',
@@ -1487,24 +1611,29 @@ class GoogleSheetsService {
         'date_status_updated'
       ];
 
-      for (const key of desiredColumns) {
-        let value = updateData[key];
-        if (value === undefined || value === null) continue;
+      // For each target row (campaign with same email), create updates
+      for (const rowIndex of targetRowIndices) {
+        const targetRowNumber = rowIndex + 1; // 1-based
         
-        // Special handling for date_status_updated - use full timestamp
-        if (key === 'date_status_updated') {
-          value = new Date().toISOString(); // Full ISO timestamp with date and time
-          console.log(`🕒 Using full timestamp for date_status_updated: ${value}`);
+        for (const key of desiredColumns) {
+          let value = updateData[key];
+          if (value === undefined || value === null) continue;
+          
+          // Special handling for date_status_updated - use full timestamp
+          if (key === 'date_status_updated') {
+            value = new Date().toISOString(); // Full ISO timestamp with date and time
+          }
+          
+          const colIndex = headers.findIndex(h => h === key);
+          if (colIndex === -1) {
+            console.log(`ℹ️ Column "${key}" not found in sheet headers; skipping.`);
+            continue;
+          }
+          const range = `campaigns!${this.columnIndexToLetter(colIndex)}${targetRowNumber}`;
+          updates.push({ range, values: [[String(value)]] });
         }
         
-        const colIndex = headers.findIndex(h => h === key);
-        if (colIndex === -1) {
-          console.log(`ℹ️ Column "${key}" not found in sheet headers; skipping.`);
-          continue;
-        }
-        const range = `campaigns!${this.columnIndexToLetter(colIndex)}${targetRowNumber}`;
-        updates.push({ range, values: [[String(value)]] });
-        console.log(`📊 Queued update ${key} at ${range} = "${value}"`);
+        console.log(`📊 Queued ${desiredColumns.length} updates for row ${targetRowNumber}`);
       }
 
       if (updates.length === 0) {
@@ -1676,6 +1805,7 @@ class GoogleSheetsService {
       
       // Find column indices
       const idInfluencerIndex = headers.findIndex(h => h === 'id_influencer');
+      const contactEmailIndex = headers.findIndex(h => h === 'contact_email');
       const statusDashboardIndex = headers.findIndex(h => h === 'status_dashboard');
       const dateStatusUpdatedIndex = headers.findIndex(h => h === 'date_status_updated');
       const idCampaignIndex = headers.findIndex(h => h === 'id_campaign');
@@ -1685,11 +1815,15 @@ class GoogleSheetsService {
       }
 
       console.log('📋 Found column indices:', { 
-        idInfluencerIndex, 
+        idInfluencerIndex,
+        contactEmailIndex, 
         statusDashboardIndex, 
         dateStatusUpdatedIndex,
         idCampaignIndex
       });
+
+      // Check if influencerId is an email address (contains @)
+      const isEmail = influencerId.includes('@');
 
       // Find all campaigns for this influencer where status is "not_started" or empty
       const updates: { range: string; values: any[][] }[] = [];
@@ -1700,11 +1834,19 @@ class GoogleSheetsService {
       for (let i = 4; i < rows.length; i++) {
         const row = rows[i];
         const rowInfluencerId = row[idInfluencerIndex];
+        const rowContactEmail = row[contactEmailIndex];
         const rowStatusDashboard = row[statusDashboardIndex] || '';
         const rowCampaignId = row[idCampaignIndex] || '';
         
-        // Check if this row matches our criteria
-        if (rowInfluencerId === influencerId && 
+        // Check if this row matches our criteria (by id_influencer or contact_email)
+        let matchesInfluencer = false;
+        if (isEmail && contactEmailIndex !== -1) {
+          matchesInfluencer = rowContactEmail?.toLowerCase() === influencerId.toLowerCase();
+        } else {
+          matchesInfluencer = rowInfluencerId === influencerId;
+        }
+        
+        if (matchesInfluencer && 
             (rowStatusDashboard === '' || rowStatusDashboard === 'not_started')) {
           
           console.log(`📊 Found matching campaign at row ${i + 1}:`, {
@@ -1768,7 +1910,7 @@ class GoogleSheetsService {
       console.log('📊 Total users loaded from Google Sheets:', users.length);
       console.log('👥 Available user IDs:', users.map(u => ({ id: u.id, name: u.name, hasPassword: !!u.password })));
       
-      // Search for user by ID in the entire row content
+      // First, try to authenticate by id_influencer (existing behavior)
       const user = users.find(u => {
         const idMatch = u.id === id;
         const passwordMatch = u.password === password;
@@ -1779,35 +1921,64 @@ class GoogleSheetsService {
       console.log('🔍 User search result:', user ? 'Found' : 'Not found');
       
       if (user) {
-        console.log('✅ User authenticated successfully');
+        console.log('✅ User authenticated successfully via id_influencer');
         console.log('👤 User details:', { id: user.id, name: user.name, email: user.email });
         // Remove password from returned user object for security
         const { password: _, ...userWithoutPassword } = user;
         return userWithoutPassword as GoogleSheetsUser;
-      } else {
-        console.log('❌ User not found or password mismatch');
-        console.log('🔍 Checking if user exists with different password...');
-        const userExists = users.find(u => u.id === id);
-        if (userExists) {
-          console.log('⚠️ User exists but password is different');
-          console.log('🔑 Expected password:', userExists.password);
-          console.log('🔑 Provided password:', password);
-        } else {
-          console.log('⚠️ User with this ID does not exist');
-          // Search through all row values for the ID
-          console.log('🔍 Searching through all row values for ID:', id);
-          const rawData = await this.getSheetData();
-          const matchingRows = rawData.filter((row, index) => {
-            const rowValues = Object.values(row).join(' ').toLowerCase();
-            const searchId = id.toLowerCase();
-            const found = rowValues.includes(searchId);
-            if (found) {
-              console.log(`📋 Found ID in row ${index + 1}:`, row);
-            }
-            return found;
+      }
+      
+      // If not found by id_influencer, try to authenticate by contact_email
+      console.log('🔍 User not found by id_influencer, checking contact_email from campaigns...');
+      const campaigns = await this.getSpecificColumns([
+        'id_influencer',
+        'contact_email',
+        'password_dashboard',
+        'name',
+        'platform'
+      ], undefined, 'campaigns', { forceRefresh: false });
+      
+      // Find a campaign where contact_email matches the login ID and password matches
+      const matchingCampaign = campaigns.find(c => {
+        const emailMatch = c['contact_email']?.toLowerCase() === id.toLowerCase();
+        const passwordMatch = c['password_dashboard'] === password;
+        if (emailMatch) {
+          console.log(`🔍 Found campaign with matching email:`, { 
+            email: c['contact_email'], 
+            passwordMatch, 
+            name: c['name'] 
           });
-          console.log('📊 Rows containing the ID:', matchingRows.length);
         }
+        return emailMatch && passwordMatch;
+      });
+      
+      if (matchingCampaign && matchingCampaign['contact_email']) {
+        console.log('✅ User authenticated successfully via contact_email');
+        // Create a virtual user object using contact_email as the identifier
+        const contactEmail = matchingCampaign['contact_email'];
+        const virtualUser: GoogleSheetsUser = {
+          id: contactEmail, // Use email as ID
+          name: matchingCampaign['name'] || 'User',
+          email: contactEmail,
+          platform: this.mapPlatform(matchingCampaign['platform'] || 'yt'),
+          channelUrl: '',
+          status: 'active',
+          statusDashboard: 'active',
+          contractedPrice: '0'
+        };
+        console.log('👤 Virtual user details:', { id: virtualUser.id, name: virtualUser.name, email: virtualUser.email });
+        return virtualUser;
+      }
+      
+      console.log('❌ User not found by id_influencer or contact_email');
+      console.log('🔍 Checking if user exists with different password...');
+      const userExists = users.find(u => u.id === id);
+      if (userExists) {
+        console.log('⚠️ User exists but password is different');
+        console.log('🔑 Expected password:', userExists.password);
+        console.log('🔑 Provided password:', password);
+      } else {
+        console.log('⚠️ User with this ID does not exist');
       }
       
       return null;

@@ -45,8 +45,8 @@ export async function POST(request: NextRequest) {
     });
 
     // Build update payload; avoid overwriting platform if not provided by the inline form
+    // Note: contact_email should already be in the sheet and is NOT updated from the survey
     const updateData: Record<string, string> = {
-      contact_email: email || '',
       date_live: uploadDate || '',
       date_plan: planSubmissionDate || '',
       date_draft: draftSubmissionDate || '',
