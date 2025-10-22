@@ -1,19 +1,8 @@
 import { Campaign, getStepFromStatus, getStepLabel } from '@/types';
+import { getPlatformLabel } from '@/lib/platform';
 import StatusBadge from './StatusBadge';
 import { getSubmissionCountText } from '@/lib/submission-utils';
-// Removed demo helpers; provide minimal labels locally
-const getPlatformLabel = (platform: string) => {
-  const map: Record<string, string> = {
-    youtube_long: 'YouTube長編',
-    youtube_short: 'YouTubeショート',
-    instagram_reel: 'Instagramリール',
-    tiktok: 'TikTok',
-    x_twitter: 'X (Twitter)',
-    podcast: 'ポッドキャスト',
-    blog: 'ブログ',
-  };
-  return map[platform] || platform;
-};
+// Use shared platform label util
 
 const getPlatformIcon = (platform: string) => {
   const map: Record<string, string> = {

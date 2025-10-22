@@ -4,14 +4,22 @@ import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Check, Calendar } from 'lucide-react';
 import { useDesignSystem } from '@/hooks/useDesignSystem';
 import DatePicker from './DatePicker';
+import { getPlatformLabel } from '@/lib/platform';
 import Modal from './Modal';
 import MultiItemInput from './MultiItemInput';
 
+interface CampaignInfo {
+  id: string;
+  platform: string;
+  defaultPrice?: number | string;
+}
+
 interface OnboardingSurveyInlineProps {
-  campaignId: string;
+  campaignId?: string; // Deprecated: use campaigns instead
+  campaigns?: CampaignInfo[]; // New: array of campaigns for multi-platform support
   onComplete: () => void;
   embedded?: boolean;
-  defaultPrice?: number | string;
+  defaultPrice?: number | string; // Deprecated: use campaigns array instead
   hasPreviousCampaigns?: boolean;
   defaultUploadDate?: string; // For long-term contracts, prefill with date_live
   // Modal mode props
@@ -24,14 +32,22 @@ interface SurveyData {
   contractName: string;
   email: string;
   price: string;
+  platformPrices: { [campaignId: string]: string }; // For multi-platform campaigns, keyed by campaign ID
+  useBulkPrice: boolean; // Whether to use single bulk price instead of per-platform
+  bulkPrice: string; // Single price to split across platforms
   uploadDate: string;
   planSubmissionDate: string;
   draftSubmissionDate: string;
   repurposable: 'yes' | 'no';
 }
 
-export default function OnboardingSurveyInline({ campaignId, onComplete, embedded = false, defaultPrice, hasPreviousCampaigns = false, defaultUploadDate, onCancel, isModal = false }: OnboardingSurveyInlineProps) {
+export default function OnboardingSurveyInline({ campaignId, campaigns, onComplete, embedded = false, defaultPrice, hasPreviousCampaigns = false, defaultUploadDate, onCancel, isModal = false }: OnboardingSurveyInlineProps) {
   const ds = useDesignSystem();
+  
+  // Support both old single campaign and new multi-campaign interface
+  const activeCampaigns = campaigns || (campaignId ? [{ id: campaignId, platform: '', defaultPrice }] : []);
+  const isMultiPlatform = activeCampaigns.length > 1;
+  
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -40,16 +56,29 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
   const [pendingDateValue, setPendingDateValue] = useState<string>('');
   const [emailError, setEmailError] = useState<string>('');
   const [pendingUploadDate, setPendingUploadDate] = useState<string>(''); // Track unfilled date input
+  
+  // Initialize platform prices for multi-platform campaigns
+  // Use campaign.id as key to avoid conflicts when same platform appears multiple times
+  const initialPlatformPrices: { [campaignId: string]: string } = {};
+  activeCampaigns.forEach(campaign => {
+    initialPlatformPrices[campaign.id] = '';
+  });
+  
   const [surveyData, setSurveyData] = useState<SurveyData>({
     platform: '',
     contractName: '',
     email: '',
     price: '',
+    platformPrices: initialPlatformPrices,
+    useBulkPrice: true, // Default to bulk pricing
+    bulkPrice: '',
     uploadDate: defaultUploadDate || '',
     planSubmissionDate: '',
     draftSubmissionDate: '',
     repurposable: 'yes'
   });
+
+  // getPlatformLabel imported from shared utility
 
   // Price is no longer prefilled and does not show confirmation on edits
   const computedPricePlaceholder = (() => {
@@ -62,7 +91,7 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
   const allSteps: Array<{
     title: string;
     field: keyof SurveyData;
-    type: 'text' | 'email' | 'number' | 'date' | 'select' | 'multi-date';
+    type: 'text' | 'email' | 'number' | 'date' | 'select' | 'multi-date' | 'multi-platform-price';
     placeholder?: string;
     options?: Array<{ value: string; label: string }>;
     description?: string;
@@ -81,7 +110,13 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
       placeholder: 'example@email.com',
       description: 'こちらのメールアドレスにオンライン契約をお送りします'
     },
-    {
+    // Price step - different for single vs multi-platform
+    isMultiPlatform ? {
+      title: '報酬額（税別）',
+      field: 'platformPrices' as keyof SurveyData,
+      type: 'multi-platform-price' as const,
+      description: '税抜きで記入してください。プラットフォームごとに異なる報酬額の場合は下記のチェックボックスを外してください。'
+    } : {
       title: 'メールで同意した報酬額（税別）',
       field: 'price',
       type: 'text',
@@ -123,12 +158,34 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
     ? allSteps.filter(step => step.field !== 'contractName' && step.field !== 'email')
     : allSteps;
 
-  const handleInputChange = (field: keyof SurveyData, value: string) => {
+  const handleInputChange = (field: keyof SurveyData, value: string, platform?: string) => {
     if (field === 'price') {
       // Digits only and format with commas
       const digitsOnly = value.replace(/\D/g, '');
       const withCommas = digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
       setSurveyData(prev => ({ ...prev, price: withCommas }));
+      return;
+    }
+
+    if (field === 'bulkPrice') {
+      // Handle bulk price input
+      const digitsOnly = value.replace(/\D/g, '');
+      const withCommas = digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      setSurveyData(prev => ({ ...prev, bulkPrice: withCommas }));
+      return;
+    }
+
+    if (field === 'platformPrices' && platform) {
+      // Handle campaign-specific price input (platform param is actually campaign ID here)
+      const digitsOnly = value.replace(/\D/g, '');
+      const withCommas = digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      setSurveyData(prev => ({
+        ...prev,
+        platformPrices: {
+          ...prev.platformPrices,
+          [platform]: withCommas // platform is actually campaign.id
+        }
+      }));
       return;
     }
 
@@ -199,13 +256,64 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
     }
     
     try {
+      if (isMultiPlatform) {
+        // Submit data for each campaign separately with platform-specific prices
+        const submissions = activeCampaigns.map(campaign => {
+          let priceForPlatform: string;
+          
+          if (finalSurveyData.useBulkPrice) {
+            // Split bulk price equally across all campaigns
+            const bulkPriceNum = parseInt(finalSurveyData.bulkPrice.replace(/,/g, ''), 10) || 0;
+            const splitPrice = Math.round(bulkPriceNum / activeCampaigns.length);
+            priceForPlatform = splitPrice.toString();
+          } else {
+            // Use individual campaign price (remove commas for API)
+            const priceWithCommas = finalSurveyData.platformPrices[campaign.id] || '';
+            priceForPlatform = priceWithCommas.replace(/,/g, '');
+          }
+          
+          return fetch('/api/campaigns/onboarding', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              campaignId: campaign.id,
+              contractName: finalSurveyData.contractName,
+              email: finalSurveyData.email,
+              price: priceForPlatform,
+              uploadDate: finalSurveyData.uploadDate,
+              planSubmissionDate: finalSurveyData.planSubmissionDate,
+              draftSubmissionDate: finalSurveyData.draftSubmissionDate,
+              repurposable: finalSurveyData.repurposable
+            }),
+          });
+        });
+
+        const responses = await Promise.all(submissions);
+        const allSuccessful = responses.every(r => r.ok);
+        
+        if (allSuccessful) {
+          onComplete();
+        } else {
+          const failedResponses = responses.filter(r => !r.ok);
+          let message = `${failedResponses.length}件のキャンペーンの更新に失敗しました`;
+          try {
+            const data = await failedResponses[0].json();
+            message = data?.message || data?.error || message;
+          } catch {}
+          console.error('Failed to submit survey:', message);
+          setErrorMessage(message);
+        }
+      } else {
+        // Single campaign - use the old behavior
       const response = await fetch('/api/campaigns/onboarding', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          campaignId,
+            campaignId: activeCampaigns[0]?.id || campaignId,
           ...finalSurveyData
         }),
       });
@@ -220,6 +328,7 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
         } catch {}
         console.error('Failed to submit survey:', message);
         setErrorMessage(message);
+        }
       }
     } catch (error) {
       console.error('Error submitting survey:', error);
@@ -244,7 +353,21 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
     ? (currentValue || pendingUploadDate)
     : currentValue;
   
-  const canProceed = effectiveValue !== '' && (currentStepData.field !== 'email' || (isValidEmail(currentValue) && !emailError));
+  // For multi-platform price, check bulk price OR all individual prices
+  const canProceedMultiPlatformPrice = currentStepData.type === 'multi-platform-price' 
+    ? (surveyData.useBulkPrice 
+        ? surveyData.bulkPrice && surveyData.bulkPrice.trim() !== ''
+        : activeCampaigns.every(campaign => {
+            const price = surveyData.platformPrices[campaign.id];
+            return price && price.trim() !== '';
+          })
+      )
+    : true;
+  
+  const canProceed = (
+    (currentStepData.type === 'multi-platform-price' ? canProceedMultiPlatformPrice : effectiveValue !== '') &&
+    (currentStepData.field !== 'email' || (typeof currentValue === 'string' && isValidEmail(currentValue) && !emailError))
+  );
 
   const handleEnterKey = (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter') return;
@@ -303,7 +426,149 @@ export default function OnboardingSurveyInline({ campaignId, onComplete, embedde
           </p>
         )}
 
-        {currentStepData.type === 'select' ? (
+        {currentStepData.type === 'multi-platform-price' ? (
+          <div className="space-y-4">
+            {/* Checkbox for separate platform pricing option */}
+            <div className="mb-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!surveyData.useBulkPrice}
+                  onChange={(e) => setSurveyData(prev => ({ ...prev, useBulkPrice: !e.target.checked }))}
+                  className="w-4 h-4 rounded"
+                  style={{
+                    accentColor: ds.button.primary.bg
+                  }}
+                />
+                <span className="text-sm" style={{ color: ds.text.primary }}>
+                  各プラットフォームごとに異なる報酬額で契約した
+                </span>
+              </label>
+            </div>
+
+            {surveyData.useBulkPrice ? (
+              /* Bulk price input */
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: ds.text.primary }}>
+                  報酬額（税別）
+                </label>
+                <input
+                  type="text"
+                  placeholder="100000（税込: ¥110,000）"
+                  value={surveyData.bulkPrice}
+                  onChange={(e) => handleInputChange('bulkPrice', e.target.value)}
+                  onKeyDown={handleEnterKey}
+                  style={{
+                    backgroundColor: ds.form.input.bg,
+                    borderColor: ds.form.input.border,
+                    color: ds.text.primary,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    outline: 'none',
+                  }}
+                  className="w-full p-3 rounded-lg focus:ring-2 focus:border-transparent"
+                  onFocus={(e) => {
+                    e.target.style.borderColor = ds.form.input.focus.ring;
+                    e.target.style.boxShadow = `0 0 0 2px ${ds.form.input.focus.ring}`;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = ds.form.input.border;
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+                <div className="mt-2 text-xs" style={{ color: ds.text.secondary }}>
+                  {(() => {
+                    const raw = surveyData.bulkPrice.replace(/,/g, '');
+                    const num = raw ? parseInt(raw, 10) : 0;
+                    const taxIncluded = Math.round(num * 1.1);
+                    return `税込 (10%): ¥${taxIncluded.toLocaleString('ja-JP')}`;
+                  })()}
+                </div>
+              </div>
+            ) : (
+              /* Individual platform price inputs */
+              <>
+                {activeCampaigns.map((campaign, index) => {
+                  const price = surveyData.platformPrices[campaign.id] || '';
+                  const platformLabel = getPlatformLabel(campaign.platform);
+                  const defaultPlatformPrice = campaign.defaultPrice || '50000';
+                  const numericDefault = Number(String(defaultPlatformPrice).replace(/[^0-9.-]/g, ''));
+                  const placeholder = Number.isFinite(numericDefault) && numericDefault > 0 
+                    ? `${Math.round(numericDefault)}（税込: ¥${Math.round(numericDefault * 1.1).toLocaleString('ja-JP')}）`
+                    : '50000（税込: ¥55,000）';
+                  
+                  return (
+                    <div key={campaign.id}>
+                      <label className="block text-sm font-medium mb-2" style={{ color: ds.text.primary }}>
+                        {platformLabel} {activeCampaigns.filter(c => getPlatformLabel(c.platform) === platformLabel).length > 1 ? `(${index + 1})` : ''}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={placeholder}
+                        value={price}
+                        onChange={(e) => handleInputChange('platformPrices', e.target.value, campaign.id)}
+                        onKeyDown={handleEnterKey}
+                        style={{
+                          backgroundColor: ds.form.input.bg,
+                          borderColor: ds.form.input.border,
+                          color: ds.text.primary,
+                          borderWidth: '1px',
+                          borderStyle: 'solid',
+                          outline: 'none',
+                        }}
+                        className="w-full p-3 rounded-lg focus:ring-2 focus:border-transparent"
+                        onFocus={(e) => {
+                          e.target.style.borderColor = ds.form.input.focus.ring;
+                          e.target.style.boxShadow = `0 0 0 2px ${ds.form.input.focus.ring}`;
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = ds.form.input.border;
+                          e.target.style.boxShadow = 'none';
+                        }}
+                      />
+                      <div className="mt-2 text-xs" style={{ color: ds.text.secondary }}>
+                        {(() => {
+                          const raw = price.replace(/,/g, '');
+                          const num = raw ? parseInt(raw, 10) : 0;
+                          const taxIncluded = Math.round(num * 1.1);
+                          return `税込 (10%): ¥${taxIncluded.toLocaleString('ja-JP')}`;
+                        })()}
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* Sum display for individual prices */}
+                <div className="pt-3 mt-3 border-t" style={{ borderColor: ds.border.primary }}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium" style={{ color: ds.text.primary }}>合計金額（税別）</span>
+                    <span className="text-lg font-semibold" style={{ color: ds.text.accent }}>
+                      {(() => {
+                        const sum = activeCampaigns.reduce((total, campaign) => {
+                          const price = surveyData.platformPrices[campaign.id] || '';
+                          const raw = price.replace(/,/g, '');
+                          const num = raw ? parseInt(raw, 10) : 0;
+                          return total + num;
+                        }, 0);
+                        return `¥${sum.toLocaleString('ja-JP')}`;
+                      })()}
+                    </span>
+                  </div>
+                  <div className="text-xs mt-1" style={{ color: ds.text.secondary }}>
+                    税込: {(() => {
+                      const sum = activeCampaigns.reduce((total, campaign) => {
+                        const price = surveyData.platformPrices[campaign.id] || '';
+                        const raw = price.replace(/,/g, '');
+                        const num = raw ? parseInt(raw, 10) : 0;
+                        return total + num;
+                      }, 0);
+                      return `¥${Math.round(sum * 1.1).toLocaleString('ja-JP')}`;
+                    })()}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        ) : currentStepData.type === 'select' ? (
           <select
             value={surveyData[currentStepData.field as keyof SurveyData] as string}
             onChange={(e) => handleInputChange(currentStepData.field as keyof SurveyData, e.target.value)}

@@ -7,7 +7,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       campaignId,
-      platform,
       contractName,
       email,
       price,
@@ -19,7 +18,6 @@ export async function POST(request: NextRequest) {
 
     console.log('📝 Onboarding survey submission:', {
       campaignId,
-      platform,
       contractName,
       email,
       price,
@@ -46,7 +44,9 @@ export async function POST(request: NextRequest) {
 
     // Build update payload; avoid overwriting platform if not provided by the inline form
     // Note: contact_email should already be in the sheet and is NOT updated from the survey
+    // Note: platform should already be set in the sheet and should NOT be updated from the survey
     const updateData: Record<string, string> = {
+      spend_jpy: normalizedPrice || '',
       date_live: uploadDate || '',
       date_plan: planSubmissionDate || '',
       date_draft: draftSubmissionDate || '',
@@ -56,9 +56,7 @@ export async function POST(request: NextRequest) {
       date_status_updated: new Date().toISOString() // Full timestamp with date and time
     };
 
-    if (platform) {
-      updateData.platform = platform;
-    }
+    // Platform should not be updated from survey - it's already set in the sheet
 
     console.log('🔄 Updating campaign with data:', updateData);
 
@@ -124,7 +122,6 @@ export async function POST(request: NextRequest) {
           const payload = {
             event: 'contract_info_submitted',
             campaignId,
-            platform: platform || '',
             contractName: contractName || '',
             email: email || '',
             price: normalizedPrice || '',

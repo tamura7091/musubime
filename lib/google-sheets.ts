@@ -1598,10 +1598,13 @@ class GoogleSheetsService {
       // Build updates dynamically from headers for all target campaigns
       const updates: Array<{ range: string; values: any[][] }> = [];
 
-      const desiredColumns = [
+      // Campaign-specific fields that should only update the specific campaign
+      const campaignSpecificFields = ['spend_jpy'];
+      
+      // Shared fields that update all campaigns with same email
+      const sharedFields = [
         'platform',
         'contact_email',
-        'spend_jpy',
         'date_live',
         'date_plan',
         'date_draft',
@@ -1614,8 +1617,14 @@ class GoogleSheetsService {
       // For each target row (campaign with same email), create updates
       for (const rowIndex of targetRowIndices) {
         const targetRowNumber = rowIndex + 1; // 1-based
+        const isCurrentCampaign = rowIndex === currentCampaignRow;
         
-        for (const key of desiredColumns) {
+        // Determine which fields to update for this row
+        const fieldsToUpdate = isCurrentCampaign 
+          ? [...campaignSpecificFields, ...sharedFields]  // Update all fields for current campaign
+          : sharedFields;  // Only update shared fields for other campaigns
+        
+        for (const key of fieldsToUpdate) {
           let value = updateData[key];
           if (value === undefined || value === null) continue;
           
@@ -1633,7 +1642,7 @@ class GoogleSheetsService {
           updates.push({ range, values: [[String(value)]] });
         }
         
-        console.log(`📊 Queued ${desiredColumns.length} updates for row ${targetRowNumber}`);
+        console.log(`📊 Queued updates for row ${targetRowNumber} (${isCurrentCampaign ? 'current campaign' : 'related campaign'})`);
       }
 
       if (updates.length === 0) {

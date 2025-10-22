@@ -5,24 +5,12 @@ import { MessageCircle, X, Send, Bot, User, Loader2, Menu, History } from 'lucid
 import { useDesignSystem } from '@/hooks/useDesignSystem';
 import { useAuth } from '@/contexts/AuthContext';
 import { Campaign, CampaignStatus, getStepFromStatus, getStepLabel } from '@/types';
+import { getPlatformLabel } from '@/lib/platform';
 import React from 'react';
 import RequestMessage, { getDefaultRequestOptions } from './RequestMessage';
 // import blueCharacter from '../public/blue.png';
 
-// Utilities for platform label and date handling
-const getPlatformLabel = (platform?: string): string => {
-  const map: Record<string, string> = {
-    youtube_long: 'YouTube（長編）',
-    youtube_short: 'YouTube（ショート）',
-    instagram_reel: 'Instagram Reels',
-    tiktok: 'TikTok',
-    x_twitter: 'X（Twitter）',
-    podcast: 'Podcast',
-    blog: 'Blog',
-  };
-  if (!platform) return '不明';
-  return map[platform] || platform;
-};
+// Utilities for date handling (platform label now imported)
 
 const parseDate = (value?: string | null): Date | null => {
   if (!value) return null;

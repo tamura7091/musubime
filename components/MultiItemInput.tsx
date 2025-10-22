@@ -122,12 +122,12 @@ export default function MultiItemInput({
               type="button"
               onClick={handleAdd}
               disabled={!newItem.trim()}
-              className="px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 text-sm transition-opacity disabled:opacity-30 hover:opacity-70"
               style={{
-                backgroundColor: ds.button.primary.bg,
-                color: ds.button.primary.text
+                color: ds.text.primary
               }}
             >
+              <Plus size={16} />
               {type === 'date' ? '複数の投稿日を追加' : 'URLを追加'}
             </button>
             {items.length > 0 && (
@@ -168,17 +168,23 @@ export default function MultiItemInput({
   );
 }
 
-// Helper to format date for display
+// Helper to format date for display in yyyy-mm-dd format
 function formatDate(dateString: string): string {
   try {
+    // If already in yyyy-mm-dd format, return as is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return dateString;
+    }
+    
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString;
     
-    return new Intl.DateTimeFormat('ja-JP', {
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric'
-    }).format(date);
+    // Format as yyyy-mm-dd
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
   } catch {
     return dateString;
   }

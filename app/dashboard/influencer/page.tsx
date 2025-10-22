@@ -10,6 +10,7 @@ import VisibilityToggle from '@/components/VisibilityToggle';
 import { AmountVisibilityProvider } from '@/contexts/AmountVisibilityContext';
 import PreviousStepMessage from '@/components/PreviousStepMessage';
 import { useState, useEffect } from 'react';
+import { getPlatformLabel } from '@/lib/platform';
 import ReactMarkdown from 'react-markdown';
 import { useRouter } from 'next/navigation';
 import { CampaignStatus, getStepFromStatus } from '@/types';
@@ -783,18 +784,7 @@ export default function InfluencerDashboard() {
     return '';
   };
 
-  // Helper function to get platform label for display
-  const getPlatformLabel = (platform: string | undefined): string => {
-    if (!platform) return 'Unknown';
-    const platformLower = String(platform).toLowerCase();
-    if (platformLower === 'youtube_long' || platformLower === 'yt') return 'YouTube';
-    if (platformLower === 'podcast' || platformLower === 'pc') return 'Podcast';
-    if (['youtube_short', 'short_video', 'instagram_reel', 'tiktok', 'sv', 'tt', 'yts', 'igr'].includes(platformLower)) {
-      return 'ショート動画';
-    }
-    if (['x_twitter', 'twitter', 'tw', 'x'].includes(platformLower)) return 'X/Twitter';
-    return platform;
-  };
+  // Helper function to get platform label for display is imported at top
 
   // Helper function to extract campaign number from id (e.g., "id_3" → 3)
   const extractCampaignNumber = (campaignId: string): number => {
@@ -848,6 +838,39 @@ export default function InfluencerDashboard() {
     // Fallback: any campaign
     console.log('📋 No active campaigns, showing any campaign:', userCampaigns[0]?.id);
     return userCampaigns[0];
+  })();
+
+  // Get all not_started campaigns for multi-platform onboarding survey
+  // When there are multiple platforms (e.g., YouTube + Instagram), we want to collect
+  // platform-specific pricing for each campaign separately
+  const allNotStartedCampaigns = activeCampaigns.filter(c => c.status === 'not_started').map(campaign => ({
+    id: campaign.id,
+    platform: String(campaign.platform || ''),
+    defaultPrice: campaign.campaignData?.spend_jpy || campaign.contractedPrice
+  }));
+
+  // Check if we should skip email/contractName fields based on campaign ID suffix
+  // If any campaign ID ends with _2 or higher (e.g., abc_2, abc_3), skip the fields
+  // Only show fields for the first campaign (e.g., abc_1)
+  const shouldSkipBasicFields = (() => {
+    // Check all not_started campaigns
+    const campaignsToCheck = allNotStartedCampaigns.length > 0 
+      ? allNotStartedCampaigns 
+      : (primaryCampaign ? [{ id: primaryCampaign.id, platform: '', defaultPrice: null }] : []);
+    
+    // Extract the last number from each campaign ID
+    for (const campaign of campaignsToCheck) {
+      const match = campaign.id.match(/_(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        // If any campaign has a number > 1, skip the fields
+        if (num > 1) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
   })();
 
   // Find the first non-empty influencer note across all campaigns and append default links
@@ -2490,14 +2513,15 @@ ${submittedUrlsSection.length > 0 ? '\n\n#### 提出済みのリンク\n' + subm
                       {action.inputType === 'survey' && (
                         <div className="mt-2">
                           <OnboardingSurveyInline
-                            campaignId={primaryCampaign.id}
+                            campaigns={allNotStartedCampaigns.length > 0 ? allNotStartedCampaigns : undefined}
+                            campaignId={allNotStartedCampaigns.length === 0 ? primaryCampaign.id : undefined}
                             onComplete={() => {
                               // Refresh the data after survey completion
                               refreshData();
                             }}
                             embedded
                             defaultPrice={primaryCampaign.campaignData?.spend_jpy || primaryCampaign.contractedPrice}
-                            hasPreviousCampaigns={campaigns.length > 1}
+                            hasPreviousCampaigns={shouldSkipBasicFields}
                             defaultUploadDate={primaryCampaign.isLongTermContract ? (primaryCampaign.schedules?.liveDate || undefined) : undefined}
                           />
                         </div>
